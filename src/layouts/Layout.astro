@@ -1,0 +1,48 @@
+---
+// ============================================================================
+//  Layout principal — Header con branding, navegación contextual y slot.
+// ============================================================================
+import '../styles/globals.css';
+
+const { title = 'Studio mb · Calendario', user } = Astro.props;
+---
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+  </head>
+  <body class="min-h-screen flex flex-col">
+    <header class="bg-white border-b border-slate-200 shadow-sm">
+      <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="inline-block w-8 h-8 rounded-md bg-brand-500"></span>
+          <h1 class="text-lg font-semibold tracking-tight">Studio mb · Calendario Editorial</h1>
+        </div>
+
+        <nav class="flex items-center gap-6 text-sm text-slate-600">
+          <a href="/dashboard" class="hover:text-brand-600">Calendario</a>
+          <a href="/dashboard/clientes" class="hover:text-brand-600">Clientes</a>
+          <a href="/dashboard/feed" class="hover:text-brand-600">Mockup feed</a>
+
+          {user && (
+            <form method="POST" action="/api/auth/logout" class="inline">
+              <button type="submit" class="text-slate-500 hover:text-red-600">
+                Cerrar sesión
+              </button>
+            </form>
+          )}
+        </nav>
+      </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-6 py-8">
+      <slot />
+    </main>
+
+    <footer class="border-t border-slate-200 py-4 text-center text-xs text-slate-400">
+      © {new Date().getFullYear()} Studio mb — herramienta interna
+    </footer>
+  </body>
+</html>
