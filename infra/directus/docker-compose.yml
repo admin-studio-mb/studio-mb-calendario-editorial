@@ -3,8 +3,9 @@
 # ----------------------------------------------------------------------------
 #  Este compose SOLO levanta el contenedor de Directus.
 #  La BBDD PostgreSQL y Redis son GLOBALES en el servidor y se accede por
-#  variables de entorno. Directus se une a la red `npm_network` para ser
-#  expuesto a través de Nginx Proxy Manager.
+#  alias DNS de los contenedores (postgres / redis) en la red
+#  `servicios-internos`. Directus se une ADEMÁS a la red de Nginx Proxy
+#  Manager (`nginx-proxy-manager_default`) para ser expuesto públicamente.
 # ============================================================================
 
 services:
@@ -17,10 +18,16 @@ services:
     env_file:
       - .env
 
-    # Conectado a la red global donde vive NPM. IMPORTANTE:
-    #   docker network create npm_network   (solo la primera vez)
+    # Conectado a DOS redes externas que ya existen en el VPS:
+    #   - servicios-internos          → resuelve `postgres` y `redis`
+    #   - nginx-proxy-manager_default  → resuelve el contenedor desde NPM
     networks:
-      - npm_network
+      servicios-internos:
+        aliases:
+          - studio-mb-directus
+      nginx-proxy-manager_default:
+        aliases:
+          - studio-mb-directus
 
     # Healthcheck: comprueba que la API de Directus responde.
     healthcheck:
@@ -34,15 +41,15 @@ services:
     expose:
       - "8055"
 
-    # Volumen para uploads (no se monta BBDD porque es externa).
+    # Volumen para uploads. La BBDD es externa, no se monta.
     volumes:
       - directus_uploads:/directus/uploads
       - directus_database:/directus/database
 
 networks:
-  # Red externa compartida con Nginx Proxy Manager.
-  # Crear con: docker network create npm_network
-  npm_network:
+  servicios-internos:
+    external: true
+  nginx-proxy-manager_default:
     external: true
 
 volumes:
