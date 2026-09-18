@@ -10,7 +10,7 @@
 
 services:
   directus:
-    image: directus/directus:11.5.0
+    image: directus/directus:12.3.1
     container_name: studio-mb-directus
     restart: unless-stopped
 
