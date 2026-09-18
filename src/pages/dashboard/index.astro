@@ -1,0 +1,75 @@
+---
+// ============================================================================
+//  Dashboard principal — SSR.
+//  Carga publicaciones y clientes desde Directus con el JWT de la cookie y
+//  los pasa a las islas React. El middleware ya garantiza que `user` existe.
+// ============================================================================
+import Layout from '../../layouts/Layout.astro';
+import Calendar from '../../components/Calendar.jsx';
+import PostForm from '../../components/PostForm.jsx';
+import FeedMockup from '../../components/FeedMockup.jsx';
+import CommentThread from '../../components/CommentThread.jsx';
+import { env } from '../../lib/env.js';
+
+export const prerender = false;
+
+const { user, token } = Astro.locals;
+
+const baseHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+const baseUrl = env.DIRECTUS_INTERNAL_URL;
+
+// --- Fetch en paralelo (publicaciones + clientes) ----------------------------
+async function fetchCollection(path) {
+  const url = `${baseUrl}/items/${path}?limit=-1`;
+  const res = await fetch(url, { headers: baseHeaders });
+  if (!res.ok) {
+    console.error(`[dashboard] ${path} → ${res.status}`);
+    return [];
+  }
+  const json = await res.json();
+  return json.data ?? [];
+}
+
+const [publicacionesRaw, clientes] = await Promise.all([
+  fetchCollection('publicaciones'),
+  fetchCollection('clientes'),
+]);
+
+// Normalizamos campos para que las islas no se acoplen a la respuesta cruda.
+const publicaciones = publicacionesRaw.map((p) => ({
+  ...p,
+  cliente: p.cliente_id ?? null,
+}));
+
+const initialFeed = publicaciones.slice(0, 9);
+---
+<Layout title="Calendario · Studio mb" user={user}>
+  <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
+      <Calendar
+        client:load
+        publicaciones={publicaciones}
+      />
+      <FeedMockup
+        client:visible
+        posts={initialFeed}
+        baseUrl={env.PUBLIC_DIRECTUS_URL}
+      />
+    </div>
+
+    <aside class="space-y-6">
+      <PostForm
+        client:load
+        clientes={clientes}
+      />
+      {publicaciones[0] && (
+        <CommentThread
+          client:visible
+          publicacionId={publicaciones[0].id}
+          initial={[]}
+          currentUser={user}
+        />
+      )}
+    </aside>
+  </section>
+</Layout>
