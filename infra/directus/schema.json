@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "directus": "12.x",
+  "vendor": "postgres",
+  "collections": [
+    {
+      "collection": "clientes",
+      "schema": {},
+      "fields": [
+        { "field": "nombre", "type": "string", "schema": { "is_nullable": false } },
+        { "field": "logo", "type": "uuid", "schema": { "is_nullable": true, "foreign_key_table": "directus_files", "foreign_key_column": "id" } },
+        { "field": "tipos_contenido_disponibles", "type": "json", "schema": { "default_value": "[]" } }
+      ]
+    },
+    {
+      "collection": "publicaciones",
+      "schema": {},
+      "fields": [
+        { "field": "cliente_id", "type": "uuid", "schema": { "is_nullable": true, "foreign_key_table": "clientes", "foreign_key_column": "id" } },
+        { "field": "tipo_contenido", "type": "string", "schema": { "is_nullable": true } },
+        { "field": "formato", "type": "string", "schema": { "is_nullable": true } },
+        { "field": "imagenes_fondo", "type": "json", "schema": { "default_value": "[]" } },
+        { "field": "textos_slides", "type": "text", "schema": { "is_nullable": true } },
+        { "field": "copywriting", "type": "text", "schema": { "is_nullable": true } },
+        { "field": "hashtags", "type": "json", "schema": { "default_value": "[]" } },
+        { "field": "fecha_creacion", "type": "timestamp", "schema": { "is_nullable": true, "default_value": "now()" } },
+        { "field": "fecha_publicacion", "type": "timestamp", "schema": { "is_nullable": true } },
+        { "field": "diseno_final", "type": "uuid", "schema": { "is_nullable": true, "foreign_key_table": "directus_files", "foreign_key_column": "id" } },
+        { "field": "estado", "type": "string", "schema": { "is_nullable": true, "default_value": "Borrador" } }
+      ]
+    },
+    {
+      "collection": "comentarios",
+      "schema": {},
+      "fields": [
+        { "field": "publicacion_id", "type": "uuid", "schema": { "is_nullable": false, "foreign_key_table": "publicaciones", "foreign_key_column": "id" } },
+        { "field": "usuario_id", "type": "uuid", "schema": { "is_nullable": true, "foreign_key_table": "directus_users", "foreign_key_column": "id" } },
+        { "field": "texto", "type": "text", "schema": { "is_nullable": false } },
+        { "field": "fecha_creacion", "type": "timestamp", "schema": { "is_nullable": true, "default_value": "now()" } }
+      ]
+    }
+  ],
+  "fields": []
+}
