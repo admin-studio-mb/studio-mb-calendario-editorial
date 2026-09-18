@@ -1,0 +1,50 @@
+# ============================================================================
+#  Studio mb · Calendario Editorial — Infraestructura Directus
+# ----------------------------------------------------------------------------
+#  Este compose SOLO levanta el contenedor de Directus.
+#  La BBDD PostgreSQL y Redis son GLOBALES en el servidor y se accede por
+#  variables de entorno. Directus se une a la red `npm_network` para ser
+#  expuesto a través de Nginx Proxy Manager.
+# ============================================================================
+
+services:
+  directus:
+    image: directus/directus:11.5.0
+    container_name: studio-mb-directus
+    restart: unless-stopped
+
+    # Variables de entorno (ver .env.example)
+    env_file:
+      - .env
+
+    # Conectado a la red global donde vive NPM. IMPORTANTE:
+    #   docker network create npm_network   (solo la primera vez)
+    networks:
+      - npm_network
+
+    # Healthcheck: comprueba que la API de Directus responde.
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8055/server/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+    # No publicamos puertos en el host: NPM resolverá por nombre de contenedor.
+    expose:
+      - "8055"
+
+    # Volumen para uploads (no se monta BBDD porque es externa).
+    volumes:
+      - directus_uploads:/directus/uploads
+      - directus_database:/directus/database
+
+networks:
+  # Red externa compartida con Nginx Proxy Manager.
+  # Crear con: docker network create npm_network
+  npm_network:
+    external: true
+
+volumes:
+  directus_uploads:
+  directus_database:
