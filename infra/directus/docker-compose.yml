@@ -29,9 +29,16 @@ services:
         aliases:
           - studio-mb-directus
 
-    # Healthcheck: comprueba que la API de Directus responde.
+    # Healthcheck: usamos Node directamente porque el `wget` de busybox
+    # en esta imagen Alpine intenta IPv6 primero (::1) y Directus solo
+    # escucha en IPv4 → devuelve "Connection refused" aunque la app esté OK.
+    # Forzamos 127.0.0.1 (IPv4) y exit code 0 cuando responde 200.
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8055/server/health"]
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "require('http').get('http://127.0.0.1:8055/server/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
       interval: 30s
       timeout: 10s
       retries: 5
