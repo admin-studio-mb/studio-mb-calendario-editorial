@@ -3,7 +3,7 @@
   "mcp": {
     "directus-studio-mb": {
       "type": "remote",
-      "url": "https://calendar.studiomb.es/mcp",
+      "url": "https://cms.studiomb.es/mcp",
       "enabled": true
     }
   }

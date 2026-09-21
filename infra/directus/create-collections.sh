@@ -4,7 +4,7 @@
 #  Idempotente: si la colección ya existe, sigue con la siguiente.
 #
 #  Requisitos:
-#    - Directus accesible en https://calendar.studiomb.es
+#    - Directus accesible en https://cms.studiomb.es
 #    - .env con ADMIN_EMAIL y ADMIN_PASSWORD en este directorio
 #    - jq instalado (apt-get install -y jq)
 #
@@ -17,7 +17,7 @@ cd "$(dirname "$0")"
 
 echo "=== login fresco ==="
 PASS=$(awk -F= '/^ADMIN_PASSWORD=/{print $2}' .env)
-TOKEN=$(curl -sS -X POST https://calendar.studiomb.es/auth/login \
+TOKEN=$(curl -sS -X POST https://cms.studiomb.es/auth/login \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"admin@studiomb.es\",\"password\":\"$PASS\"}" \
   | jq -r '.data.access_token')
@@ -29,7 +29,7 @@ echo "token len: ${#TOKEN}"
 
 AUTH="Authorization: Bearer $TOKEN"
 JSON="Content-Type: application/json"
-BASE=https://calendar.studiomb.es
+BASE=https://cms.studiomb.es
 
 # Helper: POST /collections. Si ya existe, no falla.
 create_collection() {
