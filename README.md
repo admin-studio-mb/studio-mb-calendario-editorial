@@ -1,48 +1,69 @@
 # Studio mb · Calendario Editorial
 
-Portal interno de la agencia **Studio mb** para gestionar el calendario de
-publicaciones en redes sociales de sus clientes. Construido sobre
-**Astro (SSR) + React (islas) + Tailwind**, con **Directus** como Headless CMS
-autogestionado.
+> Portal interno para gestionar el calendario de publicaciones en redes sociales de los clientes de la agencia.
+
+[![Stack](https://img.shields.io/badge/stack-Astro%2012%20%2B%20React%2018%20%2B%20Directus-4f46e5)](#stack)
+[![Node](https://img.shields.io/badge/node-%E2%89%A522-339933)](https://nodejs.org)
+[![Docker](https://img.shields.io/badge/docker-required-2496ed)](https://docker.com)
+[![License](https://img.shields.io/badge/license-internal-orange)](#)
+
+---
+
+## Tabla de contenidos
+
+- [Qué es](#qué-es)
+- [Stack](#stack)
+- [Demo / URLs](#demo--urls)
+- [Quick start](#quick-start)
+- [Estructura del repo](#estructura-del-repo)
+- [Variables de entorno](#variables-de-entorno)
+- [Despliegue](#despliegue)
+- [Troubleshooting](#troubleshooting)
+- [Estado del proyecto](#estado-del-proyecto)
+- [Documentación para agentes IA](#documentación-para-agentes-ia)
+
+---
+
+## Qué es
+
+Herramienta interna de la agencia **Studio mb** para planificar las
+publicaciones en redes sociales de sus clientes desde un único panel:
+calendario mensual, formulario de creación, mockup del feed estilo Instagram
+y comentarios por publicación.
+
+> ⚠️ **No hay publicación automatizada**: el sistema está pensado para
+> planificar y revisar. La salida a redes se hace desde otras herramientas.
 
 ---
 
 ## Stack
 
-| Capa            | Tecnología                                  |
-| --------------- | ------------------------------------------- |
-| Front / SSR     | Astro 4 + Node Adapter                      |
-| Islas React     | Calendar, PostForm, FeedMockup, Comments    |
-| Estilos         | Tailwind CSS                                |
-| Backend / CMS   | Directus 11 (Docker, sin BBDD propia)       |
-| BBDD            | PostgreSQL global del servidor              |
-| Cache/Sesiones  | Redis global del servidor                   |
-| Reverse Proxy   | Nginx Proxy Manager (`nginx-proxy-manager_default`) |
-| Auth            | JWT en cookie HttpOnly                      |
+| Capa | Tecnología |
+| --- | --- |
+| Front / SSR | Astro 4 + Node Adapter |
+| Islas React | Calendar, PostForm, FeedMockup, Comments |
+| Estilos | Tailwind CSS |
+| Backend / CMS | Directus 12 (Docker, sin BBDD propia) |
+| BBDD | PostgreSQL global del servidor |
+| Cache/Sesiones | Redis global del servidor |
+| Reverse proxy | Nginx Proxy Manager |
+| Auth | JWT en cookie HttpOnly (`studio_mb_session`) |
+| MCP para IA | Servidor MCP nativo de Directus 12 |
 
 ---
 
-## Estructura del repositorio
+## Demo / URLs
 
-```
-.
-├── infra/
-│   └── directus/
-│       ├── docker-compose.yml     # Solo contenedor Directus
-│       └── .env.example
-├── src/                          # Código del frontend Astro
-│   ├── components/               # Islas React
-│   ├── layouts/
-│   ├── lib/                      # SDK Directus + auth
-│   └── pages/
-└── .env.example                  # Variables del frontend
-```
+| URL | Apunta a | Quién |
+| --- | --- | --- |
+| `https://calendar.studiomb.es` | Frontend Astro (calendario editorial) | Agencia + clientes |
+| `https://cms.studiomb.es` | Directus (panel admin + API REST) | Solo admins |
 
 ---
 
-## Puesta en marcha rápida
+## Quick start
 
-### 1. Levantar Directus (en el VPS)
+### Levantar Directus (en el VPS)
 
 ```bash
 cd infra/directus
@@ -51,7 +72,7 @@ docker network create npm_network   # Solo la primera vez
 docker compose up -d
 ```
 
-### 2. Levantar el frontend (en local)
+### Levantar el frontend (en local)
 
 ```bash
 pnpm create astro@latest . -- --template minimal --typescript strict --no-install
@@ -67,91 +88,106 @@ pnpm dev
 
 ---
 
-## Estado del proyecto
+## Estructura del repo
 
-- [x] Fase 1 — Infraestructura (Directus)
-- [x] Fase 2 — Configuración Astro + Tailwind
-- [x] Fase 3 — Autenticación JWT (HttpOnly)
-- [x] Fase 4 — Componentes (Calendar, PostForm, FeedMockup, Comments)
-- [x] Fase 5 — Despliegue en VPS tras NPM
-- [ ] Fase 6 — Colecciones `clientes` / `publicaciones` / `comentarios` en Directus
-- [ ] Fase 7 — Endpoints `/api/publicaciones` + `/api/comentarios`
+```
+.
+├── infra/
+│   └── directus/        # Docker compose, .env.example, schema declarativo
+├── src/
+│   ├── components/       # Islas React (Calendar, PostForm, FeedMockup, ...)
+│   ├── layouts/          # Layouts Astro
+│   ├── lib/              # SDK Directus, auth, env
+│   └── pages/            # Rutas (login, dashboard, api/auth/...)
+├── AGENTS.md             # Contexto completo para agentes IA (léelo si eres uno)
+└── README.md             # Este archivo
+```
 
 ---
 
-## Despliegue en VPS — gotchas conocidos (Directus 11.5.0)
+## Variables de entorno
 
-Cuando despliegas de cero en un VPS con PostgreSQL y Redis globales ya
-existentes, hay tres cosas que el `docker compose up` no resuelve solo:
+Copia los `.env.example` y rellena. **Nunca commitees los `.env` reales.**
 
-### 1. BBDD y usuario dedicado
+| Archivo | Variables clave |
+| --- | --- |
+| `infra/directus/.env` | `KEY`, `SECRET`, `DB_HOST=postgres`, `DB_PASSWORD`, `REDIS=redis://:URL_ESCAPED_PASS@redis:6379`, `PUBLIC_URL=https://cms.studiomb.es` |
+| `.env` (raíz) | `PUBLIC_DIRECTUS_URL=https://cms.studiomb.es`, `SESSION_COOKIE_SECRET`, `SESSION_COOKIE_NAME=studio_mb_session` |
 
-`Directus` no crea automáticamente la BBDD ni el rol. Antes de arrancarlo:
+Detalle completo en [`AGENTS.md` §9](./AGENTS.md).
 
-```bash
-docker exec -u postgres postgres-global psql <<'SQL'
-CREATE DATABASE studio_mb_calendario;
-CREATE USER studio_mb WITH ENCRYPTED PASSWORD 'TU_PASS';
-GRANT ALL PRIVILEGES ON DATABASE studio_mb_calendario TO studio_mb;
-\c studio_mb_calendario
-GRANT ALL ON SCHEMA public TO studio_mb;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO studio_mb;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO studio_mb;
-SQL
-```
+---
 
-### 2. Redis con password — URL-escapada obligatoria
-
-Si tu `redis-global` tiene `requirepass`, no puedes meterla como
-`REDIS_PASSWORD=…` (Directus 11.5 no la lee). Tienes que meterla en la URL
-con caracteres especiales URL-encodados:
-
-```
-# Pass con '/' o '=' → %2F / %3D
-REDIS=redis://:UOg6zCbW%2FhN7E8YOkyrbYtsDf3e08vFiNdJA0fmZObQ%3D@redis:6379
-```
-
-### 3. Bootstrap skip + admin inexistente
-
-Si Directus arranca después de que las migraciones se hayan aplicado al
-menos una vez (aunque sea un boot fallido anterior), loggea
-`Database already initialized, skipping install` y **no crea el rol
-Administrator ni el usuario admin**, aunque tengas `ADMIN_EMAIL` /
-`ADMIN_PASSWORD` en el `.env`.
-
-Hay que crearlos manualmente tras el primer `up`:
+## Despliegue
 
 ```bash
-# 1. Crear el rol Administrator (tabla vacía al inicio)
-docker exec -u postgres postgres-global psql -d studio_mb_calendario -tA \
-  -c "INSERT INTO directus_roles (id, name, icon, description)
-      VALUES (gen_random_uuid(), 'Administrator', 'supervised_user_circle',
-              'Initial administrative role with full access.');"
+# VPS
+cd /opt/studio-mb-apps
+git clone https://github.com/admin-studio-mb/studio-mb-calendario-editorial.git
+cd studio-mb-calendario-editorial/infra/directus
 
-# 2. Sacar su UUID y crear el usuario admin con la CLI de Directus
-ROLE_UUID=$(docker exec -u postgres postgres-global psql -d studio_mb_calendario -tA \
-  -c "SELECT id FROM directus_roles WHERE name='Administrator'")
-docker exec studio-mb-directus node cli.js users create \
-  --email "admin@studiomb.es" \
-  --password "$PASS" \
-  --role "$ROLE_UUID"
+cp .env.example .env
+# Editar y rellenar claves (ver AGENTS.md §6 para los gotchas)
+
+docker compose up -d
 ```
 
-### 4. Healthcheck de Directus en imagen Alpine
+Verificación rápida:
 
-El `wget` de busybox intenta IPv6 primero (`::1:8055`) y Directus solo
-escucha en IPv4 → `Connection refused` aunque la app esté sana. Por eso
-nuestro `docker-compose.yml` usa `node` directamente:
-
-```yaml
-healthcheck:
-  test:
-    - "CMD"
-    - "node"
-    - "-e"
-    - "require('http').get('http://127.0.0.1:8055/server/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+```bash
+docker compose ps                # STATUS = Up (healthy)
+curl -i https://cms.studiomb.es/server/health   # 200 OK
 ```
 
-> ⚠️ Considera subir la imagen a `directus/directus:11.9.x` o `12.x` cuando
-> esté validado el flujo, porque varios de estos bugs son fixes en versiones
-> posteriores.
+---
+
+## Troubleshooting
+
+Si Directus no arranca sano, mira los gotchas documentados (Redis URL-escape,
+bootstrap skip, healthcheck, etc.) en [`AGENTS.md` §6](./AGENTS.md#6-gotchas-críticos-de-directus-1231).
+
+Comandos rápidos:
+
+```bash
+docker logs --tail 80 studio-mb-directus
+docker restart studio-mb-directus       # limpia caché de policies
+docker exec -u postgres postgres-global psql -d studio_mb_calendario -c "\du"
+```
+
+---
+
+## Estado del proyecto
+
+- ✅ Fase 1 — Infraestructura (Directus)
+- ✅ Fase 2 — Configuración Astro + Tailwind
+- ✅ Fase 3 — Autenticación JWT (HttpOnly)
+- ✅ Fase 4 — Componentes (Calendar, PostForm, FeedMockup, Comments)
+- ✅ Fase 5 — Despliegue en VPS tras NPM
+- ✅ Upgrade Directus 11.5 → 12.3.1
+- ✅ MCP server conectado vía OAuth DCR
+- ⏳ Fase 6 — Crear colecciones `clientes` / `publicaciones` / `comentarios` (en curso vía UI)
+- ⏳ Fase 7 — Endpoints SSR `/api/publicaciones` + `/api/comentarios`
+- ⏳ Fase 8 — Sembrar datos de prueba
+- ⏳ Fase 9 — Build y despliegue del frontend Astro en `calendar.studiomb.es`
+
+---
+
+## Documentación para agentes IA
+
+Si eres un agente de IA (opencode, Cursor, Claude Code, etc.) que va a
+trabajar en este proyecto:
+
+1. Lee **`AGENTS.md`** entero antes de tocar nada. Tiene la arquitectura,
+   gotchas, comandos frecuentes y reglas de oro.
+2. **No improvises sintaxis**: el usuario (Iván) consulta docs oficiales
+   antes de cualquier cosa no verificada.
+3. **Trabaja paso a paso** y termina cada turno con resultado visible
+   (commit, archivo nuevo, output literal).
+4. **Usa bloques `bash` ejecutables** etiquetados (VPS / Windows PowerShell).
+   Nada de prosa.
+
+---
+
+## Licencia
+
+Uso interno — Studio mb. No distribuir fuera de la organización.
