@@ -17,6 +17,24 @@ const LABEL_OVERRIDES = {
   aprobado: 'Aprobado',
 };
 
+// Componente reutilizable DEFINIDO FUERA del componente principal.
+// Si lo definiera dentro, en cada re-render de PostForm React trataría
+// cada Field como un componente nuevo (distinta referencia), lo que hace
+// que desmonte y vuelva a montar el DOM interno, perdiendo el foco del
+// input en cada keystroke.
+//
+// Usa <div> en lugar de <label> porque el <label> que envuelve un input
+// re-asocia su target en cada render y eso interfiere con el foco.
+function Field({ label, hint, children }) {
+  return (
+    <div className="block">
+      <span className="block text-xs font-semibold uppercase tracking-wider text-ink-500 mb-1.5">{label}</span>
+      {children}
+      {hint && <span className="block text-[11px] text-ink-400 mt-1">{hint}</span>}
+    </div>
+  );
+}
+
 function titleCase(s) {
   if (!s) return '';
   if (LABEL_OVERRIDES[s]) return LABEL_OVERRIDES[s];
@@ -233,14 +251,10 @@ export default function PostForm({
     }
   }
 
-  // Reusable field wrapper para mantener ritmo vertical consistente.
-  const Field = ({ label, hint, children }) => (
-    <label className="block">
-      <span className="block text-xs font-semibold uppercase tracking-wider text-ink-500 mb-1.5">{label}</span>
-      {children}
-      {hint && <span className="block text-[11px] text-ink-400 mt-1">{hint}</span>}
-    </label>
-  );
+  // Field está definido FUERA del componente (línea ~28) para no recrearlo
+  // en cada render (eso hacía perder el foco al escribir).
+  //
+  // inputBase también va fuera para evitar recreación en cada render.
 
   const inputBase = 'w-full px-3 py-2 rounded-lg border border-ink-200 bg-white text-sm text-ink-800 placeholder:text-ink-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 focus:outline-none transition disabled:bg-ink-50 disabled:text-ink-400';
 

@@ -34,6 +34,16 @@ import { atom } from 'nanostores';
 export const publicacionesStore = atom([]);
 
 /**
+ * Cursor compartido del calendario (fecha actual en la vista Mes/Semana/Lista).
+ * Lo usan Calendar (para saber qué mes mostrar) y Kpis (para filtrar conteos).
+ * Se inicializa en el cliente con `new Date()` (en SSR usamos el valor del
+ * servidor, pero como Date no se serializa, lo reinicializamos en mount).
+ *
+ * @type {import('nanostores').WritableAtom<Date>}
+ */
+export const cursorStore = atom(new Date());
+
+/**
  * Llamado desde el SSR (dashboard/index.astro) tras hidratar la página.
  * Reemplaza el contenido del store con el array de publicaciones que vino
  * del backend.

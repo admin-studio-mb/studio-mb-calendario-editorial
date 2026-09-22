@@ -8,6 +8,7 @@ import PostForm from '../../components/PostForm.jsx';
 import FeedMockup from '../../components/FeedMockup.jsx';
 import CommentThread from '../../components/CommentThread.jsx';
 import EditPostModal from '../../components/EditPostModal.jsx';
+import Kpis from '../../components/Kpis.jsx';
 import { env } from '../../lib/env.js';
 
 export const prerender = false;
@@ -70,29 +71,8 @@ const apiBase = `${Astro.url.protocol}//${Astro.url.host}`;
     </p>
   </header>
 
-  {/* KPIs */}
-  <section class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-8">
-    <div class="card p-4 md:p-5">
-      <p class="text-[11px] uppercase tracking-wider text-ink-400 font-medium">Total</p>
-      <p class="mt-2 text-2xl md:text-3xl font-bold text-ink-900">{publicaciones.length}</p>
-      <p class="text-xs text-ink-500 mt-1">publicaciones</p>
-    </div>
-    <div class="card p-4 md:p-5">
-      <p class="text-[11px] uppercase tracking-wider text-ink-400 font-medium">Este mes</p>
-      <p class="mt-2 text-2xl md:text-3xl font-bold text-brand-600">{enMes}</p>
-      <p class="text-xs text-ink-500 mt-1">programadas</p>
-    </div>
-    <div class="card p-4 md:p-5">
-      <p class="text-[11px] uppercase tracking-wider text-ink-400 font-medium">En revisión</p>
-      <p class="mt-2 text-2xl md:text-3xl font-bold text-amber-600">{pendientesRevision}</p>
-      <p class="text-xs text-ink-500 mt-1">esperando feedback</p>
-    </div>
-    <div class="card p-4 md:p-5">
-      <p class="text-[11px] uppercase tracking-wider text-ink-400 font-medium">Aprobadas</p>
-      <p class="mt-2 text-2xl md:text-3xl font-bold text-emerald-600">{aprobadas}</p>
-      <p class="text-xs text-ink-500 mt-1">listas para publicar</p>
-    </div>
-  </section>
+  {/* KPIs (reaccionan al cursor del calendario) */}
+  <Kpis client:load />
 
   <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <div class="lg:col-span-2 space-y-6">
