@@ -19,7 +19,16 @@ RUN pnpm install --frozen-lockfile
 
 # Copiamos el resto del código y construimos.
 COPY . .
-RUN pnpm build
+
+# Astro 7 con `astro:env` valida todas las variables en build.
+# Inyectamos placeholders solo para que la validación pase; los valores
+# reales vendrán del .env montado en runtime (etapa 2).
+RUN PUBLIC_DIRECTUS_URL=https://placeholder.invalid \
+    DIRECTUS_INTERNAL_URL=http://placeholder.invalid \
+    SESSION_COOKIE_SECRET=build-placeholder-secret-not-used-in-runtime \
+    SESSION_COOKIE_NAME=studio_mb_session \
+    PUBLIC_DIRECTUS_STATIC_TOKEN= \
+    pnpm build
 
 # ---- Etapa 2: runtime -----------------------------------------------------
 FROM node:24-alpine AS runtime
