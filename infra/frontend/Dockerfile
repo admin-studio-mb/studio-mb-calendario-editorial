@@ -13,7 +13,7 @@ ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 
 # Copiamos solo los manifests primero para cachear mejor las deps.
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml .npmrc ./
 RUN pnpm install --frozen-lockfile
 
 # Copiamos el resto del código y construimos.
