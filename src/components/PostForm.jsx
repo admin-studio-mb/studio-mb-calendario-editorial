@@ -1,8 +1,27 @@
 import { useState, useEffect, useMemo } from 'react';
-import { addPublicacion, removePublicacion } from '../stores/publicaciones.js';
+import { addPublicacion, updatePublicacion, removePublicacion } from '../stores/publicaciones.js';
 
 const FORMATOS = ['post', 'reel', 'carrusel', 'story'];
 const ESTADOS = ['borrador', 'revision', 'aprobado'];
+
+/** Title Case con soporte de acentos: 'post' → 'Post', 'revision' → 'Revisión'. */
+const LABEL_OVERRIDES = {
+  post: 'Post',
+  reel: 'Reel',
+  carrusel: 'Carrusel',
+  story: 'Story',
+  borrador: 'Borrador',
+  revision: 'Revisión',
+  aprobado: 'Aprobado',
+};
+
+function titleCase(s) {
+  if (!s) return '';
+  if (LABEL_OVERRIDES[s]) return LABEL_OVERRIDES[s];
+  // Para valores libres (Promo, Noticia, Behind the scenes...) capitalizamos
+  // la primera letra de cada palabra respetando el resto.
+  return s.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1));
+}
 
 /**
  * PostForm — formulario controlado para crear/editar una publicación.
@@ -24,6 +43,7 @@ export default function PostForm({
   initial = {},
   onSubmit,
   onCancel,
+  onSubmitted,
   uploadFile,
   apiBase = '',
 }) {
@@ -53,12 +73,19 @@ export default function PostForm({
     [cliente],
   );
 
-  // Si cambia el cliente y el tipo anterior no está disponible, lo limpiamos.
+  // Si cambia el cliente y el tipo anterior no está disponible, lo cambiamos
+  // al primero de la lista. Si la lista está vacía, limpiamos.
   useEffect(() => {
-    if (tipo && tiposDisponibles.length && !tiposDisponibles.includes(tipo)) {
-      setTipo('');
+    if (!cliente) return;
+    if (!tiposDisponibles.length) {
+      if (tipo !== '') setTipo('');
+      return;
     }
-  }, [tiposDisponibles, tipo]);
+    if (!tiposDisponibles.includes(tipo)) {
+      // Default al primero disponible (UX: no quieres quedarte con el dropdown vacío).
+      setTipo(tiposDisponibles[0]);
+    }
+  }, [tiposDisponibles, tipo, cliente]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -66,6 +93,8 @@ export default function PostForm({
 
     if (!clienteId) return setError('Selecciona un cliente.');
     if (!fechaPub) return setError('Indica una fecha de publicación.');
+
+    const isEdit = Boolean(initial.id);
 
     let disenoFinalId = initial.diseno_final?.id ?? null;
     if (disenoFile && uploadFile) {
@@ -92,18 +121,26 @@ export default function PostForm({
 
     try {
       setSubmitting(true);
-      // Si el front nos ha pasado un `apiBase`, creamos la publicación
-      // directamente vía el endpoint SSR. Si no, dejamos que el padre
-      // gestione el submit (compatibilidad con tests/storybook).
+      // Si el front nos ha pasado un `apiBase`, creamos/actualizamos la
+      // publicación directamente vía el endpoint SSR.
       if (apiBase) {
-        // 1) Optimistic: añadimos al store un placeholder con id temporal.
-        const tempId = `tmp-${Date.now()}`;
-        const optimistic = { id: tempId, ...payload, _pending: true };
-        addPublicacion(optimistic);
-        setInfo('Guardando publicación…');
+        // 1) Optimistic: añadimos/actualizamos en el store con un placeholder.
+        const tempId = isEdit ? `tmp-${initial.id}` : `tmp-${Date.now()}`;
+        const optimistic = {
+          id: tempId,
+          ...(isEdit ? initial : {}),
+          ...payload,
+          _pending: true,
+        };
+        if (isEdit) {
+          updatePublicacion(optimistic);
+        } else {
+          addPublicacion(optimistic);
+        }
+        setInfo(isEdit ? 'Actualizando publicación…' : 'Guardando publicación…');
 
         try {
-          // 2) Subida del diseño si hay archivo.
+          // 2) Subida del diseño si hay archivo nuevo.
           if (disenoFile) {
             const fd = new FormData();
             fd.append('file', disenoFile);
@@ -113,9 +150,14 @@ export default function PostForm({
             payload.diseno_final = upJson?.id ?? null;
           }
 
-          // 3) POST de la publicación.
-          const res = await fetch(`${apiBase}/api/publicaciones`, {
-            method: 'POST',
+          // 3) POST (crear) o PATCH (editar) según modo.
+          const url = isEdit
+            ? `${apiBase}/api/publicaciones/${initial.id}`
+            : `${apiBase}/api/publicaciones`;
+          const method = isEdit ? 'PATCH' : 'POST';
+
+          const res = await fetch(url, {
+            method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
           });
@@ -123,25 +165,41 @@ export default function PostForm({
             const text = await res.text().catch(() => '');
             throw new Error(`Guardar falló (${res.status}): ${text || res.statusText}`);
           }
-          const created = await res.json().catch(() => null);
+          const saved = await res.json().catch(() => null);
 
           // 4) Reemplazamos el placeholder por la versión real del server.
-          removePublicacion(tempId);
-          if (created && created.id) {
-            addPublicacion(created);
+          if (isEdit) {
+            removePublicacion(tempId);
+            if (saved && saved.id) {
+              updatePublicacion(saved);
+            }
+          } else {
+            removePublicacion(tempId);
+            if (saved && saved.id) {
+              addPublicacion(saved);
+            }
           }
-          setInfo('✓ Publicación guardada');
+          setInfo(isEdit ? '✓ Publicación actualizada' : '✓ Publicación guardada');
           setTimeout(() => setInfo(''), 2500);
 
-          // Limpiamos el form.
-          setClienteId(clientes[0]?.id ?? '');
-          setTipo('');
-          setCopywriting('');
-          setHashtags('');
-          setTextosSlides('');
-          setImagenes('');
-          setFechaPub('');
-          setDisenoFile(null);
+          // En modo edición avisamos al padre (cerrará el modal).
+          if (isEdit && onSubmitted) {
+            onSubmitted(saved);
+          }
+
+          if (!isEdit) {
+            // Limpiamos el form solo en modo creación.
+            setClienteId(clientes[0]?.id ?? '');
+            setTipo('');
+            setCopywriting('');
+            setHashtags('');
+            setTextosSlides('');
+            setImagenes('');
+            setFechaPub('');
+            setDisenoFile(null);
+          } else {
+            setDisenoFile(null);
+          }
           return;
         } catch (err) {
           // 5) Rollback: quitamos el placeholder y avisamos al usuario.
@@ -211,23 +269,23 @@ export default function PostForm({
           </Field>
 
           <Field label="Tipo de contenido">
-            <select id="tipo" value={tipo} onChange={(e) => setTipo(e.target.value)} disabled={!cliente} className={inputBase}>
-              <option value="">—</option>
+            <select id="tipo" value={tipo} onChange={(e) => setTipo(e.target.value)} disabled={!cliente || !tiposDisponibles.length} className={inputBase}>
+              {!tiposDisponibles.length && <option value="">—</option>}
               {tiposDisponibles.map((t) => (
-                <option key={t} value={t}>{t}</option>
+                <option key={t} value={t}>{titleCase(t)}</option>
               ))}
             </select>
           </Field>
 
           <Field label="Formato">
             <select id="formato" value={formato} onChange={(e) => setFormato(e.target.value)} className={inputBase}>
-              {FORMATOS.map((f) => <option key={f} value={f}>{f}</option>)}
+              {FORMATOS.map((f) => <option key={f} value={f}>{titleCase(f)}</option>)}
             </select>
           </Field>
 
           <Field label="Estado">
             <select id="estado" value={estado} onChange={(e) => setEstado(e.target.value)} className={inputBase}>
-              {ESTADOS.map((s) => <option key={s} value={s}>{s}</option>)}
+              {ESTADOS.map((s) => <option key={s} value={s}>{titleCase(s)}</option>)}
             </select>
           </Field>
 

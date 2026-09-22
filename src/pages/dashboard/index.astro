@@ -7,6 +7,7 @@ import Calendar from '../../components/Calendar.jsx';
 import PostForm from '../../components/PostForm.jsx';
 import FeedMockup from '../../components/FeedMockup.jsx';
 import CommentThread from '../../components/CommentThread.jsx';
+import EditPostModal from '../../components/EditPostModal.jsx';
 import { env } from '../../lib/env.js';
 
 export const prerender = false;
@@ -95,7 +96,7 @@ const apiBase = `${Astro.url.protocol}//${Astro.url.host}`;
 
   <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <div class="lg:col-span-2 space-y-6">
-      <Calendar client:load initialPublicaciones={publicaciones} />
+      <Calendar client:load initialPublicaciones={publicaciones} clientes={clientes} />
       <FeedMockup
         client:visible
         posts={initialFeed}
@@ -116,4 +117,6 @@ const apiBase = `${Astro.url.protocol}//${Astro.url.host}`;
       )}
     </aside>
   </section>
+
+  <EditPostModal client:load clientes={clientes} apiBase={apiBase} />
 </Layout>

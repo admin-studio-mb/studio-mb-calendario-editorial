@@ -17,10 +17,11 @@ import { publicacionesStore, hydratePublicaciones } from '../stores/publicacione
  * Props:
  *   - initialPublicaciones: array inicial hidratado por el SSR. Se mete en
  *     el store en el primer render para que el cliente y el server coincidan.
+ *   - clientes: array de clientes disponibles para el filtro.
  *   - onSelectPost: (post) => void     → click sobre una tarjeta.
  *   - onCreatePost: (date: Date) => void → click en un día vacío.
  */
-export default function Calendar({ initialPublicaciones = [], onSelectPost, onCreatePost }) {
+export default function Calendar({ initialPublicaciones = [], clientes = [], onSelectPost, onCreatePost }) {
   // Hidratamos el store en el cliente una sola vez con lo que vino del SSR.
   // Se hace en useEffect para que el primer render coincida con el HTML del
   // servidor (vacío) y luego se actualice con la lista real.
@@ -32,6 +33,16 @@ export default function Calendar({ initialPublicaciones = [], onSelectPost, onCr
 
   const publicaciones = useStore(publicacionesStore);
   const [cursor, setCursor] = useState(new Date());
+  // null = mostrar todos los clientes.
+  const [clienteFiltro, setClienteFiltro] = useState(null);
+
+  // Aplicamos el filtro antes de pintar el grid.
+  const publicacionesFiltradas = useMemo(
+    () => (clienteFiltro
+      ? publicaciones.filter((p) => p.cliente_id === clienteFiltro)
+      : publicaciones),
+    [publicaciones, clienteFiltro],
+  );
 
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(cursor), { weekStartsOn: 1 });
@@ -47,28 +58,47 @@ export default function Calendar({ initialPublicaciones = [], onSelectPost, onCr
 
   const byDay = useMemo(() => {
     const map = new Map();
-    for (const p of publicaciones) {
+    for (const p of publicacionesFiltradas) {
       if (!p.fecha_publicacion) continue;
       const key = format(parseISO(p.fecha_publicacion), 'yyyy-MM-dd');
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(p);
     }
     return map;
-  }, [publicaciones]);
+  }, [publicacionesFiltradas]);
 
   const weekDays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
   return (
     <section className="card overflow-hidden">
       {/* Cabecera mes */}
-      <header className="flex items-center justify-between px-5 py-4 border-b border-ink-100">
+      <header className="flex items-center justify-between px-5 py-4 border-b border-ink-100 gap-3 flex-wrap">
         <div className="flex items-baseline gap-3">
           <h2 className="text-lg font-bold text-ink-900 capitalize">
             {format(cursor, 'LLLL', { locale: es })}
           </h2>
           <span className="text-sm text-ink-400">{format(cursor, 'yyyy')}</span>
         </div>
-        <div className="flex items-center gap-1">
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Filtro de cliente */}
+          {clientes.length > 0 && (
+            <div className="relative">
+              <select
+                value={clienteFiltro ?? ''}
+                onChange={(e) => setClienteFiltro(e.target.value || null)}
+                className="appearance-none pl-3 pr-8 py-1.5 rounded-lg text-xs font-medium bg-ink-50 hover:bg-ink-100 border border-ink-100 text-ink-700 focus:outline-none focus:ring-2 focus:ring-brand-100 cursor-pointer transition"
+                aria-label="Filtrar por cliente"
+              >
+                <option value="">Todos los clientes</option>
+                {clientes.map((c) => (
+                  <option key={c.id} value={c.id}>{c.nombre}</option>
+                ))}
+              </select>
+              <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-ink-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          )}
+
           <button
             type="button"
             onClick={() => setCursor(new Date())}
@@ -76,7 +106,7 @@ export default function Calendar({ initialPublicaciones = [], onSelectPost, onCr
           >
             Hoy
           </button>
-          <div className="flex items-center bg-ink-50 rounded-lg p-0.5 ml-2">
+          <div className="flex items-center bg-ink-50 rounded-lg p-0.5">
             <button
               type="button"
               onClick={() => setCursor((c) => subMonths(c, 1))}
@@ -145,12 +175,21 @@ export default function Calendar({ initialPublicaciones = [], onSelectPost, onCr
                   <button
                     key={p.id}
                     type="button"
-                    onClick={() => onSelectPost?.(p)}
+                    onClick={() => {
+                      // Si el padre quiere gestionar el click (ej. modal), lo
+                      // dejamos. Si no, emitimos un evento global que el
+                      // `EditPostModal` escucha para abrirse.
+                      if (onSelectPost) {
+                        onSelectPost(p);
+                      } else if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('studio-mb:edit-post', { detail: p }));
+                      }
+                    }}
                     className={[
-                      'w-full text-left text-[11px] leading-tight px-1.5 py-1 rounded-md truncate font-medium transition',
+                      'w-full text-left text-[11px] leading-tight px-1.5 py-1 rounded-md truncate font-medium transition cursor-pointer',
                       p._pending ? 'bg-ink-200 text-ink-500 animate-pulse' : estadoColor(p.estado),
                     ].join(' ')}
-                    title={p._pending ? 'Guardando…' : `${p.tipo_contenido ?? ''} · ${p.formato ?? ''} · ${p.estado ?? ''}`}
+                    title={p._pending ? 'Guardando…' : `${p.tipo_contenido ?? ''} · ${p.formato ?? ''} · ${p.estado ?? ''} · (click para editar)`}
                   >
                     {p.tipo_contenido ?? p.formato ?? 'Publicación'}
                   </button>

@@ -52,7 +52,7 @@ export function hydratePublicaciones(initial) {
  */
 export function addPublicacion(pub) {
   const current = publicacionesStore.get();
-  publicacionesStore.set([...current, pub]);
+  publicacionesStore.set([...current, { ...pub, _pending: false }]);
 }
 
 /**
@@ -62,7 +62,13 @@ export function addPublicacion(pub) {
  */
 export function updatePublicacion(pub) {
   const current = publicacionesStore.get();
-  publicacionesStore.set(current.map((p) => (p.id === pub.id ? { ...p, ...pub } : p)));
+  publicacionesStore.set(
+    current.map((p) =>
+      p.id === pub.id
+        ? { ...p, ...pub, _pending: false }
+        : p,
+    ),
+  );
 }
 
 /**
