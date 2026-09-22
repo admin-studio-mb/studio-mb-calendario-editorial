@@ -1,0 +1,25 @@
+---
+// ============================================================================
+//  Página raíz — redirige al dashboard si hay sesión, o al login si no.
+//  Determinamos "hay sesión" leyendo la cookie de sesión que Astro ya validó
+//  en el middleware. Si llegó aquí sin cookie válida, /dashboard habría
+//  redirigido a /login, así que cuando llegamos aquí es porque no estamos
+//  autenticados. Pero lo hacemos explícito para evitar un redirect de más.
+// ============================================================================
+import { env } from '../lib/env.js';
+
+export const prerender = false;
+
+const token = Astro.locals?.token ?? null;
+const cookieName = env.SESSION_COOKIE_NAME;
+
+if (token) {
+  return Astro.redirect('/dashboard', 302);
+}
+
+// Si no hay token, vamos a /login. Limpiamos la cookie por si estaba rota.
+if (Astro.cookies.get(cookieName)?.value) {
+  Astro.cookies.delete(cookieName, { path: '/' });
+}
+return Astro.redirect('/login', 302);
+---
