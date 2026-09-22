@@ -14,7 +14,9 @@ RUN corepack enable
 
 # Copiamos solo los manifests primero para cachear mejor las deps.
 COPY package.json pnpm-lock.yaml .npmrc ./
-RUN pnpm install --frozen-lockfile
+# --allow-build aprueba los post-install scripts de esbuild y sharp.
+# Sin esto, pnpm 10+ aborta con ERR_PNPM_IGNORED_BUILDS.
+RUN pnpm install --frozen-lockfile --allow-build=esbuild --allow-build=sharp
 
 # Copiamos el resto del código y construimos.
 COPY . .
