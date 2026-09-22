@@ -20,12 +20,12 @@ RUN pnpm install --frozen-lockfile
 # Copiamos el resto del código y construimos.
 COPY . .
 
-# Astro 7 con `astro:env` valida todas las variables en build.
-# Inyectamos placeholders solo para que la validación pase; los valores
-# reales vendrán del .env montado en runtime (etapa 2).
+# astro:env valida el esquema en build; pasamos placeholders válidos para
+# que la validación pase. Los valores REALES los lee `env.js` desde
+# process.env en runtime (Docker los inyecta vía docker-compose).
 RUN PUBLIC_DIRECTUS_URL=https://placeholder.invalid \
     DIRECTUS_INTERNAL_URL=http://placeholder.invalid \
-    SESSION_COOKIE_SECRET=build-placeholder-secret-not-used-in-runtime \
+    SESSION_COOKIE_SECRET=build-placeholder-secret \
     SESSION_COOKIE_NAME=studio_mb_session \
     PUBLIC_DIRECTUS_STATIC_TOKEN= \
     pnpm build
