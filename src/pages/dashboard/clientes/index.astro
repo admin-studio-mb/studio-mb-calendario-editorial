@@ -1,0 +1,54 @@
+---
+// ============================================================================
+//  /dashboard/clientes — listado + gestión de clientes.
+//  Carga los clientes con un conteo de publicaciones cada uno.
+// ============================================================================
+import Layout from '../../../layouts/Layout.astro';
+import ClientesView from '../../../components/ClientesView.jsx';
+import { env } from '../../../lib/env.js';
+
+export const prerender = false;
+
+const { user, token } = Astro.locals;
+const baseHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+const baseUrl = env.DIRECTUS_INTERNAL_URL;
+
+async function fetchCollection(path) {
+  const url = `${baseUrl}/items/${path}?limit=-1&t=${Date.now()}`;
+  const res = await fetch(url, { headers: baseHeaders, cache: 'no-store' });
+  if (!res.ok) {
+    console.error(`[dashboard/clientes] ${path} → ${res.status}`);
+    return [];
+  }
+  const json = await res.json();
+  return json.data ?? [];
+}
+
+const [clientesRaw, publicacionesRaw] = await Promise.all([
+  fetchCollection('clientes'),
+  fetchCollection('publicaciones'),
+]);
+
+// Enriquecemos con el conteo de publicaciones.
+const clientes = clientesRaw.map((c) => ({
+  ...c,
+  total_publicaciones: publicacionesRaw.filter((p) => p.cliente_id === c.id).length,
+}));
+
+const apiBase = `${Astro.url.protocol}//${Astro.url.host}`;
+---
+<Layout title="Clientes · Studio mb" user={user}>
+  <header class="mb-8">
+    <h1 class="text-2xl md:text-3xl font-bold text-ink-900 tracking-tight">Clientes</h1>
+    <p class="mt-1 text-sm text-ink-500">
+      Gestiona los clientes de la agencia, sus logos y los tipos de contenido disponibles.
+    </p>
+  </header>
+
+  <ClientesView
+    client:load
+    initialClientes={clientes}
+    apiBase={apiBase}
+    directusBaseUrl={env.PUBLIC_DIRECTUS_URL}
+  />
+</Layout>
