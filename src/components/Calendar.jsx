@@ -35,6 +35,9 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], onS
   const [cursor, setCursor] = useState(new Date());
   // null = mostrar todos los clientes.
   const [clienteFiltro, setClienteFiltro] = useState(null);
+  // Id del post abierto en el modal de edición. Persiste después de cerrar
+  // el modal para que el usuario recuerde sobre cuál estaba trabajando.
+  const [selectedPostId, setSelectedPostId] = useState(null);
 
   // Aplicamos el filtro antes de pintar el grid.
   const publicacionesFiltradas = useMemo(
@@ -171,29 +174,33 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], onS
               </div>
 
               <div className="space-y-1">
-                {posts.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => {
-                      // Si el padre quiere gestionar el click (ej. modal), lo
-                      // dejamos. Si no, emitimos un evento global que el
-                      // `EditPostModal` escucha para abrirse.
-                      if (onSelectPost) {
-                        onSelectPost(p);
-                      } else if (typeof window !== 'undefined') {
-                        window.dispatchEvent(new CustomEvent('studio-mb:edit-post', { detail: p }));
-                      }
-                    }}
-                    className={[
-                      'w-full text-left text-[11px] leading-tight px-1.5 py-1 rounded-md truncate font-medium transition cursor-pointer',
-                      p._pending ? 'bg-ink-200 text-ink-500 animate-pulse' : estadoColor(p.estado),
-                    ].join(' ')}
-                    title={p._pending ? 'Guardando…' : `${p.tipo_contenido ?? ''} · ${p.formato ?? ''} · ${p.estado ?? ''} · (click para editar)`}
-                  >
-                    {p.tipo_contenido ?? p.formato ?? 'Publicación'}
-                  </button>
-                ))}
+                {posts.map((p) => {
+                  const isSelected = p.id === selectedPostId;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPostId(p.id);
+                        if (onSelectPost) {
+                          onSelectPost(p);
+                        } else if (typeof window !== 'undefined') {
+                          window.dispatchEvent(new CustomEvent('studio-mb:edit-post', { detail: p }));
+                        }
+                      }}
+                      className={[
+                        'w-full text-left text-[11px] leading-tight px-1.5 py-1 rounded-md truncate font-medium transition cursor-pointer',
+                        p._pending
+                          ? 'bg-ink-200 text-ink-500 animate-pulse'
+                          : estadoColor(p.estado),
+                        isSelected ? 'ring-2 ring-brand-500 ring-offset-1 ring-offset-white' : '',
+                      ].join(' ')}
+                      title={p._pending ? 'Guardando…' : `${p.tipo_contenido ?? ''} · ${p.formato ?? ''} · ${p.estado ?? ''} · (click para editar)`}
+                    >
+                      {p.tipo_contenido ?? p.formato ?? 'Publicación'}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );

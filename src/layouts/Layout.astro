@@ -1,6 +1,6 @@
 ---
 // ============================================================================
-//  Layout principal — sidebar de navegación + área de contenido.
+//  Layout principal — sidebar colapsable + área de contenido.
 // ============================================================================
 import '../styles/globals.css';
 
@@ -24,58 +24,85 @@ function initials(u) {
   </head>
   <body class="min-h-screen flex">
     {/* Sidebar */}
-    <aside class="hidden md:flex w-64 shrink-0 flex-col bg-white border-r border-ink-100">
-      <div class="px-6 py-6 flex items-center gap-3 border-b border-ink-100">
-        <span class="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white font-bold shadow-sm">
-          mb
-        </span>
-        <div>
-          <p class="text-sm font-semibold text-ink-900 leading-tight">Studio mb</p>
-          <p class="text-[11px] uppercase tracking-wider text-ink-400">Calendario</p>
-        </div>
+    <aside
+      id="app-sidebar"
+      data-collapsed="false"
+      class="hidden md:flex w-64 shrink-0 flex-col bg-white border-r border-ink-100 transition-[width] duration-200 ease-out"
+    >
+      {/* Cabecera: burger a la izquierda, logo + nombre abajo */}
+      <div class="px-4 pt-4 pb-2 flex justify-start" id="sidebar-burger-wrap">
+        <button
+          type="button"
+          id="sidebar-toggle"
+          class="shrink-0 p-2 rounded-lg text-ink-600 hover:text-ink-900 hover:bg-ink-100 transition"
+          aria-label="Colapsar/expandir sidebar"
+          title="Colapsar/expandir"
+        >
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 6h18M3 12h18M3 18h18"/>
+          </svg>
+        </button>
       </div>
 
-      <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
-        <a href="/dashboard" class="flex items-center gap-3 px-3 py-2 rounded-lg text-ink-700 hover:bg-brand-50 hover:text-brand-700 transition">
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <div class="px-4 pb-4 border-b border-ink-100">
+        <a href="/dashboard" class="flex items-center gap-3 min-w-0 sidebar-brand">
+          <img
+            src="/img/logos/Logo-vector-Studio-mb-trans.svg"
+            alt="Studio mb"
+            class="w-9 h-9 shrink-0"
+          />
+          <div class="min-w-0 sidebar-text">
+            <p class="text-sm font-semibold text-ink-900 leading-tight truncate" style="font-family: var(--font-display)">
+              Studio mb.
+            </p>
+            <p class="text-[11px] uppercase tracking-wider text-ink-400 truncate">
+              Calendar
+            </p>
+          </div>
+        </a>
+      </div>
+
+      <nav class="flex-1 px-3 py-4 space-y-1 text-sm border-b border-ink-100">
+        <a href="/dashboard" class="nav-item group">
+          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="4" width="18" height="18" rx="2" />
             <path d="M16 2v4M8 2v4M3 10h18" />
           </svg>
-          Calendario
+          <span class="sidebar-text">Calendario</span>
         </a>
-        <a href="/dashboard/clientes" class="flex items-center gap-3 px-3 py-2 rounded-lg text-ink-700 hover:bg-brand-50 hover:text-brand-700 transition">
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <a href="/dashboard/clientes" class="nav-item group">
+          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
             <circle cx="9" cy="7" r="4" />
             <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
           </svg>
-          Clientes
+          <span class="sidebar-text">Clientes</span>
         </a>
-        <span class="flex items-center gap-3 px-3 py-2 rounded-lg text-ink-400 cursor-not-allowed">
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <span class="nav-item nav-item-disabled">
+          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="7" height="7" />
             <rect x="14" y="3" width="7" height="7" />
             <rect x="14" y="14" width="7" height="7" />
             <rect x="3" y="14" width="7" height="7" />
           </svg>
-          Feed Mockup
-          <span class="ml-auto text-[10px] bg-ink-100 px-1.5 py-0.5 rounded-full">pronto</span>
+          <span class="sidebar-text">Feed Mockup</span>
+          <span class="ml-auto text-[10px] bg-ink-100 px-1.5 py-0.5 rounded-full sidebar-text">pronto</span>
         </span>
       </nav>
 
       {user && (
-        <div class="border-t border-ink-100 p-4">
+        <div class="p-4">
           <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-white text-xs font-semibold flex items-center justify-center shadow-sm">
+            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-white text-xs font-semibold flex items-center justify-center shadow-sm shrink-0">
               {initials(user)}
             </div>
-            <div class="flex-1 min-w-0">
+            <div class="flex-1 min-w-0 sidebar-text">
               <p class="text-sm font-medium text-ink-800 truncate">
                 {user.first_name} {user.last_name}
               </p>
               <p class="text-xs text-ink-400 truncate">{user.email}</p>
             </div>
-            <form method="POST" action="/api/auth/logout">
+            <form method="POST" action="/api/auth/logout" class="shrink-0">
               <button
                 type="submit"
                 title="Cerrar sesión"
@@ -96,7 +123,7 @@ function initials(u) {
       <header class="md:hidden bg-white border-b border-ink-100 px-6 py-4 flex items-center justify-between">
         <div class="flex items-center gap-3">
           <span class="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-white font-bold text-sm">mb</span>
-          <p class="font-semibold text-ink-900">Studio mb</p>
+          <p class="font-semibold text-ink-900">Studio mb.</p>
         </div>
         {user && (
           <form method="POST" action="/api/auth/logout">
@@ -111,3 +138,61 @@ function initials(u) {
     </div>
   </body>
 </html>
+
+<style is:global>
+  /* Nav items compartidos por todos los links/botones del sidebar. */
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    color: var(--color-ink-700);
+    transition: background-color 150ms, color 150ms;
+  }
+  .nav-item:hover:not(.nav-item-disabled) {
+    background-color: var(--color-brand-50);
+    color: var(--color-brand-700);
+  }
+  .nav-item-disabled {
+    color: var(--color-ink-400);
+    cursor: not-allowed;
+  }
+  /* Cuando el sidebar está colapsado: solo iconos. */
+  [data-collapsed="true"] {
+    width: 4rem !important;
+  }
+  [data-collapsed="true"] .sidebar-text {
+    display: none;
+  }
+  [data-collapsed="true"] .nav-item {
+    justify-content: center;
+  }
+  /* Centrar el burger y el bloque del logo cuando está colapsado. */
+  [data-collapsed="true"] #sidebar-burger-wrap {
+    justify-content: center;
+  }
+  [data-collapsed="true"] .sidebar-brand {
+    justify-content: center;
+  }
+</style>
+
+<script is:inline>
+  (() => {
+    const sidebar = document.getElementById('app-sidebar');
+    const btn = document.getElementById('sidebar-toggle');
+    if (!sidebar || !btn) return;
+
+    // Hidratamos desde localStorage para persistir el estado entre páginas.
+    const key = 'studio-mb:sidebar-collapsed';
+    const stored = localStorage.getItem(key);
+    if (stored === 'true') sidebar.setAttribute('data-collapsed', 'true');
+
+    btn.addEventListener('click', () => {
+      const isCollapsed = sidebar.getAttribute('data-collapsed') === 'true';
+      const next = !isCollapsed;
+      sidebar.setAttribute('data-collapsed', next ? 'true' : 'false');
+      localStorage.setItem(key, next ? 'true' : 'false');
+    });
+  })();
+</script>

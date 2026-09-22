@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
 /* ============================================================================
@@ -30,8 +31,9 @@
   --color-ink-800: #26272c;
   --color-ink-900: #131418;
 
-  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Inter", system-ui, sans-serif;
+  /* Fuente principal: Hanken Grotesk (más personalidad que Inter). */
+  --font-sans: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Hanken Grotesk", system-ui, sans-serif;
 
   /* Radios consistentes. */
   --radius-card: 1rem;
