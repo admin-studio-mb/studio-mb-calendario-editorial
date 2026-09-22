@@ -42,6 +42,9 @@ ENV PORT=4321
 # pueda resolver las deps de runtime (Astro las necesita por require()).
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=build /app/.npmrc ./.npmrc
+COPY --from=build /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
 
 # Reinstalamos solo las deps de producción (omitiendo devDependencies).
 RUN corepack enable && \
