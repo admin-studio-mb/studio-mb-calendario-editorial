@@ -18,3 +18,8 @@ allowBuilds:
   sharp: true
   '@img/sharp-libvips-linuxmusl-x64': true
   '@img/sharp-libvips-linux-x64': true
+
+# Relaja la política de "minimum release age" (24h por defecto en pnpm 10+).
+# Sin esto, paquetes publicados en las últimas 24h (como electron-to-chromium)
+# son rechazados. Documentación: https://pnpm.io/settings/dependency-resolution#minimumreleaseage
+minimumReleaseAge: 0
