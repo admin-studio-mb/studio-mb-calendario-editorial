@@ -92,7 +92,7 @@ export default function ListView({
   const total = sorted.length;
 
   return (
-    <section className="card overflow-hidden">
+    <section className="card overflow-hidden select-none">
       <header className="flex items-center justify-between px-5 py-4 border-b border-ink-100 gap-3 flex-wrap">
         <div className="flex items-baseline gap-3">
           <h2 className="text-lg font-bold text-ink-900 capitalize">

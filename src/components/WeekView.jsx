@@ -89,7 +89,7 @@ export default function WeekView({
   const weekRange = `${format(days[0], 'd MMM', { locale: es })} – ${format(days[6], 'd MMM', { locale: es })}`;
 
   return (
-    <section className="card overflow-hidden">
+    <section className="card overflow-hidden select-none">
       {/* Cabecera */}
       <header className="flex items-center justify-between px-5 py-4 border-b border-ink-100 gap-3">
         <div className="flex items-baseline gap-3">

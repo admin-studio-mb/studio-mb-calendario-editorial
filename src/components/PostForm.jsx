@@ -112,6 +112,26 @@ export default function PostForm({
     }
   }, [tiposDisponibles, tipo, cliente]);
 
+  // Escuchamos "studio-mb:new-post" para pre-rellenar la fecha cuando el
+  // usuario hace click en un día del calendario. El detalle es { date: Date }.
+  useEffect(() => {
+    function onNew(ev) {
+      const date = ev.detail?.date;
+      if (!(date instanceof Date) || isNaN(date.getTime())) return;
+      // Sólo pre-rellenamos fecha/hora; no tocamos cliente, tipo, etc.
+      // (eso lo decide el usuario en el form).
+      setFecha(date);
+      setHora('09:00');
+      // Scroll al form para que se vea.
+      const card = document.querySelector('form.card');
+      if (card && typeof card.scrollIntoView === 'function') {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+    window.addEventListener('studio-mb:new-post', onNew);
+    return () => window.removeEventListener('studio-mb:new-post', onNew);
+  }, []);
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');

@@ -6,7 +6,7 @@ import {
   parseISO,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { publicacionesStore, cursorStore, hydratePublicaciones, updatePublicacion } from '../stores/publicaciones.js';
+import { publicacionesStore, cursorStore, filtrosStore, hydratePublicaciones, updatePublicacion } from '../stores/publicaciones.js';
 import WeekView from './WeekView.jsx';
 import ListView from './ListView.jsx';
 import PostPill from './PostPill.jsx';
@@ -29,23 +29,46 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], api
   const publicaciones = useStore(publicacionesStore);
   const [view, setView] = useState('month'); // 'month' | 'week' | 'list'
   const cursor = useStore(cursorStore);
+  const filtros = useStore(filtrosStore);
   const setCursor = (updater) => {
     const current = cursorStore.get();
     const next = typeof updater === 'function' ? updater(current) : updater;
     cursorStore.set(next);
   };
   const [clienteFiltro, setClienteFiltro] = useState(null);
+
+  function setFiltros(patch) {
+    filtrosStore.set({ ...filtrosStore.get(), ...patch });
+  }
+  function clearFiltros() {
+    filtrosStore.set({ texto: '', estado: '', formato: '' });
+  }
   const [selectedPostId, setSelectedPostId] = useState(null);
   const [draggingId, setDraggingId] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
 
-  // Filtro por cliente (compartido entre vistas).
-  const publicacionesFiltradas = useMemo(
-    () => (clienteFiltro
-      ? publicaciones.filter((p) => p.cliente_id === clienteFiltro)
-      : publicaciones),
-    [publicaciones, clienteFiltro],
-  );
+  // El calendario entero va con `select-none` para que el doble-click o el
+  // arrastre accidental no resalte el texto. Los inputs del form están en
+  // otra isla y siguen siendo seleccionables.
+
+
+  const publicacionesFiltradas = useMemo(() => {
+    const t = (filtros.texto || '').trim().toLowerCase();
+    return publicaciones.filter((p) => {
+      if (clienteFiltro && p.cliente_id !== clienteFiltro) return false;
+      if (filtros.estado && p.estado !== filtros.estado) return false;
+      if (filtros.formato && p.formato !== filtros.formato) return false;
+      if (t) {
+        const haystack = [
+          p.tipo_contenido ?? '',
+          p.copywriting ?? '',
+          p.textos_slides ?? '',
+        ].join(' ').toLowerCase();
+        if (!haystack.includes(t)) return false;
+      }
+      return true;
+    });
+  }, [publicaciones, clienteFiltro, filtros]);
 
   // Días del mes (vista mes).
   const days = useMemo(() => {
@@ -159,7 +182,7 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], api
   const weekDays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
   return (
-    <>
+    <div className="select-none">
       {/* Cabecera con selector de vista + filtro de cliente + mes */}
       <section className="card overflow-hidden mb-4">
         <header className="flex items-center justify-between px-5 py-4 border-b border-ink-100 gap-3 flex-wrap">
@@ -189,6 +212,55 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], api
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Búsqueda por texto */}
+            <div className="relative">
+              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/>
+              </svg>
+              <input
+                type="search"
+                value={filtros.texto}
+                onChange={(e) => setFiltros({ texto: e.target.value })}
+                placeholder="Buscar…"
+                className="pl-8 pr-3 py-1.5 rounded-lg text-xs font-medium bg-ink-50 hover:bg-ink-100 border border-ink-100 text-ink-700 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:bg-white transition w-40"
+                aria-label="Buscar publicaciones"
+              />
+            </div>
+
+            {/* Filtro estado */}
+            <div className="relative">
+              <select
+                value={filtros.estado}
+                onChange={(e) => setFiltros({ estado: e.target.value })}
+                className="appearance-none pl-3 pr-8 py-1.5 rounded-lg text-xs font-medium bg-ink-50 hover:bg-ink-100 border border-ink-100 text-ink-700 focus:outline-none focus:ring-2 focus:ring-brand-100 cursor-pointer transition"
+                aria-label="Filtrar por estado"
+              >
+                <option value="">Todos los estados</option>
+                <option value="borrador">Borrador</option>
+                <option value="revision">Revisión</option>
+                <option value="aprobado">Aprobado</option>
+              </select>
+              <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-ink-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+
+            {/* Filtro formato */}
+            <div className="relative">
+              <select
+                value={filtros.formato}
+                onChange={(e) => setFiltros({ formato: e.target.value })}
+                className="appearance-none pl-3 pr-8 py-1.5 rounded-lg text-xs font-medium bg-ink-50 hover:bg-ink-100 border border-ink-100 text-ink-700 focus:outline-none focus:ring-2 focus:ring-brand-100 cursor-pointer transition"
+                aria-label="Filtrar por formato"
+              >
+                <option value="">Todos los formatos</option>
+                <option value="post">Post</option>
+                <option value="reel">Reel</option>
+                <option value="carrusel">Carrusel</option>
+                <option value="story">Story</option>
+              </select>
+              <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-ink-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+
+            {/* Filtro cliente */}
             {clientes.length > 0 && (
               <div className="relative">
                 <select
@@ -204,6 +276,17 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], api
                 </select>
                 <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-ink-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
               </div>
+            )}
+
+            {/* Botón limpiar filtros cuando hay alguno activo */}
+            {(filtros.texto || filtros.estado || filtros.formato || clienteFiltro) && (
+              <button
+                type="button"
+                onClick={() => { clearFiltros(); setClienteFiltro(null); }}
+                className="px-2 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition"
+              >
+                Limpiar
+              </button>
             )}
           </div>
         </header>
@@ -269,8 +352,14 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], api
                   onDragOver={(e) => !muted && onDayDragOver(e, key)}
                   onDragLeave={() => onDayDragLeave(key)}
                   onDrop={(e) => !muted && onDayDrop(e, day)}
+                  onClick={(e) => {
+                    // No disparamos al clickar una pill (su onClick hace stopPropagation).
+                    if (muted) return;
+                    if (e.target.closest('button')) return;
+                    window.dispatchEvent(new CustomEvent('studio-mb:new-post', { detail: { date: new Date(day) } }));
+                  }}
                   className={[
-                    'min-h-[110px] p-2 rounded-lg border align-top transition relative group',
+                    'min-h-[110px] p-2 rounded-lg border align-top transition relative group cursor-pointer',
                     muted
                       ? 'bg-ink-50/60 border-transparent text-ink-300'
                       : 'bg-white border-ink-100 hover:border-brand-200 hover:shadow-sm',
@@ -285,6 +374,21 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], api
                     ].join(' ')}>
                       {format(day, 'd')}
                     </span>
+                    {!muted && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.dispatchEvent(new CustomEvent('studio-mb:new-post', { detail: { date: new Date(day) } }));
+                        }}
+                        className="opacity-0 group-hover:opacity-100 w-5 h-5 inline-flex items-center justify-center rounded-md text-ink-400 hover:text-brand-600 hover:bg-brand-50 transition"
+                        aria-label={`Crear publicación el ${format(day, 'dd/MM')}`}
+                      >
+                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                          <path d="M12 5v14M5 12h14"/>
+                        </svg>
+                      </button>
+                    )}
                   </div>
 
                   <div className="space-y-1">
@@ -334,6 +438,6 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], api
           setCursor={setCursor}
         />
       )}
-    </>
+    </div>
   );
 }

@@ -44,6 +44,18 @@ export const publicacionesStore = atom([]);
 export const cursorStore = atom(new Date());
 
 /**
+ * Filtros compartidos del dashboard (búsqueda + estado + formato).
+ *
+ * @typedef {object} Filtros
+ * @property {string} texto   - match en tipo_contenido / copywriting / textos_slides (case-insensitive)
+ * @property {string} estado  - 'borrador' | 'revision' | 'aprobado' | ''
+ * @property {string} formato - 'post' | 'reel' | 'carrusel' | 'story' | ''
+ *
+ * @type {import('nanostores').WritableAtom<Filtros>}
+ */
+export const filtrosStore = atom({ texto: '', estado: '', formato: '' });
+
+/**
  * Llamado desde el SSR (dashboard/index.astro) tras hidratar la página.
  * Reemplaza el contenido del store con el array de publicaciones que vino
  * del backend.
