@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { addPublicacion, updatePublicacion, removePublicacion } from '../stores/publicaciones.js';
+import DateField from './DateField.jsx';
+import TimePicker from './TimePicker.jsx';
 
 const FORMATOS = ['post', 'reel', 'carrusel', 'story'];
 const ESTADOS = ['borrador', 'revision', 'aprobado'];
@@ -54,8 +56,13 @@ export default function PostForm({
   const [hashtags, setHashtags] = useState((initial.hashtags ?? []).join(', '));
   const [textosSlides, setTextosSlides] = useState(initial.textos_slides ?? '');
   const [imagenes, setImagenes] = useState((initial.imagenes_fondo ?? []).join('\n'));
-  const [fechaPub, setFechaPub] = useState(
-    initial.fecha_publicacion ? initial.fecha_publicacion.slice(0, 16) : '',
+  // Fecha (Date) y hora ('HH:mm') gestionados por separado.
+  const initialDate = initial.fecha_publicacion ? new Date(initial.fecha_publicacion) : null;
+  const [fecha, setFecha] = useState(initialDate);
+  const [hora, setHora] = useState(
+    initialDate
+      ? `${String(initialDate.getHours()).padStart(2, '0')}:${String(initialDate.getMinutes()).padStart(2, '0')}`
+      : '',
   );
   const [estado, setEstado] = useState(initial.estado ?? 'borrador');
   const [disenoFile, setDisenoFile] = useState(null);
@@ -92,7 +99,8 @@ export default function PostForm({
     setError('');
 
     if (!clienteId) return setError('Selecciona un cliente.');
-    if (!fechaPub) return setError('Indica una fecha de publicación.');
+    if (!fecha) return setError('Indica una fecha de publicación.');
+    if (!hora) return setError('Indica una hora de publicación.');
 
     const isEdit = Boolean(initial.id);
 
@@ -114,7 +122,13 @@ export default function PostForm({
       hashtags: hashtags.split(',').map((t) => t.trim()).filter(Boolean),
       textos_slides: textosSlides,
       imagenes_fondo: imagenes.split('\n').map((s) => s.trim()).filter(Boolean),
-      fecha_publicacion: new Date(fechaPub).toISOString(),
+      fecha_publicacion: (() => {
+        if (!fecha) return null;
+        const [h, m] = hora.split(':').map(Number);
+        const d = new Date(fecha);
+        d.setHours(h || 0, m || 0, 0, 0);
+        return d.toISOString();
+      })(),
       estado,
       diseno_final: disenoFinalId,
     };
@@ -195,7 +209,8 @@ export default function PostForm({
             setHashtags('');
             setTextosSlides('');
             setImagenes('');
-            setFechaPub('');
+            setFecha(null);
+            setHora('');
             setDisenoFile(null);
           } else {
             setDisenoFile(null);
@@ -289,17 +304,17 @@ export default function PostForm({
             </select>
           </Field>
 
-          <div className="md:col-span-2">
-            <Field label="Fecha de publicación">
-              <input
-                id="fecha"
-                type="datetime-local"
-                value={fechaPub}
-                onChange={(e) => setFechaPub(e.target.value)}
-                className={inputBase}
-              />
-            </Field>
-          </div>
+          <Field label="Fecha de publicación">
+            <DateField
+              value={fecha}
+              onChange={setFecha}
+              placeholder="Selecciona día"
+            />
+          </Field>
+
+          <Field label="Hora de publicación">
+            <TimePicker value={hora} onChange={setHora} minuteStep={5} />
+          </Field>
         </div>
 
         <Field label="Copywriting">

@@ -96,7 +96,7 @@ const apiBase = `${Astro.url.protocol}//${Astro.url.host}`;
 
   <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <div class="lg:col-span-2 space-y-6">
-      <Calendar client:load initialPublicaciones={publicaciones} clientes={clientes} />
+      <Calendar client:load initialPublicaciones={publicaciones} clientes={clientes} apiBase={apiBase} />
       <FeedMockup
         client:visible
         posts={initialFeed}
