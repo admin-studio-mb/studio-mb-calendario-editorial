@@ -1,0 +1,20 @@
+# ============================================================================
+#  pnpm-workspace.yaml
+#  Settings globales del workspace. En pnpm 11+, las settings que no son
+#  de auth/registry deben ir aquí, NO en .npmrc.
+# ============================================================================
+
+packages:
+  - '.'
+
+# Auto-instala peers (vite, react, etc.) sin pedir confirmación interactiva.
+autoInstallPeers: true
+
+# Aprueba explícitamente los post-install de estos paquetes.
+# Sin esto, pnpm aborta con ERR_PNPM_IGNORED_BUILDS.
+# Documentación: https://pnpm.io/settings/build#allowbuilds
+allowBuilds:
+  esbuild: true
+  sharp: true
+  '@img/sharp-libvips-linuxmusl-x64': true
+  '@img/sharp-libvips-linux-x64': true
