@@ -1,12 +1,79 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
+/* ============================================================================
+   Studio mb · Calendario Editorial — globals.css
+   Tailwind 4: configuración via @theme, todo lo demás utilities.
+   ============================================================================ */
+
+@theme {
+  /* Paleta principal — indigo profundo como acento de marca. */
+  --color-brand-50:  #eef0ff;
+  --color-brand-100: #e0e4ff;
+  --color-brand-200: #c5cbff;
+  --color-brand-300: #a3a9ff;
+  --color-brand-400: #8189ff;
+  --color-brand-500: #6166f6;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #2a2480;
+
+  /* Neutrales cálidos para que el slate no canse. */
+  --color-ink-50:  #f7f7f8;
+  --color-ink-100: #eeeef0;
+  --color-ink-200: #d9dadd;
+  --color-ink-300: #b6b8bd;
+  --color-ink-400: #8c8e95;
+  --color-ink-500: #6a6d74;
+  --color-ink-600: #52555c;
+  --color-ink-700: #3e4046;
+  --color-ink-800: #26272c;
+  --color-ink-900: #131418;
+
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Inter", system-ui, sans-serif;
+
+  /* Radios consistentes. */
+  --radius-card: 1rem;
+
+  /* Sombras suaves. */
+  --shadow-card: 0 1px 2px rgb(15 18 35 / 0.04), 0 4px 12px rgb(15 18 35 / 0.04);
+  --shadow-card-hover: 0 2px 4px rgb(15 18 35 / 0.06), 0 8px 24px rgb(15 18 35 / 0.08);
+  --shadow-pop: 0 10px 30px rgb(15 18 35 / 0.12), 0 4px 8px rgb(15 18 35 / 0.06);
+}
+
+/* Reset fino: dejamos que Tailwind ponga el resto. */
 @layer base {
   html {
-    @apply antialiased text-slate-800;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    color: var(--color-ink-800);
+    font-family: var(--font-sans);
   }
   body {
-    @apply bg-slate-50 min-h-screen;
+    background:
+      radial-gradient(at 0% 0%, rgb(238 240 255 / 0.6) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgb(255 240 245 / 0.4) 0px, transparent 50%),
+      var(--color-ink-50);
+    min-height: 100vh;
   }
+  *:focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+/* Animaciones suaves para hover / lift. */
+@keyframes lift {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-2px); }
+}
+
+@utility card {
+  background: white;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-ink-100);
+  box-shadow: var(--shadow-card);
 }

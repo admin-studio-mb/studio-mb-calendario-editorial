@@ -19,9 +19,16 @@ export async function POST({ request, cookies, redirect }) {
   }
 
   try {
-    const { access_token, expires } = await login(email, password);
-    // expires viene en ms; lo convertimos a segundos para maxAge.
-    const maxAge = Math.max(60, Math.floor((expires - Date.now()) / 1000));
+    const { access_token, expires, expires_in } = await login(email, password);
+    // Directus 12 devuelve `expires` en ms epoch (ej. 604800000 = 1 semana).
+    // Si llega `expires_in`, va en segundos.
+    let maxAge = 60 * 60 * 8;
+    if (typeof expires_in === 'number' && Number.isFinite(expires_in) && expires_in > 0) {
+      maxAge = Math.max(60, Math.floor(expires_in));
+    } else if (typeof expires === 'number' && Number.isFinite(expires) && expires > Date.now()) {
+      // expires en ms epoch → convertir a segundos hasta ahora.
+      maxAge = Math.max(60, Math.floor((expires - Date.now()) / 1000));
+    }
     saveSession(cookies, access_token, maxAge);
     return redirect(next.startsWith('/') ? next : '/dashboard', 303);
   } catch (err) {

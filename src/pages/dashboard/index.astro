@@ -1,8 +1,6 @@
 ---
 // ============================================================================
 //  Dashboard principal — SSR.
-//  Carga publicaciones y clientes desde Directus con el JWT de la cookie y
-//  los pasa a las islas React. El middleware ya garantiza que `user` existe.
 // ============================================================================
 import Layout from '../../layouts/Layout.astro';
 import Calendar from '../../components/Calendar.jsx';
@@ -14,14 +12,12 @@ import { env } from '../../lib/env.js';
 export const prerender = false;
 
 const { user, token } = Astro.locals;
-
 const baseHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 const baseUrl = env.DIRECTUS_INTERNAL_URL;
 
-// --- Fetch en paralelo (publicaciones + clientes) ----------------------------
 async function fetchCollection(path) {
-  const url = `${baseUrl}/items/${path}?limit=-1`;
-  const res = await fetch(url, { headers: baseHeaders });
+  const url = `${baseUrl}/items/${path}?limit=-1&t=${Date.now()}`;
+  const res = await fetch(url, { headers: baseHeaders, cache: 'no-store' });
   if (!res.ok) {
     console.error(`[dashboard] ${path} → ${res.status}`);
     return [];
@@ -35,21 +31,71 @@ const [publicacionesRaw, clientes] = await Promise.all([
   fetchCollection('clientes'),
 ]);
 
-// Normalizamos campos para que las islas no se acoplen a la respuesta cruda.
 const publicaciones = publicacionesRaw.map((p) => ({
   ...p,
   cliente: p.cliente_id ?? null,
 }));
 
+// KPIs
+const now = new Date();
+const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+const enMes = publicaciones.filter((p) => p.fecha_publicacion >= startOfMonth && p.fecha_publicacion < endOfMonth).length;
+const pendientesRevision = publicaciones.filter((p) => p.estado === 'revision').length;
+const aprobadas = publicaciones.filter((p) => p.estado === 'aprobado').length;
+
+let initialComentarios = [];
+if (publicaciones[0]) {
+  const res = await fetch(
+    `${baseUrl}/items/comentarios?filter=${encodeURIComponent(JSON.stringify({ publicacion_id: { _eq: publicaciones[0].id } }))}&sort=fecha_creacion&limit=200&t=${Date.now()}`,
+    { headers: baseHeaders, cache: 'no-store' },
+  );
+  if (res.ok) {
+    initialComentarios = (await res.json()).data ?? [];
+  }
+}
+
 const initialFeed = publicaciones.slice(0, 9);
+const apiBase = `${Astro.url.protocol}//${Astro.url.host}`;
 ---
 <Layout title="Calendario · Studio mb" user={user}>
+  {/* Hero */}
+  <header class="mb-8">
+    <h1 class="text-2xl md:text-3xl font-bold text-ink-900 tracking-tight">
+      Calendario editorial
+    </h1>
+    <p class="mt-1 text-sm text-ink-500">
+      Vista global de las publicaciones programadas para tus clientes.
+    </p>
+  </header>
+
+  {/* KPIs */}
+  <section class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-8">
+    <div class="card p-4 md:p-5">
+      <p class="text-[11px] uppercase tracking-wider text-ink-400 font-medium">Total</p>
+      <p class="mt-2 text-2xl md:text-3xl font-bold text-ink-900">{publicaciones.length}</p>
+      <p class="text-xs text-ink-500 mt-1">publicaciones</p>
+    </div>
+    <div class="card p-4 md:p-5">
+      <p class="text-[11px] uppercase tracking-wider text-ink-400 font-medium">Este mes</p>
+      <p class="mt-2 text-2xl md:text-3xl font-bold text-brand-600">{enMes}</p>
+      <p class="text-xs text-ink-500 mt-1">programadas</p>
+    </div>
+    <div class="card p-4 md:p-5">
+      <p class="text-[11px] uppercase tracking-wider text-ink-400 font-medium">En revisión</p>
+      <p class="mt-2 text-2xl md:text-3xl font-bold text-amber-600">{pendientesRevision}</p>
+      <p class="text-xs text-ink-500 mt-1">esperando feedback</p>
+    </div>
+    <div class="card p-4 md:p-5">
+      <p class="text-[11px] uppercase tracking-wider text-ink-400 font-medium">Aprobadas</p>
+      <p class="mt-2 text-2xl md:text-3xl font-bold text-emerald-600">{aprobadas}</p>
+      <p class="text-xs text-ink-500 mt-1">listas para publicar</p>
+    </div>
+  </section>
+
   <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <div class="lg:col-span-2 space-y-6">
-      <Calendar
-        client:load
-        publicaciones={publicaciones}
-      />
+      <Calendar client:load initialPublicaciones={publicaciones} />
       <FeedMockup
         client:visible
         posts={initialFeed}
@@ -58,16 +104,14 @@ const initialFeed = publicaciones.slice(0, 9);
     </div>
 
     <aside class="space-y-6">
-      <PostForm
-        client:load
-        clientes={clientes}
-      />
+      <PostForm client:load clientes={clientes} apiBase={apiBase} />
       {publicaciones[0] && (
         <CommentThread
           client:visible
           publicacionId={publicaciones[0].id}
-          initial={[]}
+          initial={initialComentarios}
           currentUser={user}
+          apiBase={apiBase}
         />
       )}
     </aside>

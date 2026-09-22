@@ -85,12 +85,16 @@ resuelva por nombre de contenedor.
 ```
 .
 ├── infra/
-│   └── directus/
-│       ├── docker-compose.yml      # Solo contenedor studio-mb-directus
-│       ├── .env.example             # Plantilla con vars públicas
-│       ├── schema.json              # Snapshot declarativo (3 colecciones)
-│       ├── schema.sql               # SQL de referencia (clientes/publicaciones/comentarios)
-│       └── create-collections.sh    # Script idempotente para crear colecciones vía REST
+│   ├── directus/
+│   │   ├── docker-compose.yml      # Solo contenedor studio-mb-directus
+│   │   ├── .env.example             # Plantilla con vars públicas
+│   │   ├── schema.json              # Snapshot declarativo (3 colecciones)
+│   │   ├── schema.sql               # SQL de referencia (clientes/publicaciones/comentarios)
+│   │   └── create-collections.sh    # Script idempotente para crear colecciones vía REST
+│   └── frontend/                    # Despliegue del front (Astro)
+│       ├── Dockerfile               # Multi-stage build (Node 24 alpine)
+│       ├── docker-compose.yml       # Servicio studio-mb-calendario
+│       └── .env.example
 ├── src/
 │   ├── components/                  # Islas React (.jsx)
 │   │   ├── Calendar.jsx
@@ -101,18 +105,24 @@ resuelva por nombre de contenedor.
 │   │   └── Layout.astro
 │   ├── lib/
 │   │   ├── directus.js              # Cliente SDK + factory authed
+│   │   ├── directus-fetch.js        # Helper SSR (habla con Directus desde el servidor)
 │   │   ├── auth.js                  # Login/logout/cookies
 │   │   └── env.js                   # Acceso tipado a env vars
 │   ├── pages/
 │   │   ├── login.astro
 │   │   ├── dashboard/index.astro
-│   │   └── api/auth/{login,logout}.js
+│   │   └── api/
+│   │       ├── auth/{login,logout}.js
+│   │       ├── publicaciones.js     # POST: crea publicación
+│   │       ├── files.js             # POST: upload a Directus files
+│   │       └── comentarios.js       # GET/POST: lista y crea comentarios
+│   ├── stores/
+│   │   └── publicaciones.js         # Store Nanostores (optimistic update)
 │   ├── styles/globals.css
 │   ├── env.d.ts
 │   └── middleware.js                # Protección SSR global
 ├── .env.example                      # Plantilla vars frontend
-├── astro.config.mjs
-├── tailwind.config.mjs
+├── astro.config.mjs                  # Astro 7 + astro:env + Tailwind 4 via @tailwindcss/vite
 ├── tsconfig.json
 ├── package.json
 ├── opencode.json                     # config MCP server para opencode
@@ -337,11 +347,17 @@ gh repo view admin-studio-mb/studio-mb-calendario-editorial
 - ✅ Fase 5 — Despliegue VPS + NPM Proxy Host + admin login
 - ✅ Upgrade Directus 11.5.0 → 12.3.1
 - ✅ MCP server conectado vía OAuth DCR
-- ⏳ Fase 6 — Crear colecciones `clientes` / `publicaciones` / `comentarios`
-  (en progreso vía UI por bug de permissions en API/CLI)
-- ⏳ Fase 7 — Endpoints SSR `/api/publicaciones` + `/api/comentarios`
-- ⏳ Fase 8 — Sembrar datos de prueba
-- ⏳ Fase 9 — Build y despliegue del frontend Astro en `calendar.studiomb.es`
+- ✅ Fase 6 — Colecciones `clientes` / `publicaciones` / `comentarios` creadas vía MCP fields-tool (tras recrear `clientes` por typo `ararchivados`; rename de campo choca con 403 §6.5). Values de `formato` y `estado` en minúscula; frontend adaptado en `Calendar.jsx`, `PostForm.jsx`, `FeedMockup.jsx`.
+- ✅ `PUBLIC_URL` corregido a `https://cms.studiomb.es` (antes apuntaba a `calendar.studiomb.es`, residuo de prueba). `/.well-known/oauth-authorization-server` ya apunta todo a `cms`.
+- ✅ Fase 7 — Endpoints SSR `/api/publicaciones`, `/api/files`, `/api/comentarios`
+- ✅ Fase 8 — Sembrar datos de prueba (2 clientes, 8 publicaciones, 4 comentarios) y admin `ivan.luengo@studiomb.es`
+- ✅ Upgrade stack a las últimas estables: Astro **7.3.3**, React **19.3.0**, Tailwind CSS **4.3.3** (vía `@tailwindcss/vite`), `@astrojs/node` **11.1.6**, `@astrojs/react` **6.0.6**. `astro:env` para tipado de variables. `security.checkOrigin: false` por mismatch de origen con NPM.
+- ✅ Optimistic update con Nanostores — crear publicación refresca el calendario sin recargar. Rollback si el POST falla con aviso al usuario.
+- ✅ Cache busting: `cache: 'no-store'` + `t=<ts>` + `POST /utils/cache/clear` tras mutaciones para evitar que Directus sirva listas cacheadas.
+- ✅ Cookie: bug `Max-Age=60` corregido (Directus devuelve `expires` en **ms epoch**, antes se calculaba como segundos y daba negativo). Ahora 8h en local, alineable a 1 semana en prod.
+- ✅ Rediseño visual: layout con sidebar + KPIs en dashboard + FeedMockup estilo Instagram + login split screen. Tailwind 4 con paleta `brand` y `ink` en `@theme`.
+- ⏳ Fase 9 — Despliegue del frontend en VPS (`calendar.studiomb.es`)
+- ⏳ Permisos por cliente — policy con filtro `cliente_id = $CURRENT_USER.cliente_id` cuando llegue el caso real
 
 ---
 

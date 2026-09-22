@@ -26,7 +26,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   const token = cookies.get(env.SESSION_COOKIE_NAME)?.value;
-  const user = await getCurrentUser(token);
+  const user = token ? await getCurrentUser(token) : null;
 
   // Inyectamos el usuario en locals para que las páginas .astro lo lean.
   context.locals.user = user;

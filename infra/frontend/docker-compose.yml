@@ -1,0 +1,52 @@
+# ============================================================================
+#  Studio mb · Frontend Astro — docker-compose
+#  Contenedor que sirve el calendario editorial en calendar.studiomb.es.
+#
+#  Redes:
+#    - servicios-internos: para resolver `studio-mb-directus` por nombre.
+#    - nginx-proxy-manager_default: para que NPM lo exponga públicamente.
+#
+#  Variables de entorno:
+#    - PUBLIC_DIRECTUS_URL: URL pública del CMS (para assets desde el navegador).
+#    - DIRECTUS_INTERNAL_URL: URL interna Docker del CMS (más rápida, sin TLS).
+#    - SESSION_COOKIE_SECRET: aleatorio de 64 hex.
+#    - SESSION_COOKIE_NAME: nombre de la cookie (igual que en el backend).
+# ============================================================================
+
+services:
+  studio-mb-calendario:
+    container_name: studio-mb-calendario
+    build:
+      context: ../..
+      dockerfile: infra/frontend/Dockerfile
+    image: studio-mb/calendario-editorial:latest
+    restart: unless-stopped
+
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "4321"
+      PUBLIC_DIRECTUS_URL: ${PUBLIC_DIRECTUS_URL:-https://cms.studiomb.es}
+      DIRECTUS_INTERNAL_URL: ${DIRECTUS_INTERNAL_URL:-http://studio-mb-directus:8055}
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-studio_mb_session}
+      SESSION_COOKIE_SECRET: ${SESSION_COOKIE_SECRET:?SESSION_COOKIE_SECRET es obligatorio}
+
+    networks:
+      - servicios-internos
+      - nginx-proxy-manager_default
+
+    healthcheck:
+      # TCP-only: el endpoint /server/health de Directus da 403, así que
+      # hacemos check de que el puerto está abierto y responde.
+      test: ["CMD", "node", "-e",
+             "require('net').connect(4321,'127.0.0.1',()=>process.exit(0)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+networks:
+  servicios-internos:
+    external: true
+  nginx-proxy-manager_default:
+    external: true

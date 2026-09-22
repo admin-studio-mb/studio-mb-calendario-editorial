@@ -29,3 +29,10 @@ Thumbs.db
 
 # Docker
 infra/**/volumes/
+
+# Local artifacts / backups
+*.bak
+*.bak-*
+
+# Cortex kit local
+.cortexkit/

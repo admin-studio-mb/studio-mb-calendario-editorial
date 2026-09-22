@@ -22,7 +22,11 @@ const isProd = process.env.NODE_ENV === 'production';
 
 /**
  * Llama a Directus /auth/login con email+password.
- * @returns {Promise<{access_token: string, expires: number, refresh_token?: string}>}
+ * Directus 12 responde con `access_token` solo cuando se pide explícitamente
+ * `mode: 'json'`. Si por lo que sea no viene, leemos la cookie de sesión
+ * que Directus pone al hacer `mode: 'cookie'`.
+ *
+ * @returns {Promise<{ access_token: string, expires?: number, expires_in?: number, refresh_token?: string }>}
  */
 export async function login(email, password) {
   const url = `${env.DIRECTUS_INTERNAL_URL}/auth/login`;
@@ -36,7 +40,18 @@ export async function login(email, password) {
     const text = await res.text().catch(() => '');
     throw new Error(`Login fallido (${res.status}): ${text || res.statusText}`);
   }
-  return res.json();
+  const json = await res.json().catch(() => ({}));
+  // Directus envuelve la respuesta en `{ data: {...} }`.
+  const data = json?.data ?? json;
+  if (data?.access_token) return data;
+
+  // Fallback: leer token de Set-Cookie (directus_session_token)
+  const setCookie = res.headers.get('set-cookie') ?? '';
+  const match = setCookie.match(/directus_session_token=([^;]+)/);
+  if (match) {
+    return { access_token: decodeURIComponent(match[1]) };
+  }
+  throw new Error('Login OK pero sin access_token ni cookie de sesión.');
 }
 
 /**

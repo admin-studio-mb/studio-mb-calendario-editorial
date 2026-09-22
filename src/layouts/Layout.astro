@@ -1,48 +1,114 @@
 ---
 // ============================================================================
-//  Layout principal — Header con branding, navegación contextual y slot.
+//  Layout principal — sidebar de navegación + área de contenido.
 // ============================================================================
 import '../styles/globals.css';
 
 const { title = 'Studio mb · Calendario', user } = Astro.props;
+
+function initials(u) {
+  if (!u) return '?';
+  const a = u.first_name?.[0] ?? '';
+  const b = u.last_name?.[0] ?? '';
+  if (a || b) return (a + b).toUpperCase();
+  return u.email?.[0]?.toUpperCase() ?? '?';
+}
 ---
 <!doctype html>
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#4f46e5" />
     <title>{title}</title>
   </head>
-  <body class="min-h-screen flex flex-col">
-    <header class="bg-white border-b border-slate-200 shadow-sm">
-      <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <span class="inline-block w-8 h-8 rounded-md bg-brand-500"></span>
-          <h1 class="text-lg font-semibold tracking-tight">Studio mb · Calendario Editorial</h1>
+  <body class="min-h-screen flex">
+    {/* Sidebar */}
+    <aside class="hidden md:flex w-64 shrink-0 flex-col bg-white border-r border-ink-100">
+      <div class="px-6 py-6 flex items-center gap-3 border-b border-ink-100">
+        <span class="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white font-bold shadow-sm">
+          mb
+        </span>
+        <div>
+          <p class="text-sm font-semibold text-ink-900 leading-tight">Studio mb</p>
+          <p class="text-[11px] uppercase tracking-wider text-ink-400">Calendario</p>
         </div>
+      </div>
 
-        <nav class="flex items-center gap-6 text-sm text-slate-600">
-          <a href="/dashboard" class="hover:text-brand-600">Calendario</a>
-          <a href="/dashboard/clientes" class="hover:text-brand-600">Clientes</a>
-          <a href="/dashboard/feed" class="hover:text-brand-600">Mockup feed</a>
+      <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
+        <a href="/dashboard" class="flex items-center gap-3 px-3 py-2 rounded-lg text-ink-700 hover:bg-brand-50 hover:text-brand-700 transition">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <path d="M16 2v4M8 2v4M3 10h18" />
+          </svg>
+          Calendario
+        </a>
+        <span class="flex items-center gap-3 px-3 py-2 rounded-lg text-ink-400 cursor-not-allowed">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          Clientes
+          <span class="ml-auto text-[10px] bg-ink-100 px-1.5 py-0.5 rounded-full">pronto</span>
+        </span>
+        <span class="flex items-center gap-3 px-3 py-2 rounded-lg text-ink-400 cursor-not-allowed">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" />
+            <rect x="14" y="3" width="7" height="7" />
+            <rect x="14" y="14" width="7" height="7" />
+            <rect x="3" y="14" width="7" height="7" />
+          </svg>
+          Feed Mockup
+          <span class="ml-auto text-[10px] bg-ink-100 px-1.5 py-0.5 rounded-full">pronto</span>
+        </span>
+      </nav>
 
-          {user && (
-            <form method="POST" action="/api/auth/logout" class="inline">
-              <button type="submit" class="text-slate-500 hover:text-red-600">
-                Cerrar sesión
+      {user && (
+        <div class="border-t border-ink-100 p-4">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-white text-xs font-semibold flex items-center justify-center shadow-sm">
+              {initials(user)}
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-ink-800 truncate">
+                {user.first_name} {user.last_name}
+              </p>
+              <p class="text-xs text-ink-400 truncate">{user.email}</p>
+            </div>
+            <form method="POST" action="/api/auth/logout">
+              <button
+                type="submit"
+                title="Cerrar sesión"
+                class="p-1.5 rounded-md text-ink-400 hover:text-red-600 hover:bg-red-50 transition"
+              >
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+                </svg>
               </button>
             </form>
-          )}
-        </nav>
-      </div>
-    </header>
+          </div>
+        </div>
+      )}
+    </aside>
 
-    <main class="flex-1 max-w-7xl w-full mx-auto px-6 py-8">
-      <slot />
-    </main>
+    {/* Main */}
+    <div class="flex-1 flex flex-col min-w-0">
+      <header class="md:hidden bg-white border-b border-ink-100 px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-white font-bold text-sm">mb</span>
+          <p class="font-semibold text-ink-900">Studio mb</p>
+        </div>
+        {user && (
+          <form method="POST" action="/api/auth/logout">
+            <button type="submit" class="text-xs text-ink-500 hover:text-red-600">Salir</button>
+          </form>
+        )}
+      </header>
 
-    <footer class="border-t border-slate-200 py-4 text-center text-xs text-slate-400">
-      © {new Date().getFullYear()} Studio mb — herramienta interna
-    </footer>
+      <main class="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-6 md:py-10">
+        <slot />
+      </main>
+    </div>
   </body>
 </html>
