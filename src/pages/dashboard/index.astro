@@ -74,17 +74,19 @@ const apiBase = `${Astro.url.protocol}//${Astro.url.host}`;
   {/* KPIs (reaccionan al cursor del calendario) */}
   <Kpis client:load />
 
-  <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="lg:col-span-2 space-y-6">
+  <section class="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+    <div class="lg:col-span-2 space-y-4 lg:space-y-6 order-1">
       <Calendar client:load initialPublicaciones={publicaciones} clientes={clientes} apiBase={apiBase} />
-      <FeedMockup
-        client:visible
-        posts={initialFeed}
-        baseUrl={env.PUBLIC_DIRECTUS_URL}
-      />
+      <div class="hidden lg:block">
+        <FeedMockup
+          client:visible
+          posts={initialFeed}
+          baseUrl={env.PUBLIC_DIRECTUS_URL}
+        />
+      </div>
     </div>
 
-    <aside class="space-y-6">
+    <aside class="space-y-4 lg:space-y-6 order-2 lg:order-3">
       <PostForm client:load clientes={clientes} apiBase={apiBase} />
       {publicaciones[0] && (
         <CommentThread
@@ -96,6 +98,17 @@ const apiBase = `${Astro.url.protocol}//${Astro.url.host}`;
         />
       )}
     </aside>
+
+    {/* FeedMockup en móvil: abajo del todo */}
+    {initialFeed.length > 0 && (
+      <div class="lg:hidden order-3">
+        <FeedMockup
+          client:visible
+          posts={initialFeed}
+          baseUrl={env.PUBLIC_DIRECTUS_URL}
+        />
+      </div>
+    )}
   </section>
 
   <EditPostModal client:load clientes={clientes} apiBase={apiBase} />

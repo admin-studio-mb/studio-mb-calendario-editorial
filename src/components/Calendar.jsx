@@ -9,6 +9,7 @@ import { es } from 'date-fns/locale';
 import { publicacionesStore, cursorStore, filtrosStore, hydratePublicaciones, updatePublicacion } from '../stores/publicaciones.js';
 import WeekView from './WeekView.jsx';
 import ListView from './ListView.jsx';
+import DayView from './DayView.jsx';
 import PostPill from './PostPill.jsx';
 
 /**
@@ -27,7 +28,13 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], api
   }, [initialPublicaciones]);
 
   const publicaciones = useStore(publicacionesStore);
-  const [view, setView] = useState('month'); // 'month' | 'week' | 'list'
+  // Detectamos móvil al montar: 'list' por defecto en pantallas pequeñas.
+  const [view, setView] = useState(() => {
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
+      return 'list';
+    }
+    return 'month';
+  });
   const cursor = useStore(cursorStore);
   const filtros = useStore(filtrosStore);
   const setCursor = (updater) => {
@@ -188,26 +195,56 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], api
         <header className="flex items-center justify-between px-5 py-4 border-b border-ink-100 gap-3 flex-wrap">
           <div className="flex items-center gap-3 flex-wrap">
             {/* Toggle Mes/Semana/Lista */}
-            <div className="inline-flex bg-ink-100 rounded-lg p-0.5">
-              {[
-                { id: 'month', label: 'Mes' },
-                { id: 'week', label: 'Semana' },
-                { id: 'list', label: 'Lista' },
-              ].map((v) => (
-                <button
-                  key={v.id}
-                  type="button"
-                  onClick={() => setView(v.id)}
-                  className={[
-                    'px-3 py-1.5 text-xs font-semibold rounded-md transition',
-                    view === v.id
-                      ? 'bg-white text-brand-700 shadow-sm'
-                      : 'text-ink-500 hover:text-ink-700',
-                  ].join(' ')}
-                >
-                  {v.label}
-                </button>
-              ))}
+            <div className="inline-flex bg-ink-100 dark:bg-ink-200 rounded-lg p-0.5">
+              {/* Mes y Semana solo en desktop */}
+              <button
+                type="button"
+                onClick={() => setView('month')}
+                className={[
+                  'hidden md:inline-flex px-3 py-1.5 text-xs font-semibold rounded-md transition',
+                  view === 'month'
+                    ? 'bg-white text-brand-700 shadow-sm dark:bg-ink-700 dark:text-brand-300'
+                    : 'text-ink-500 hover:text-ink-700 dark:text-ink-500 dark:hover:text-ink-300',
+                ].join(' ')}
+              >
+                Mes
+              </button>
+              <button
+                type="button"
+                onClick={() => setView('week')}
+                className={[
+                  'hidden md:inline-flex px-3 py-1.5 text-xs font-semibold rounded-md transition',
+                  view === 'week'
+                    ? 'bg-white text-brand-700 shadow-sm dark:bg-ink-700 dark:text-brand-300'
+                    : 'text-ink-500 hover:text-ink-700 dark:text-ink-500 dark:hover:text-ink-300',
+                ].join(' ')}
+              >
+                Semana
+              </button>
+              <button
+                type="button"
+                onClick={() => setView('list')}
+                className={[
+                  'px-3 py-1.5 text-xs font-semibold rounded-md transition',
+                  view === 'list'
+                    ? 'bg-white text-brand-700 shadow-sm dark:bg-ink-700 dark:text-brand-300'
+                    : 'text-ink-500 hover:text-ink-700 dark:text-ink-500 dark:hover:text-ink-300',
+                ].join(' ')}
+              >
+                Lista
+              </button>
+              <button
+                type="button"
+                onClick={() => setView('day')}
+                className={[
+                  'px-3 py-1.5 text-xs font-semibold rounded-md transition',
+                  view === 'day'
+                    ? 'bg-white text-brand-700 shadow-sm dark:bg-ink-700 dark:text-brand-300'
+                    : 'text-ink-500 hover:text-ink-700 dark:text-ink-500 dark:hover:text-ink-300',
+                ].join(' ')}
+              >
+                Día
+              </button>
             </div>
           </div>
 
@@ -429,6 +466,18 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], api
 
       {view === 'list' && (
         <ListView
+          publicaciones={publicacionesFiltradas}
+          clientes={clientes}
+          selectedPostId={selectedPostId}
+          setSelectedPostId={setSelectedPostId}
+          onPatchFecha={patchFecha}
+          cursor={cursor}
+          setCursor={setCursor}
+        />
+      )}
+
+      {view === 'day' && (
+        <DayView
           publicaciones={publicacionesFiltradas}
           clientes={clientes}
           selectedPostId={selectedPostId}

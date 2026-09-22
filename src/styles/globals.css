@@ -44,6 +44,34 @@
   --shadow-pop: 0 10px 30px rgb(15 18 35 / 0.12), 0 4px 8px rgb(15 18 35 / 0.06);
 }
 
+/* ============================================================================
+   Dark mode — Tailwind 4 lo activa con la clase `.dark` en <html>.
+   Override de los CSS variables para invertir la paleta sin tocar
+   componentes (siguen usando bg-white / text-ink-900 etc.).
+   ============================================================================ */
+.dark {
+  --color-ink-50:  #0e0f12;
+  --color-ink-100: #1a1c21;
+  --color-ink-200: #262930;
+  --color-ink-300: #3a3e47;
+  --color-ink-400: #5a5f6b;
+  --color-ink-500: #8b8f99;
+  --color-ink-600: #a8acb6;
+  --color-ink-700: #d4d7df;
+  --color-ink-800: #e8eaef;
+  --color-ink-900: #f3f4f7;
+
+  /* Brand un poco más claro en dark para mejor contraste. */
+  --color-brand-500: #8189ff;
+  --color-brand-600: #6166f6;
+  --color-brand-700: #4f46e5;
+
+  /* Shadows más sutiles en dark. */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 12px rgb(0 0 0 / 0.2);
+  --shadow-card-hover: 0 2px 4px rgb(0 0 0 / 0.5), 0 8px 24px rgb(0 0 0 / 0.3);
+  --shadow-pop: 0 10px 30px rgb(0 0 0 / 0.5), 0 4px 8px rgb(0 0 0 / 0.3);
+}
+
 /* Reset fino: dejamos que Tailwind ponga el resto. */
 @layer base {
   html {
@@ -55,10 +83,17 @@
   }
   body {
     background:
-      radial-gradient(at 0% 0%, rgb(238 240 255 / 0.6) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, rgb(255 240 245 / 0.4) 0px, transparent 50%),
+      radial-gradient(at 0% 0%, rgb(99 102 241 / 0.08) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgb(236 72 153 / 0.04) 0px, transparent 50%),
       var(--color-ink-50);
     min-height: 100vh;
+    transition: background-color 200ms ease;
+  }
+  .dark body {
+    background:
+      radial-gradient(at 0% 0%, rgb(99 102 241 / 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgb(236 72 153 / 0.05) 0px, transparent 50%),
+      var(--color-ink-50);
   }
   *:focus-visible {
     outline: 2px solid var(--color-brand-500);
@@ -78,4 +113,18 @@
   border-radius: var(--radius-card);
   border: 1px solid var(--color-ink-100);
   box-shadow: var(--shadow-card);
+}
+
+.dark .card,
+.dark [class*="card"] {
+  background: var(--color-ink-100);
+  border-color: var(--color-ink-200);
+}
+
+/* El sidebar y main usan bg-white — los ponemos a tono en dark. */
+.dark .bg-white {
+  background-color: var(--color-ink-100);
+}
+.dark .bg-ink-50 {
+  background-color: var(--color-ink-200);
 }

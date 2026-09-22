@@ -23,11 +23,14 @@ function initials(u) {
     <title>{title}</title>
   </head>
   <body class="min-h-screen flex">
+    {/* Overlay para móvil — cierra el drawer al pulsar fuera */}
+    <div id="sidebar-overlay" class="md:hidden fixed inset-0 bg-black/50 z-30 opacity-0 pointer-events-none transition-opacity" aria-hidden="true"></div>
+
     {/* Sidebar */}
     <aside
       id="app-sidebar"
       data-collapsed="false"
-      class="hidden md:flex w-64 shrink-0 flex-col bg-white border-r border-ink-100 transition-[width] duration-200 ease-out"
+      class="fixed md:sticky top-0 left-0 z-40 md:z-auto w-64 shrink-0 flex-col bg-white border-r border-ink-100 h-screen transition-[width,transform] duration-200 ease-out -translate-x-full md:translate-x-0"
     >
       {/* Cabecera: burger a la izquierda, logo + nombre abajo */}
       <div class="px-4 pt-4 pb-2 flex justify-start" id="sidebar-burger-wrap">
@@ -90,46 +93,89 @@ function initials(u) {
         </span>
       </nav>
 
-      {user && (
-        <div class="p-4">
-          <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-white text-xs font-semibold flex items-center justify-center shadow-sm shrink-0">
-              {initials(user)}
-            </div>
-            <div class="flex-1 min-w-0 sidebar-text">
-              <p class="text-sm font-medium text-ink-800 truncate">
-                {user.first_name} {user.last_name}
-              </p>
-              <p class="text-xs text-ink-400 truncate">{user.email}</p>
-            </div>
-            <form method="POST" action="/api/auth/logout" class="shrink-0">
-              <button
-                type="submit"
-                title="Cerrar sesión"
-                class="p-1.5 rounded-md text-ink-400 hover:text-red-600 hover:bg-red-50 transition"
-              >
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
-                </svg>
-              </button>
-            </form>
-          </div>
+      {/* Botón Dark/Light mode + logout al fondo. */}
+      <div class="p-4 border-t border-ink-100 space-y-2">
+        <div class="flex items-center gap-2">
+          {/* Toggle dark/light — siempre visible, incluso colapsado */}
+          <button
+            id="theme-toggle"
+            type="button"
+            title="Cambiar tema"
+            aria-label="Cambiar tema"
+            class="p-2 rounded-md text-ink-500 hover:text-brand-600 hover:bg-brand-50 transition shrink-0"
+          >
+            {/* Sol (en modo claro: pulsas para ir a oscuro) */}
+            <svg class="w-5 h-5 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5"/>
+              <path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>
+            </svg>
+            {/* Luna (en modo oscuro: pulsas para ir a claro) */}
+            <svg class="w-5 h-5 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+          </button>
+          {user && (
+            <>
+              <div class="flex-1 min-w-0 sidebar-text flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-white text-xs font-semibold flex items-center justify-center shadow-sm shrink-0">
+                  {initials(user)}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-ink-800 truncate">
+                    {user.first_name} {user.last_name}
+                  </p>
+                  <p class="text-xs text-ink-400 truncate">{user.email}</p>
+                </div>
+              </div>
+              <form method="POST" action="/api/auth/logout" class="shrink-0">
+                <button
+                  type="submit"
+                  title="Cerrar sesión"
+                  class="p-1.5 rounded-md text-ink-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition"
+                >
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+                  </svg>
+                </button>
+              </form>
+            </>
+          )}
         </div>
-      )}
+      </div>
     </aside>
 
     {/* Main */}
     <div class="flex-1 flex flex-col min-w-0">
-      <header class="md:hidden bg-white border-b border-ink-100 px-6 py-4 flex items-center justify-between">
+      <header class="md:hidden bg-white border-b border-ink-100 px-4 py-3 flex items-center justify-between sticky top-0 z-20">
         <div class="flex items-center gap-3">
-          <span class="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-white font-bold text-sm">mb</span>
-          <p class="font-semibold text-ink-900">Studio mb.</p>
+          <button
+            type="button"
+            id="sidebar-open"
+            class="p-2 -ml-2 rounded-lg text-ink-600 hover:text-ink-900 hover:bg-ink-100 transition"
+            aria-label="Abrir menú"
+          >
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18M3 12h18M3 18h18"/>
+            </svg>
+          </button>
+          <div class="flex items-center gap-2">
+            <img src="/img/logos/Logo-vector-Studio-mb-trans.svg" alt="Studio mb" class="w-7 h-7"/>
+            <p class="font-semibold text-ink-900">Studio mb.</p>
+          </div>
         </div>
-        {user && (
-          <form method="POST" action="/api/auth/logout">
-            <button type="submit" class="text-xs text-ink-500 hover:text-red-600">Salir</button>
-          </form>
-        )}
+        <button
+          type="button"
+          id="theme-toggle-mobile"
+          class="p-2 rounded-md text-ink-500 hover:text-brand-600 hover:bg-brand-50 transition"
+          aria-label="Cambiar tema"
+        >
+          <svg class="w-5 h-5 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>
+          </svg>
+          <svg class="w-5 h-5 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
       </header>
 
       <main class="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-6 md:py-10">
@@ -178,21 +224,96 @@ function initials(u) {
 </style>
 
 <script is:inline>
+  // ── Dark mode ─────────────────────────────────────────────────────────────
+  // Aplicamos la clase `.dark` en <html> desde localStorage ANTES de que
+  // pinte la página (este script va en el head en modo inline), para evitar
+  // un flash blanco al cargar en modo oscuro.
+  (() => {
+    const stored = localStorage.getItem('studio-mb:theme');
+    if (stored === 'dark') document.documentElement.classList.add('dark');
+  })();
+</script>
+
+<script>
+  // ── Sidebar (drawer en móvil + collapse en desktop) + Dark mode toggle ──
   (() => {
     const sidebar = document.getElementById('app-sidebar');
-    const btn = document.getElementById('sidebar-toggle');
-    if (!sidebar || !btn) return;
+    const overlay = document.getElementById('sidebar-overlay');
+    const sidebarBtn = document.getElementById('sidebar-toggle');
+    const openBtn = document.getElementById('sidebar-open');
+    const themeBtns = document.querySelectorAll('#theme-toggle, #theme-toggle-mobile');
 
-    // Hidratamos desde localStorage para persistir el estado entre páginas.
-    const key = 'studio-mb:sidebar-collapsed';
-    const stored = localStorage.getItem(key);
-    if (stored === 'true') sidebar.setAttribute('data-collapsed', 'true');
+    const isMobile = () => window.matchMedia('(max-width: 767px)').matches;
 
-    btn.addEventListener('click', () => {
-      const isCollapsed = sidebar.getAttribute('data-collapsed') === 'true';
-      const next = !isCollapsed;
-      sidebar.setAttribute('data-collapsed', next ? 'true' : 'false');
-      localStorage.setItem(key, next ? 'true' : 'false');
+    function setSidebarOpen(open) {
+      if (!sidebar) return;
+      if (isMobile()) {
+        sidebar.style.transform = open ? 'translateX(0)' : 'translateX(-100%)';
+        if (overlay) {
+          overlay.style.opacity = open ? '1' : '0';
+          overlay.style.pointerEvents = open ? 'auto' : 'none';
+        }
+      } else {
+        const next = !open;
+        sidebar.setAttribute('data-collapsed', next ? 'true' : 'false');
+        localStorage.setItem('studio-mb:sidebar-collapsed', next ? 'true' : 'false');
+      }
+    }
+
+    // Hidratamos el estado de colapso desde localStorage.
+    if (sidebar && !isMobile()) {
+      if (localStorage.getItem('studio-mb:sidebar-collapsed') === 'true') {
+        sidebar.setAttribute('data-collapsed', 'true');
+      }
+    }
+
+    if (sidebarBtn) {
+      sidebarBtn.addEventListener('click', () => setSidebarOpen(false));
+    }
+    if (openBtn) {
+      openBtn.addEventListener('click', () => setSidebarOpen(true));
+    }
+    if (overlay) {
+      overlay.addEventListener('click', () => setSidebarOpen(false));
+    }
+    // Cerramos el drawer al pulsar Escape.
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isMobile()) setSidebarOpen(false);
+    });
+
+    // Dark mode toggle.
+    const updateIcons = () => {
+      const isDark = document.documentElement.classList.contains('dark');
+      themeBtns.forEach((btn) => {
+        btn.setAttribute('aria-label', isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro');
+      });
+    };
+    updateIcons();
+    themeBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const isDark = document.documentElement.classList.toggle('dark');
+        localStorage.setItem('studio-mb:theme', isDark ? 'dark' : 'light');
+        updateIcons();
+      });
+    });
+
+    // Al cambiar el tamaño de ventana, sincronizamos el sidebar.
+    window.addEventListener('resize', () => {
+      if (!sidebar) return;
+      if (isMobile()) {
+        sidebar.style.transform = ''; // reseteamos; el CSS controla -translate-x-full
+        if (overlay) {
+          overlay.style.opacity = '0';
+          overlay.style.pointerEvents = 'none';
+        }
+      } else {
+        sidebar.style.transform = '';
+        if (localStorage.getItem('studio-mb:sidebar-collapsed') === 'true') {
+          sidebar.setAttribute('data-collapsed', 'true');
+        } else {
+          sidebar.setAttribute('data-collapsed', 'false');
+        }
+      }
     });
   })();
 </script>
