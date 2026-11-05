@@ -45,14 +45,19 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], api
     const next = typeof updater === 'function' ? updater(current) : updater;
     cursorStore.set(next);
   };
-  const [clienteFiltro, setClienteFiltro] = useState(null);
+  const [clienteFiltro, setClienteFiltroState] = useState(null);
+  function setClienteFiltro(val) {
+    setClienteFiltroState(val);
+    filtrosStore.set({ ...filtrosStore.get(), clienteId: val || '' });
+  }
   // selectedPostId ahora vive en selectedPostIdStore (ver imports).
 
   function setFiltros(patch) {
     filtrosStore.set({ ...filtrosStore.get(), ...patch });
   }
   function clearFiltros() {
-    filtrosStore.set({ texto: '', estado: '', formato: '' });
+    setClienteFiltroState(null);
+    filtrosStore.set({ texto: '', estado: '', formato: '', clienteId: '' });
   }
   const [draggingId, setDraggingId] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
@@ -132,7 +137,7 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], api
     setDropTarget(null);
     if (apiBase) {
       try {
-        const res = await fetch(`${apiBase}/api/publicaciones/${post.id}`, {
+        const res = await fetch(`/api/publicaciones/${post.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ fecha_publicacion: iso }),
@@ -173,7 +178,7 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], api
       (async () => {
         try {
           const iso = typeof newDate === 'function' ? newDate(prevFecha) : newDate;
-          const res = await fetch(`${apiBase}/api/publicaciones/${postId}`, {
+          const res = await fetch(`/api/publicaciones/${postId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ fecha_publicacion: iso }),
@@ -277,8 +282,11 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], api
               >
                 <option value="">Todos los estados</option>
                 <option value="borrador">Borrador</option>
-                <option value="revision">Revisión</option>
+                <option value="revision">Revisión texto</option>
+                <option value="en_diseno">En diseño</option>
+                <option value="revision_diseno">Revisión diseño</option>
                 <option value="aprobado">Aprobado</option>
+                <option value="publicado">Publicado</option>
               </select>
               <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-ink-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
             </div>

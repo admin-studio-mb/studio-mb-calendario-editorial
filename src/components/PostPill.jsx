@@ -6,7 +6,10 @@ import { es } from 'date-fns/locale';
 const ESTADO_LABEL = {
   borrador: 'Borrador',
   revision: 'Revisión',
+  en_diseno: 'En diseño',
+  revision_diseno: 'Rev. diseño',
   aprobado: 'Aprobado',
+  publicado: 'Publicado',
 };
 const FORMATO_LABEL = {
   post: 'Post',
@@ -22,19 +25,25 @@ function titleCase(s) {
 
 export function estadoColor(estado) {
   switch (estado) {
-    case 'borrador':   return 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-100';
-    case 'revision':   return 'bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-100';
-    case 'aprobado':   return 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-100';
-    default:           return 'bg-ink-100 text-ink-700 hover:bg-ink-200 border border-ink-200';
+    case 'borrador':        return 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-100';
+    case 'revision':        return 'bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-100';
+    case 'en_diseno':       return 'bg-purple-50 text-purple-800 hover:bg-purple-100 border border-purple-100';
+    case 'revision_diseno': return 'bg-pink-50 text-pink-800 hover:bg-pink-100 border border-pink-100';
+    case 'aprobado':        return 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-100';
+    case 'publicado':       return 'bg-teal-50 text-teal-800 hover:bg-teal-100 border border-teal-100';
+    default:                return 'bg-ink-100 text-ink-700 hover:bg-ink-200 border border-ink-200';
   }
 }
 
 function estadoBadge(estado) {
   switch (estado) {
-    case 'borrador':   return 'bg-amber-100 text-amber-800';
-    case 'revision':   return 'bg-blue-100 text-blue-800';
-    case 'aprobado':   return 'bg-emerald-100 text-emerald-800';
-    default:           return 'bg-ink-100 text-ink-700';
+    case 'borrador':        return 'bg-amber-100 text-amber-800';
+    case 'revision':        return 'bg-blue-100 text-blue-800';
+    case 'en_diseno':       return 'bg-purple-100 text-purple-800';
+    case 'revision_diseno': return 'bg-pink-100 text-pink-800';
+    case 'aprobado':        return 'bg-emerald-100 text-emerald-800';
+    case 'publicado':       return 'bg-teal-100 text-teal-800';
+    default:                return 'bg-ink-100 text-ink-700';
   }
 }
 

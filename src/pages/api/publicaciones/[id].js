@@ -9,7 +9,7 @@ import { directusFetch } from '../../../lib/directus-fetch.js';
 
 const REQUIRED_STRING_FIELDS = ['cliente_id', 'formato', 'estado'];
 const VALID_FORMATO = ['post', 'reel', 'carrusel', 'story'];
-const VALID_ESTADO = ['borrador', 'revision', 'aprobado'];
+const VALID_ESTADO = ['borrador', 'revision', 'en_diseno', 'revision_diseno', 'aprobado', 'publicado'];
 
 function json(payload, status = 200) {
   return new Response(JSON.stringify(payload), {

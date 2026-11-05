@@ -165,7 +165,10 @@ export default function DayView({
                       'shrink-0 w-2.5 h-2.5 rounded-full',
                       p.estado === 'borrador' ? 'bg-amber-400' :
                       p.estado === 'revision' ? 'bg-blue-400' :
+                      p.estado === 'en_diseno' ? 'bg-purple-400' :
+                      p.estado === 'revision_diseno' ? 'bg-pink-400' :
                       p.estado === 'aprobado' ? 'bg-emerald-500' :
+                      p.estado === 'publicado' ? 'bg-teal-500' :
                       'bg-ink-300',
                     ].join(' ')} />
                     <h3 className="text-sm font-semibold text-ink-900 truncate flex-1 min-w-0">
@@ -197,7 +200,10 @@ export default function DayView({
                       'shrink-0 inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider',
                       p.estado === 'borrador' ? 'bg-amber-100 text-amber-800' :
                       p.estado === 'revision' ? 'bg-blue-100 text-blue-800' :
+                      p.estado === 'en_diseno' ? 'bg-purple-100 text-purple-800' :
+                      p.estado === 'revision_diseno' ? 'bg-pink-100 text-pink-800' :
                       p.estado === 'aprobado' ? 'bg-emerald-100 text-emerald-800' :
+                      p.estado === 'publicado' ? 'bg-teal-100 text-teal-800' :
                       'bg-ink-100 text-ink-700',
                     ].join(' ')}>
                       {titleCaseEstado(p.estado)}
@@ -224,6 +230,13 @@ function titleCaseFmt(s) {
   return m[s] ?? s;
 }
 function titleCaseEstado(s) {
-  const m = { borrador: 'Borrador', revision: 'Revisión', aprobado: 'Aprobado' };
+  const m = {
+    borrador: 'Borrador',
+    revision: 'Revisión',
+    en_diseno: 'En diseño',
+    revision_diseno: 'Rev. diseño',
+    aprobado: 'Aprobado',
+    publicado: 'Publicado',
+  };
   return m[s] ?? s;
 }

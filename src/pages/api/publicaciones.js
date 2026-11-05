@@ -16,7 +16,7 @@ import { directusFetch } from '../../lib/directus-fetch.js';
 export const prerender = false;
 
 const FORMATOS = new Set(['post', 'reel', 'carrusel', 'story']);
-const ESTADOS = new Set(['borrador', 'revision', 'aprobado']);
+const ESTADOS = new Set(['borrador', 'revision', 'en_diseno', 'revision_diseno', 'aprobado', 'publicado']);
 
 export async function POST({ request, locals }) {
   const token = locals.token ?? null;

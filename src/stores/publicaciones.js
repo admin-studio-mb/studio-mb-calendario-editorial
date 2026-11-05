@@ -53,7 +53,7 @@ export const cursorStore = atom(new Date());
  *
  * @type {import('nanostores').WritableAtom<Filtros>}
  */
-export const filtrosStore = atom({ texto: '', estado: '', formato: '' });
+export const filtrosStore = atom({ texto: '', estado: '', formato: '', clienteId: '' });
 
 /**
  * ID del post seleccionado en el calendario. Lo usan Calendar (resaltar la
@@ -83,7 +83,7 @@ export function hydratePublicaciones(initial) {
  */
 export function addPublicacion(pub) {
   const current = publicacionesStore.get();
-  publicacionesStore.set([...current, { ...pub, _pending: false }]);
+  publicacionesStore.set([...current, { ...pub, _pending: Boolean(pub._pending) }]);
 }
 
 /**
@@ -96,7 +96,7 @@ export function updatePublicacion(pub) {
   publicacionesStore.set(
     current.map((p) =>
       p.id === pub.id
-        ? { ...p, ...pub, _pending: false }
+        ? { ...p, ...pub, _pending: Boolean(pub._pending) }
         : p,
     ),
   );
@@ -118,5 +118,5 @@ export function removePublicacion(id) {
 export function resetPublicaciones() {
   publicacionesStore.set([]);
   selectedPostIdStore.set(null);
-  filtrosStore.set({ texto: '', estado: '', formato: '' });
+  filtrosStore.set({ texto: '', estado: '', formato: '', clienteId: '' });
 }

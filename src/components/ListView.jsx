@@ -84,7 +84,7 @@ export default function ListView({
       setDropTarget(null);
       return;
     }
-    onPatchFecha(post.id, prevFecha => iso, prevFecha, () => iso);
+    onPatchFecha(post.id, () => iso, post.fecha_publicacion, () => iso);
     setDraggingId(null);
     setDropTarget(null);
   }
@@ -226,7 +226,10 @@ function ListItem({ post, clienteNombre, isSelected, isDragging, onClick, onDrag
         'shrink-0 w-2 h-8 rounded-full',
         post.estado === 'borrador' ? 'bg-amber-400' :
         post.estado === 'revision' ? 'bg-blue-400' :
+        post.estado === 'en_diseno' ? 'bg-purple-400' :
+        post.estado === 'revision_diseno' ? 'bg-pink-400' :
         post.estado === 'aprobado' ? 'bg-emerald-500' :
+        post.estado === 'publicado' ? 'bg-teal-500' :
         'bg-ink-300',
       ].join(' ')} />
 
@@ -267,7 +270,14 @@ function titleCaseFmt(s) {
   return m[s] ?? s;
 }
 function titleCaseEstado(s) {
-  const m = { borrador: 'Borrador', revision: 'Revisión', aprobado: 'Aprobado' };
+  const m = {
+    borrador: 'Borrador',
+    revision: 'Revisión',
+    en_diseno: 'En diseño',
+    revision_diseno: 'Rev. diseño',
+    aprobado: 'Aprobado',
+    publicado: 'Publicado',
+  };
   return m[s] ?? s;
 }
 

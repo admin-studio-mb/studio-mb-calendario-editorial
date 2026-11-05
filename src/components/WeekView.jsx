@@ -81,7 +81,7 @@ export default function WeekView({
       setDropTarget(null);
       return;
     }
-    onPatchFecha(post.id, prevFecha => iso, prevFecha, /*rollback*/ () => iso);
+    onPatchFecha(post.id, () => iso, post.fecha_publicacion, /*rollback*/ () => iso);
     setDraggingId(null);
     setDropTarget(null);
   }

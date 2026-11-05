@@ -15,8 +15,12 @@ const PUBLIC_PATHS = new Set(['/login', '/api/auth/login']);
 export const onRequest = defineMiddleware(async (context, next) => {
   const { url, cookies, redirect } = context;
 
-  // Estáticos y assets del propio Astro: dejar pasar.
-  if (url.pathname.startsWith('/_astro') || url.pathname.startsWith('/favicon')) {
+  // Estáticos y assets públicos (logos en /img/*, favicon, etc.): dejar pasar.
+  if (
+    url.pathname.startsWith('/_astro') ||
+    url.pathname.startsWith('/favicon') ||
+    url.pathname.startsWith('/img/')
+  ) {
     return next();
   }
 

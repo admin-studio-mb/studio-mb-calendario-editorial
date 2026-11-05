@@ -19,7 +19,12 @@ export async function GET({ url, locals }) {
   const r = await directusFetch({
     path: '/items/comentarios',
     token,
-    search: { filter, sort: 'fecha_creacion', limit: 200 },
+    search: {
+      filter,
+      sort: 'fecha_creacion',
+      limit: 200,
+      fields: 'id,publicacion_id,texto,fecha_creacion,usuario_id.id,usuario_id.first_name,usuario_id.last_name,usuario_id.email',
+    },
   });
 
   if (!r.ok) {

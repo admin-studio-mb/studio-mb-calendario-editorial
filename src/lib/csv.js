@@ -5,7 +5,14 @@
 //  Escapado correcto de comas, comillas y saltos de línea (RFC 4180).
 // ============================================================================
 
-const ESTADO_LABEL = { borrador: 'Borrador', revision: 'Revisión', aprobado: 'Aprobado' };
+const ESTADO_LABEL = {
+  borrador: 'Borrador',
+  revision: 'Revisión',
+  en_diseno: 'En diseño',
+  revision_diseno: 'Revisión diseño',
+  aprobado: 'Aprobado',
+  publicado: 'Publicado',
+};
 const FORMATO_LABEL = { post: 'Post', reel: 'Reel', carrusel: 'Carrusel', story: 'Story' };
 
 export function escape(value) {

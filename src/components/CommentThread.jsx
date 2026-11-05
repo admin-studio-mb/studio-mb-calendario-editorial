@@ -39,7 +39,7 @@ export default function CommentThread({ currentUser, apiBase = '' }) {
       setLoading(true);
       setError('');
       try {
-        const res = await fetch(`${apiBase}/api/comentarios?publicacion_id=${post.id}`);
+        const res = await fetch(`/api/comentarios?publicacion_id=${post.id}`);
         if (!res.ok) throw new Error(`Error ${res.status}`);
         const data = await res.json();
         if (!cancel) setItems(Array.isArray(data) ? data : []);
@@ -51,7 +51,7 @@ export default function CommentThread({ currentUser, apiBase = '' }) {
     }
     load();
     return () => { cancel = true; };
-  }, [post?.id, apiBase]);
+  }, [post?.id]);
 
   // Reset del formulario al cambiar de post.
   useEffect(() => {
@@ -79,7 +79,7 @@ export default function CommentThread({ currentUser, apiBase = '' }) {
     setItems((arr) => [...arr, optimistic]);
     setTexto('');
     try {
-      const res = await fetch(`${apiBase}/api/comentarios`, {
+      const res = await fetch('/api/comentarios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ publicacion_id: post.id, texto: t }),
@@ -89,7 +89,20 @@ export default function CommentThread({ currentUser, apiBase = '' }) {
         throw new Error(`Comentar falló (${res.status}): ${text || res.statusText}`);
       }
       const created = await res.json().catch(() => null);
-      setItems((arr) => arr.map((c) => c.id === tmpId ? { ...created, _pending: false } : c));
+      setItems((arr) =>
+        arr.map((c) =>
+          c.id === tmpId
+            ? {
+                ...created,
+                usuario_id:
+                  typeof created?.usuario_id === 'object' && created?.usuario_id
+                    ? created.usuario_id
+                    : (currentUser ?? created?.usuario_id ?? null),
+                _pending: false,
+              }
+            : c,
+        ),
+      );
     } catch (err) {
       setItems((arr) => arr.filter((c) => c.id !== tmpId));
       setTexto(t); // devolvemos el texto al input
@@ -118,7 +131,7 @@ export default function CommentThread({ currentUser, apiBase = '' }) {
     setEditingId(null);
     setEditText('');
     try {
-      const res = await fetch(`${apiBase}/api/comentarios/${id}`, {
+      const res = await fetch(`/api/comentarios/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ texto: t }),
@@ -128,7 +141,21 @@ export default function CommentThread({ currentUser, apiBase = '' }) {
         throw new Error(`Editar falló (${res.status}): ${text || res.statusText}`);
       }
       const saved = await res.json().catch(() => null);
-      if (saved) setItems((arr) => arr.map((c) => c.id === id ? saved : c));
+      if (saved) {
+        setItems((arr) =>
+          arr.map((c) =>
+            c.id === id
+              ? {
+                  ...saved,
+                  usuario_id:
+                    typeof saved?.usuario_id === 'object' && saved?.usuario_id
+                      ? saved.usuario_id
+                      : (c.usuario_id ?? currentUser ?? null),
+                }
+              : c,
+          ),
+        );
+      }
     } catch (err) {
       // Rollback
       if (prev) setItems((arr) => arr.map((c) => c.id === id ? prev : c));
@@ -141,7 +168,7 @@ export default function CommentThread({ currentUser, apiBase = '' }) {
     const prev = items;
     setItems((arr) => arr.filter((c) => c.id !== id));
     try {
-      const res = await fetch(`${apiBase}/api/comentarios/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/comentarios/${id}`, { method: 'DELETE' });
       if (!res.ok && res.status !== 204) {
         const text = await res.text().catch(() => '');
         throw new Error(`Eliminar falló (${res.status}): ${text || res.statusText}`);

@@ -62,8 +62,11 @@ export default function ClienteForm({
       if (logoFile) {
         const fd = new FormData();
         fd.append('file', logoFile);
-        const upRes = await fetch(`${apiBase}/api/files`, { method: 'POST', body: fd });
-        if (!upRes.ok) throw new Error(`Subida de logo falló (${upRes.status})`);
+        const upRes = await fetch('/api/files', { method: 'POST', body: fd });
+        if (!upRes.ok) {
+          const errJson = await upRes.json().catch(() => null);
+          throw new Error(errJson?.error || `Subida de logo falló (${upRes.status})`);
+        }
         const upJson = await upRes.json();
         uploadedLogoId = upJson?.id ?? null;
       }
@@ -75,8 +78,8 @@ export default function ClienteForm({
       };
 
       const url = isEdit
-        ? `${apiBase}/api/clientes/${initial.id}`
-        : `${apiBase}/api/clientes`;
+        ? `/api/clientes/${initial.id}`
+        : '/api/clientes';
       const method = isEdit ? 'PATCH' : 'POST';
 
       const res = await fetch(url, {
@@ -86,12 +89,24 @@ export default function ClienteForm({
       });
       if (!res.ok) {
         const text = await res.text().catch(() => '');
-        throw new Error(`Guardar falló (${res.status}): ${text || res.statusText}`);
+        let msg = `Guardar falló (${res.status})`;
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed?.error) msg = parsed.detail?.errors?.[0]?.message ? `${parsed.error}: ${parsed.detail.errors[0].message}` : parsed.error;
+        } catch {
+          if (text) msg = `${msg}: ${text}`;
+        }
+        throw new Error(msg);
       }
       const saved = await res.json().catch(() => null);
       onSubmitted?.(saved);
     } catch (err) {
-      setError(err.message ?? 'Error guardando.');
+      const m = err?.message ?? '';
+      if (/fetch failed|failed to fetch|load failed/i.test(m)) {
+        setError('Error de conexión con el servidor (fetch failed). Comprueba que la sesión sigue activa o recarga la página.');
+      } else {
+        setError(m || 'Error guardando.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -116,7 +131,7 @@ export default function ClienteForm({
             {logoPreview ? (
               <img src={logoPreview} alt="" className="w-full h-full object-cover" />
             ) : logoId ? (
-              <img src={`${apiBase.replace(/\/$/, '')}/api/assets/${logoId}`} alt="" className="w-full h-full object-cover" />
+              <img src={`/api/assets/${logoId}`} alt="" className="w-full h-full object-cover" />
             ) : (
               <svg className="w-8 h-8 text-ink-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
             )}

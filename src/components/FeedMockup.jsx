@@ -1,19 +1,35 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useStore } from '@nanostores/react';
+import { publicacionesStore, filtrosStore } from '../stores/publicaciones.js';
 
 /**
  * FeedMockup — renderiza un grid 3 columnas al estilo Instagram con las
- * publicaciones pasadas. La imagen mostrada es `diseno_final` o, si falta,
- * la primera de `imagenes_fondo`. El clic abre un modal con detalle.
+ * publicaciones del store reactivo (o `posts` como fallback inicial).
+ * La imagen mostrada es `diseno_final` o, si falta, la primera de `imagenes_fondo`.
+ * El clic abre un modal con detalle.
  *
  * Props:
- *   - posts: Array<{
- *       id, formato, tipo_contenido, copywriting, hashtags,
- *       diseno_final?: { id }, imagenes_fondo?: string[]
- *     }>
- *   - baseUrl: string  → URL pública del CMS (para construir /assets/<id>).
+ *   - posts: Array inicial opcional (hidratado por SSR).
+ *   - baseUrl: string (no requerido, ahora usa el proxy autenticado /api/assets/<id>).
  */
 export default function FeedMockup({ posts = [], baseUrl = '' }) {
+  const storePosts = useStore(publicacionesStore);
+  const filtros = useStore(filtrosStore);
   const [open, setOpen] = useState(null);
+
+  const displayPosts = useMemo(() => {
+    const source = storePosts.length > 0 ? storePosts : posts;
+    const filtered = source.filter((p) => {
+      if (filtros.clienteId && p.cliente_id !== filtros.clienteId) return false;
+      if (filtros.estado && p.estado !== filtros.estado) return false;
+      if (filtros.formato && p.formato !== filtros.formato) return false;
+      return true;
+    });
+    // Ordenamos de más reciente a más antigua por fecha_publicacion (estilo feed IG)
+    return [...filtered]
+      .sort((a, b) => new Date(b.fecha_publicacion || 0) - new Date(a.fecha_publicacion || 0))
+      .slice(0, 9);
+  }, [storePosts, posts, filtros]);
 
   return (
     <>
@@ -25,7 +41,7 @@ export default function FeedMockup({ posts = [], baseUrl = '' }) {
             </span>
             <div>
               <h3 className="text-sm font-semibold text-ink-900">Mockup de feed</h3>
-              <p className="text-xs text-ink-500">{posts.length} publicaciones recientes</p>
+              <p className="text-xs text-ink-500">{displayPosts.length} publicaciones recientes</p>
             </div>
           </div>
           <span className="text-[10px] uppercase tracking-wider text-ink-400 font-medium">Vista previa</span>
@@ -33,7 +49,7 @@ export default function FeedMockup({ posts = [], baseUrl = '' }) {
 
         <div className="p-3">
           <div className="grid grid-cols-3 gap-1">
-            {posts.map((p) => {
+            {displayPosts.map((p) => {
               const cover = coverFor(p, baseUrl);
               return (
                 <button
@@ -85,7 +101,7 @@ export default function FeedMockup({ posts = [], baseUrl = '' }) {
               );
             })}
 
-            {posts.length === 0 && (
+            {displayPosts.length === 0 && (
               <p className="col-span-3 text-center text-sm text-ink-500 py-12">
                 Aún no hay publicaciones para previsualizar.
               </p>
@@ -131,16 +147,24 @@ export default function FeedMockup({ posts = [], baseUrl = '' }) {
 }
 
 /** Resuelve la URL de la miniatura: primero `diseno_final`, luego primera imagen de fondo. */
-function coverFor(post, baseUrl) {
-  if (post.diseno_final?.id) {
-    return `${baseUrl}/assets/${post.diseno_final.id}`;
+function coverFor(post) {
+  const disenoId = typeof post.diseno_final === 'object'
+    ? post.diseno_final?.id
+    : post.diseno_final;
+  if (disenoId) {
+    return `/api/assets/${disenoId}`;
   }
   const first = post.imagenes_fondo?.[0];
   if (!first) return null;
 
-  // Si es un objeto File-like { id }, construimos la URL de Directus.
+  // Si es un objeto File-like { id }, usamos el proxy autenticado.
   if (typeof first === 'object' && first.id) {
-    return `${baseUrl}/assets/${first.id}`;
+    return `/api/assets/${first.id}`;
   }
-  return String(first);
+  const s = String(first).trim();
+  // Si es un UUID de Directus sin http, pasamos por /api/assets/:id
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) {
+    return `/api/assets/${s}`;
+  }
+  return s;
 }

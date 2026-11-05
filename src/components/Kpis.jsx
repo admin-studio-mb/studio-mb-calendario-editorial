@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
 import { useStore } from '@nanostores/react';
-import { format, parseISO, isSameMonth, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { format, parseISO, isSameMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { publicacionesStore, cursorStore } from '../stores/publicaciones.js';
+import { publicacionesStore, cursorStore, filtrosStore } from '../stores/publicaciones.js';
 
 /**
- * Kpis — 4 tarjetas resumen que reaccionan al cursor del calendario.
+ * Kpis — 4 tarjetas resumen que reaccionan al cursor y al cliente filtrado.
  *
- * - Total: número de publicaciones de todos los tiempos.
+ * - Total: número de publicaciones de todos los tiempos (del cliente si hay filtro).
  * - Este mes: posts cuya fecha_publicacion cae en el mes del cursor.
  * - En revisión: posts en estado "revision" del mes del cursor.
  * - Aprobadas: posts en estado "aprobado" del mes del cursor.
@@ -15,22 +15,26 @@ import { publicacionesStore, cursorStore } from '../stores/publicaciones.js';
 export default function Kpis() {
   const publicaciones = useStore(publicacionesStore);
   const cursor = useStore(cursorStore);
+  const filtros = useStore(filtrosStore);
 
   const stats = useMemo(() => {
-    const total = publicaciones.length;
+    const list = filtros.clienteId
+      ? publicaciones.filter((p) => p.cliente_id === filtros.clienteId)
+      : publicaciones;
+    const total = list.length;
     let enMes = 0;
     let enRevision = 0;
     let aprobadas = 0;
-    for (const p of publicaciones) {
+    for (const p of list) {
       if (!p.fecha_publicacion) continue;
       const fecha = parseISO(p.fecha_publicacion);
       if (!isSameMonth(fecha, cursor)) continue;
       enMes++;
-      if (p.estado === 'revision') enRevision++;
-      else if (p.estado === 'aprobado') aprobadas++;
+      if (p.estado === 'revision' || p.estado === 'revision_diseno') enRevision++;
+      else if (p.estado === 'aprobado' || p.estado === 'publicado') aprobadas++;
     }
     return { total, enMes, enRevision, aprobadas };
-  }, [publicaciones, cursor]);
+  }, [publicaciones, cursor, filtros.clienteId]);
 
   const cursorLabel = format(cursor, "LLLL 'de' yyyy", { locale: es });
 

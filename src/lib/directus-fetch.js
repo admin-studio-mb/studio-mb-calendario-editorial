@@ -34,11 +34,28 @@ export async function directusFetch({ path, method = 'GET', token = null, body =
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(url.toString(), {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let res;
+  try {
+    res = await fetch(url.toString(), {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (err) {
+    console.error(`[directusFetch] Error de red hacia ${url.origin}${path}:`, err?.message ?? err);
+    return {
+      ok: false,
+      status: 502,
+      data: null,
+      raw: {
+        errors: [
+          {
+            message: `No se pudo conectar con Directus (${env.DIRECTUS_INTERNAL_URL}): ${err?.message ?? 'fetch failed'}`,
+          },
+        ],
+      },
+    };
+  }
 
   // Directus siempre devuelve JSON en sus endpoints REST.
   let payload = null;
@@ -71,11 +88,16 @@ export async function uploadFile(file, token) {
   const headers = {};
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(`${env.DIRECTUS_INTERNAL_URL}/files`, {
-    method: 'POST',
-    headers,
-    body: fd,
-  });
+  let res;
+  try {
+    res = await fetch(`${env.DIRECTUS_INTERNAL_URL}/files`, {
+      method: 'POST',
+      headers,
+      body: fd,
+    });
+  } catch (err) {
+    throw new Error(`No se pudo conectar con Directus para subir archivo (${env.DIRECTUS_INTERNAL_URL}): ${err?.message ?? 'fetch failed'}`);
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');

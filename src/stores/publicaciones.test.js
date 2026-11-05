@@ -36,12 +36,16 @@ describe('publicacionesStore', () => {
     expect(publicacionesStore.get()).toEqual([]);
   });
 
-  it('addPublicacion añade con _pending: false', () => {
+  it('addPublicacion añade respetando _pending (false por defecto)', () => {
     hydratePublicaciones(sample);
-    addPublicacion({ id: 'd', tipo_contenido: 'Nuevo', _pending: true });
+    addPublicacion({ id: 'd', tipo_contenido: 'Nuevo' });
     const pub = publicacionesStore.get().find((p) => p.id === 'd');
     expect(pub).toBeTruthy();
-    expect(pub._pending).toBe(false); // siempre lo resetea
+    expect(pub._pending).toBe(false);
+
+    addPublicacion({ id: 'tmp-1', tipo_contenido: 'Opt', _pending: true });
+    const opt = publicacionesStore.get().find((p) => p.id === 'tmp-1');
+    expect(opt._pending).toBe(true);
   });
 
   it('updatePublicacion reemplaza campos del id existente', () => {
@@ -88,7 +92,7 @@ describe('cursorStore', () => {
 
 describe('filtrosStore', () => {
   beforeEach(() => {
-    filtrosStore.set({ texto: '', estado: '', formato: '' });
+    filtrosStore.set({ texto: '', estado: '', formato: '', clienteId: '' });
   });
 
   it('valor inicial vacío', () => {
@@ -96,12 +100,13 @@ describe('filtrosStore', () => {
     expect(f.texto).toBe('');
     expect(f.estado).toBe('');
     expect(f.formato).toBe('');
+    expect(f.clienteId).toBe('');
   });
 
   it('set reemplaza totalmente', () => {
     // El caller (Calendar.jsx) hace el merge con spread antes de llamar a set.
-    filtrosStore.set({ texto: 'promo', estado: 'aprobado', formato: 'post' });
-    expect(filtrosStore.get()).toEqual({ texto: 'promo', estado: 'aprobado', formato: 'post' });
+    filtrosStore.set({ texto: 'promo', estado: 'aprobado', formato: 'post', clienteId: 'cli-1' });
+    expect(filtrosStore.get()).toEqual({ texto: 'promo', estado: 'aprobado', formato: 'post', clienteId: 'cli-1' });
   });
 
   it('merge manual antes de set conserva campos no patcheados', () => {
@@ -111,5 +116,6 @@ describe('filtrosStore', () => {
     expect(f.texto).toBe('cafe');
     expect(f.estado).toBe('');
     expect(f.formato).toBe('');
+    expect(f.clienteId).toBe('');
   });
 });

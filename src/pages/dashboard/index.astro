@@ -97,5 +97,5 @@ const apiBase = `${Astro.url.protocol}//${Astro.url.host}`;
     )}
   </section>
 
-  <EditPostModal client:load clientes={clientes} apiBase={apiBase} />
+  <EditPostModal client:load clientes={clientes} currentUser={user} apiBase={apiBase} />
 </Layout>

@@ -4,7 +4,7 @@ import DateField from './DateField.jsx';
 import TimePicker from './TimePicker.jsx';
 
 const FORMATOS = ['post', 'reel', 'carrusel', 'story'];
-const ESTADOS = ['borrador', 'revision', 'aprobado'];
+const ESTADOS = ['borrador', 'revision', 'en_diseno', 'revision_diseno', 'aprobado', 'publicado'];
 
 /** Title Case con soporte de acentos: 'post' → 'Post', 'revision' → 'Revisión'. */
 const LABEL_OVERRIDES = {
@@ -13,8 +13,11 @@ const LABEL_OVERRIDES = {
   carrusel: 'Carrusel',
   story: 'Story',
   borrador: 'Borrador',
-  revision: 'Revisión',
+  revision: 'Revisión texto',
+  en_diseno: 'En diseño',
+  revision_diseno: 'Revisión diseño',
   aprobado: 'Aprobado',
+  publicado: 'Publicado',
 };
 
 // Componente reutilizable DEFINIDO FUERA del componente principal.
@@ -84,6 +87,7 @@ export default function PostForm({
   );
   const [estado, setEstado] = useState(initial.estado ?? 'borrador');
   const [disenoFile, setDisenoFile] = useState(null);
+  const [removeDiseno, setRemoveDiseno] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
@@ -142,7 +146,10 @@ export default function PostForm({
 
     const isEdit = Boolean(initial.id);
 
-    let disenoFinalId = initial.diseno_final?.id ?? null;
+    const existingDisenoId = typeof initial.diseno_final === 'object'
+      ? (initial.diseno_final?.id ?? null)
+      : (initial.diseno_final ?? null);
+    let disenoFinalId = removeDiseno ? null : existingDisenoId;
     if (disenoFile && uploadFile) {
       try {
         const uploaded = await uploadFile(disenoFile);
@@ -177,7 +184,8 @@ export default function PostForm({
       // publicación directamente vía el endpoint SSR.
       if (apiBase) {
         // 1) Optimistic: añadimos/actualizamos en el store con un placeholder.
-        const tempId = isEdit ? `tmp-${initial.id}` : `tmp-${Date.now()}`;
+        const tempId = isEdit ? initial.id : `tmp-${Date.now()}`;
+        const prevSnapshot = isEdit ? { ...initial } : null;
         const optimistic = {
           id: tempId,
           ...(isEdit ? initial : {}),
@@ -196,7 +204,7 @@ export default function PostForm({
           if (disenoFile) {
             const fd = new FormData();
             fd.append('file', disenoFile);
-            const upRes = await fetch(`${apiBase}/api/files`, { method: 'POST', body: fd });
+            const upRes = await fetch('/api/files', { method: 'POST', body: fd });
             if (!upRes.ok) throw new Error(`Upload falló (${upRes.status})`);
             const upJson = await upRes.json();
             payload.diseno_final = upJson?.id ?? null;
@@ -204,8 +212,8 @@ export default function PostForm({
 
           // 3) POST (crear) o PATCH (editar) según modo.
           const url = isEdit
-            ? `${apiBase}/api/publicaciones/${initial.id}`
-            : `${apiBase}/api/publicaciones`;
+            ? `/api/publicaciones/${initial.id}`
+            : '/api/publicaciones';
           const method = isEdit ? 'PATCH' : 'POST';
 
           const res = await fetch(url, {
@@ -221,14 +229,15 @@ export default function PostForm({
 
           // 4) Reemplazamos el placeholder por la versión real del server.
           if (isEdit) {
-            removePublicacion(tempId);
             if (saved && saved.id) {
-              updatePublicacion(saved);
+              updatePublicacion({ ...saved, _pending: false });
+            } else {
+              updatePublicacion({ ...optimistic, _pending: false });
             }
           } else {
             removePublicacion(tempId);
             if (saved && saved.id) {
-              addPublicacion(saved);
+              addPublicacion({ ...saved, _pending: false });
             }
           }
           setInfo(isEdit ? '✓ Publicación actualizada' : '✓ Publicación guardada');
@@ -250,13 +259,19 @@ export default function PostForm({
             setFecha(null);
             setHora('');
             setDisenoFile(null);
+            setRemoveDiseno(false);
           } else {
             setDisenoFile(null);
+            setRemoveDiseno(false);
           }
           return;
         } catch (err) {
-          // 5) Rollback: quitamos el placeholder y avisamos al usuario.
-          removePublicacion(tempId);
+          // 5) Rollback: restauramos el estado anterior o quitamos el placeholder.
+          if (isEdit && prevSnapshot) {
+            updatePublicacion({ ...prevSnapshot, _pending: false });
+          } else {
+            removePublicacion(tempId);
+          }
           setError(err.message ?? 'Error guardando.');
           setInfo('');
           return;
@@ -400,12 +415,52 @@ export default function PostForm({
             id="diseno"
             type="file"
             accept="image/*,application/pdf"
-            onChange={(e) => setDisenoFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => {
+              setDisenoFile(e.target.files?.[0] ?? null);
+              setRemoveDiseno(false);
+            }}
             className="block w-full text-sm text-ink-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:text-white hover:file:bg-brand-700 file:cursor-pointer"
           />
-          {initial.diseno_final?.id && (
-            <p className="text-xs text-ink-500 mt-1">Archivo actual: {initial.diseno_final.id}</p>
-          )}
+          {(() => {
+            const currentId = typeof initial.diseno_final === 'object'
+              ? initial.diseno_final?.id
+              : initial.diseno_final;
+            if (!currentId || removeDiseno || disenoFile) return null;
+            return (
+              <div className="mt-2 flex items-center gap-3 p-2 rounded-lg border border-ink-100 bg-ink-50/50">
+                <a
+                  href={`/api/assets/${currentId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-12 h-12 rounded-md overflow-hidden border border-ink-200 bg-white shrink-0 flex items-center justify-center"
+                >
+                  <img
+                    src={`/api/assets/${currentId}`}
+                    alt="Diseño actual"
+                    className="w-full h-full object-cover"
+                  />
+                </a>
+                <div className="flex-1 min-w-0">
+                  <a
+                    href={`/api/assets/${currentId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-medium text-brand-600 hover:underline block truncate"
+                  >
+                    Ver diseño subido ↗
+                  </a>
+                  <p className="text-[11px] text-ink-400 font-mono truncate">{String(currentId).slice(0, 12)}…</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRemoveDiseno(true)}
+                  className="px-2 py-1 rounded text-xs font-medium text-red-600 hover:bg-red-50 transition"
+                >
+                  Quitar
+                </button>
+              </div>
+            );
+          })()}
         </Field>
       </div>
 
