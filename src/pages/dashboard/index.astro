@@ -46,17 +46,7 @@ const enMes = publicaciones.filter((p) => p.fecha_publicacion >= startOfMonth &&
 const pendientesRevision = publicaciones.filter((p) => p.estado === 'revision').length;
 const aprobadas = publicaciones.filter((p) => p.estado === 'aprobado').length;
 
-let initialComentarios = [];
-if (publicaciones[0]) {
-  const res = await fetch(
-    `${baseUrl}/items/comentarios?filter=${encodeURIComponent(JSON.stringify({ publicacion_id: { _eq: publicaciones[0].id } }))}&sort=fecha_creacion&limit=200&t=${Date.now()}`,
-    { headers: baseHeaders, cache: 'no-store' },
-  );
-  if (res.ok) {
-    initialComentarios = (await res.json()).data ?? [];
-  }
-}
-
+// Comentarios: los carga el cliente on-demand según el post seleccionado.
 const initialFeed = publicaciones.slice(0, 9);
 const apiBase = `${Astro.url.protocol}//${Astro.url.host}`;
 ---
@@ -88,15 +78,11 @@ const apiBase = `${Astro.url.protocol}//${Astro.url.host}`;
 
     <aside class="space-y-4 lg:space-y-6 order-2 lg:order-3">
       <PostForm client:load clientes={clientes} apiBase={apiBase} />
-      {publicaciones[0] && (
-        <CommentThread
-          client:visible
-          publicacionId={publicaciones[0].id}
-          initial={initialComentarios}
-          currentUser={user}
-          apiBase={apiBase}
-        />
-      )}
+      <CommentThread
+        client:visible
+        currentUser={user}
+        apiBase={apiBase}
+      />
     </aside>
 
     {/* FeedMockup en móvil: abajo del todo */}

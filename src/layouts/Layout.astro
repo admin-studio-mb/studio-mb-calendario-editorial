@@ -30,7 +30,7 @@ function initials(u) {
     <aside
       id="app-sidebar"
       data-collapsed="false"
-      class="fixed md:sticky top-0 left-0 z-40 md:z-auto w-64 shrink-0 flex-col bg-white border-r border-ink-100 h-screen transition-[width,transform] duration-200 ease-out -translate-x-full md:translate-x-0"
+      class="fixed md:sticky top-0 left-0 z-40 md:z-auto w-64 shrink-0 flex flex-col bg-white border-r border-ink-100 h-screen transition-[width,transform] duration-200 ease-out -translate-x-full md:translate-x-0"
     >
       {/* Cabecera: burger a la izquierda, logo + nombre abajo */}
       <div class="px-4 pt-4 pb-2 flex justify-start" id="sidebar-burger-wrap">
@@ -93,10 +93,9 @@ function initials(u) {
         </span>
       </nav>
 
-      {/* Botón Dark/Light mode + logout al fondo. */}
-      <div class="p-4 border-t border-ink-100 space-y-2">
-        <div class="flex items-center gap-2">
-          {/* Toggle dark/light — siempre visible, incluso colapsado */}
+      {/* Botón Dark/Light + Logout + Avatar al fondo (siempre visibles, también colapsado) */}
+      <div class="p-3 border-t border-ink-100 space-y-2">
+        <div class="flex items-center gap-1 sidebar-actions">
           <button
             id="theme-toggle"
             type="button"
@@ -104,43 +103,43 @@ function initials(u) {
             aria-label="Cambiar tema"
             class="p-2 rounded-md text-ink-500 hover:text-brand-600 hover:bg-brand-50 transition shrink-0"
           >
-            {/* Sol (en modo claro: pulsas para ir a oscuro) */}
+            {/* Sol (modo claro) */}
             <svg class="w-5 h-5 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="5"/>
               <path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>
             </svg>
-            {/* Luna (en modo oscuro: pulsas para ir a claro) */}
+            {/* Luna (modo oscuro) */}
             <svg class="w-5 h-5 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
             </svg>
           </button>
-          {user && (
-            <>
-              <div class="flex-1 min-w-0 sidebar-text flex items-center gap-3">
-                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-white text-xs font-semibold flex items-center justify-center shadow-sm shrink-0">
-                  {initials(user)}
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-ink-800 truncate">
-                    {user.first_name} {user.last_name}
-                  </p>
-                  <p class="text-xs text-ink-400 truncate">{user.email}</p>
-                </div>
-              </div>
-              <form method="POST" action="/api/auth/logout" class="shrink-0">
-                <button
-                  type="submit"
-                  title="Cerrar sesión"
-                  class="p-1.5 rounded-md text-ink-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition"
-                >
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
-                  </svg>
-                </button>
-              </form>
-            </>
-          )}
+          <div class="flex-1"></div>
         </div>
+        {user && (
+          <div class="sidebar-text flex items-center gap-3 px-1">
+            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-white text-xs font-semibold flex items-center justify-center shadow-sm shrink-0">
+              {initials(user)}
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-ink-800 truncate">
+                {user.first_name} {user.last_name}
+              </p>
+              <p class="text-xs text-ink-400 truncate">{user.email}</p>
+            </div>
+            <form method="POST" action="/api/auth/logout" class="shrink-0">
+              <button
+                type="submit"
+                title="Cerrar sesión"
+                aria-label="Cerrar sesión"
+                class="p-1.5 rounded-md text-ink-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition"
+              >
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+                </svg>
+              </button>
+            </form>
+          </div>
+        )}
       </div>
     </aside>
 
@@ -221,6 +220,13 @@ function initials(u) {
   [data-collapsed="true"] .sidebar-brand {
     justify-content: center;
   }
+  /* Cuando colapsa: theme button se centra solo en la barra de acciones. */
+  [data-collapsed="true"] .sidebar-actions {
+    justify-content: center;
+  }
+  [data-collapsed="true"] .sidebar-actions > div.flex-1 {
+    display: none;
+  }
 </style>
 
 <script is:inline>
@@ -254,7 +260,9 @@ function initials(u) {
           overlay.style.pointerEvents = open ? 'auto' : 'none';
         }
       } else {
-        const next = !open;
+        // En desktop toggleamos el estado actual.
+        const isCollapsed = sidebar.getAttribute('data-collapsed') === 'true';
+        const next = !isCollapsed;
         sidebar.setAttribute('data-collapsed', next ? 'true' : 'false');
         localStorage.setItem('studio-mb:sidebar-collapsed', next ? 'true' : 'false');
       }

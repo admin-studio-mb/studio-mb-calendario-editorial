@@ -56,6 +56,15 @@ export const cursorStore = atom(new Date());
 export const filtrosStore = atom({ texto: '', estado: '', formato: '' });
 
 /**
+ * ID del post seleccionado en el calendario. Lo usan Calendar (resaltar la
+ * pill), CommentThread (mostrar el hilo) y EditPostModal (que ya lo recibe
+ * vía evento 'studio-mb:edit-post').
+ *
+ * @type {import('nanostores').WritableAtom<string|null>}
+ */
+export const selectedPostIdStore = atom(null);
+
+/**
  * Llamado desde el SSR (dashboard/index.astro) tras hidratar la página.
  * Reemplaza el contenido del store con el array de publicaciones que vino
  * del backend.
@@ -108,4 +117,6 @@ export function removePublicacion(id) {
  */
 export function resetPublicaciones() {
   publicacionesStore.set([]);
+  selectedPostIdStore.set(null);
+  filtrosStore.set({ texto: '', estado: '', formato: '' });
 }

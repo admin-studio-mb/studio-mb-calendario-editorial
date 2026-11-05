@@ -10,14 +10,18 @@
 
 import { useState, useEffect } from 'react';
 import PostForm from './PostForm.jsx';
-import { removePublicacion } from '../stores/publicaciones.js';
+import { removePublicacion, selectedPostIdStore } from '../stores/publicaciones.js';
 
 export default function EditPostModal({ clientes = [], apiBase = '' }) {
   const [post, setPost] = useState(null);
 
   useEffect(() => {
     function onEdit(ev) {
-      setPost(ev.detail ?? null);
+      const p = ev.detail ?? null;
+      setPost(p);
+      // Mantener selectedPostId sincronizado para que CommentThread sepa qué
+      // publicación está abierta.
+      selectedPostIdStore.set(p?.id ?? null);
     }
     window.addEventListener('studio-mb:edit-post', onEdit);
     return () => window.removeEventListener('studio-mb:edit-post', onEdit);
@@ -25,6 +29,8 @@ export default function EditPostModal({ clientes = [], apiBase = '' }) {
 
   function close() {
     setPost(null);
+    // No limpiamos selectedPostId: al cerrar, queremos que CommentThread siga
+    // mostrando el último post abierto (útil para mantener contexto).
   }
 
   async function handleDelete() {

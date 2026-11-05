@@ -6,11 +6,12 @@ import {
   parseISO,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { publicacionesStore, cursorStore, filtrosStore, hydratePublicaciones, updatePublicacion } from '../stores/publicaciones.js';
+import { publicacionesStore, cursorStore, filtrosStore, selectedPostIdStore, hydratePublicaciones, updatePublicacion } from '../stores/publicaciones.js';
 import WeekView from './WeekView.jsx';
 import ListView from './ListView.jsx';
 import DayView from './DayView.jsx';
 import PostPill from './PostPill.jsx';
+import { publicacionesToCsv, downloadCsv } from '../lib/csv.js';
 
 /**
  * Calendar — vista Mes / Semana / Lista.
@@ -37,12 +38,15 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], api
   });
   const cursor = useStore(cursorStore);
   const filtros = useStore(filtrosStore);
+  const selectedPostId = useStore(selectedPostIdStore);
+  const setSelectedPostId = (id) => selectedPostIdStore.set(id);
   const setCursor = (updater) => {
     const current = cursorStore.get();
     const next = typeof updater === 'function' ? updater(current) : updater;
     cursorStore.set(next);
   };
   const [clienteFiltro, setClienteFiltro] = useState(null);
+  // selectedPostId ahora vive en selectedPostIdStore (ver imports).
 
   function setFiltros(patch) {
     filtrosStore.set({ ...filtrosStore.get(), ...patch });
@@ -50,7 +54,6 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], api
   function clearFiltros() {
     filtrosStore.set({ texto: '', estado: '', formato: '' });
   }
-  const [selectedPostId, setSelectedPostId] = useState(null);
   const [draggingId, setDraggingId] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
 
@@ -325,13 +328,34 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], api
                 Limpiar
               </button>
             )}
+
+            {/* Exportar a CSV */}
+            <button
+              type="button"
+              onClick={() => {
+                const nombreMap = new Map();
+                for (const c of clientes) nombreMap.set(c.id, c.nombre);
+                const csv = publicacionesToCsv(publicacionesFiltradas, nombreMap);
+                const yyyy = cursor.getFullYear();
+                const mm = String(cursor.getMonth() + 1).padStart(2, '0');
+                downloadCsv(csv, `publicaciones-${yyyy}-${mm}.csv`);
+              }}
+              disabled={publicacionesFiltradas.length === 0}
+              title="Descargar mes actual como CSV"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-ink-700 hover:bg-ink-100 border border-ink-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+              </svg>
+              CSV
+            </button>
           </div>
         </header>
       </section>
 
       {/* Vista activa */}
       {view === 'month' && (
-        <section className="card overflow-hidden">
+        <section className="card overflow-hidden mb-4">
           <header className="flex items-center justify-between px-5 py-4 border-b border-ink-100 gap-3">
             <div className="flex items-baseline gap-2">
               <h2 className="text-lg font-bold text-ink-900 capitalize">
