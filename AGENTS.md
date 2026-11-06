@@ -558,3 +558,4 @@ gh repo view admin-studio-mb/studio-mb-calendario-editorial
 7. **Nunca uses `toISOString()` para fechas de publicación** ni `parseISO()` para leerlas — pasa por `src/lib/fecha.js` (§6.8).
 8. **Toda mutación en Directus va seguida de `clearDirectusCache()`** (§6.7).
 9. **Verifica con datos, no con suposiciones**: los scripts de `scripts/` auditan el estado real de Directus contra la API antes de dar por bueno cualquier cambio.
+10. **Checkpoint obligatorio en tareas largas**: detente y reporta (qué llevas hecho y qué falta) cada **~15 minutos o ~15 llamadas de herramientas**, lo que ocurra antes. Nunca encadenes decenas de acciones en silencio; el usuario debe poder intervenir. Si vas a lanzar un bloque grande de verificación, anúncialo primero y espera confirmación. Antes de redescubrir algo, mira si ya está documentado en este archivo (§6).
