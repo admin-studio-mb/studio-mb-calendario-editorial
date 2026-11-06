@@ -28,6 +28,11 @@ export default function Calendar({ initialPublicaciones = [], clientes = [] }) {
   }, [initialPublicaciones]);
 
   const publicaciones = useStore(publicacionesStore);
+  // `mounted` evita el hydration mismatch del botón CSV: en SSR y en el
+  // primer render del cliente usamos `initialPublicaciones` (idénticos);
+  // tras montar pasamos al store reactivo.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   // Detectamos móvil al montar: 'list' por defecto en pantallas pequeñas.
   const [view, setView] = useState(() => {
     if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
@@ -348,7 +353,9 @@ export default function Calendar({ initialPublicaciones = [], clientes = [] }) {
                 const mm = String(cursor.getMonth() + 1).padStart(2, '0');
                 downloadCsv(csv, `publicaciones-${yyyy}-${mm}.csv`);
               }}
-              disabled={publicacionesFiltradas.length === 0}
+              disabled={mounted
+                ? publicacionesFiltradas.length === 0
+                : initialPublicaciones.length === 0}
               title="Descargar mes actual como CSV"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-ink-700 hover:bg-ink-100 border border-ink-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
