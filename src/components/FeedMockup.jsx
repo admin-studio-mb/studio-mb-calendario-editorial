@@ -1,13 +1,17 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '@nanostores/react';
-import { publicacionesStore, filtrosStore } from '../stores/publicaciones.js';
+import { publicacionesStore, filtrosStore, cursorStore } from '../stores/publicaciones.js';
 import { parseFechaPublicacion } from '../lib/fecha.js';
 
 /**
- * FeedMockup — renderiza un grid 3 columnas al estilo Instagram con las
- * publicaciones del store reactivo (o `posts` como fallback inicial).
- * La imagen mostrada es `diseno_final` o, si falta, la primera de `imagenes_fondo`.
- * El clic abre un modal con detalle.
+ * FeedMockup — grid 3 columnas estilo Instagram con las publicaciones del
+ * mes visible en el calendario (cursorStore). Solo entran posts que tengan
+ * FOTO FINAL (`diseno_final`): es la vista "así quedará este mes" que ve
+ * el cliente tras el diseño.
+ *
+ * Orden: la foto del último día del mes va arriba a la izquierda (la
+ * primera), así que se ordena por fecha descendente. Las celdas van en
+ * formato 3:4.
  *
  * Props:
  *   - posts: Array inicial opcional (hidratado por SSR).
@@ -18,22 +22,32 @@ import { parseFechaPublicacion } from '../lib/fecha.js';
 export default function FeedMockup({ posts = [] }) {
   const storePosts = useStore(publicacionesStore);
   const filtros = useStore(filtrosStore);
+  const cursor = useStore(cursorStore);
   const [open, setOpen] = useState(null);
 
   const displayPosts = useMemo(() => {
     const source = storePosts.length > 0 ? storePosts : posts;
+    const year = cursor.getFullYear();
+    const month = cursor.getMonth();
     const filtered = source.filter((p) => {
+      // Solo posts con foto final.
+      if (!disenoIdOf(p)) return false;
+      // Solo del mes visible en el calendario.
+      const d = parseFechaPublicacion(p.fecha_publicacion);
+      if (!d || d.getFullYear() !== year || d.getMonth() !== month) return false;
+      // Respetamos los filtros compartidos del calendario.
       if (filtros.clienteId && p.cliente_id !== filtros.clienteId) return false;
       if (filtros.estado && p.estado !== filtros.estado) return false;
       if (filtros.formato && p.formato !== filtros.formato) return false;
       return true;
     });
-    // Ordenamos de más reciente a más antigua por fecha_publicacion (estilo feed IG)
+    // Último día del mes primero (arriba a la izquierda).
     return [...filtered]
       .sort((a, b) => (parseFechaPublicacion(b.fecha_publicacion)?.getTime() ?? 0)
-        - (parseFechaPublicacion(a.fecha_publicacion)?.getTime() ?? 0))
-      .slice(0, 9);
-  }, [storePosts, posts, filtros]);
+        - (parseFechaPublicacion(a.fecha_publicacion)?.getTime() ?? 0));
+  }, [storePosts, posts, filtros, cursor]);
+
+  const mesLabel = cursor.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
 
   return (
     <>
@@ -44,8 +58,8 @@ export default function FeedMockup({ posts = [] }) {
               IG
             </span>
             <div>
-              <h3 className="text-sm font-semibold text-ink-900">Mockup de feed</h3>
-              <p className="text-xs text-ink-500">{displayPosts.length} publicaciones recientes</p>
+              <h3 className="text-sm font-semibold text-ink-900 capitalize">Mockup de feed · {mesLabel}</h3>
+              <p className="text-xs text-ink-500">{displayPosts.length} posts con diseño</p>
             </div>
           </div>
           <span className="text-[10px] uppercase tracking-wider text-ink-400 font-medium">Vista previa</span>
@@ -54,34 +68,27 @@ export default function FeedMockup({ posts = [] }) {
         <div className="p-3">
           <div className="grid grid-cols-3 gap-1">
             {displayPosts.map((p) => {
-              const cover = coverFor(p);
+              const cover = `/api/assets/${disenoIdOf(p)}`;
               return (
                 <button
                   key={p.id}
                   type="button"
                   onClick={() => setOpen(p)}
-                  className="relative aspect-square bg-ink-100 overflow-hidden group"
+                  className="relative aspect-[3/4] bg-ink-100 overflow-hidden group"
                   aria-label={`Abrir ${p.tipo_contenido ?? 'publicación'}`}
                 >
-                  {cover ? (
-                    <img
-                      src={cover}
-                      alt=""
-                      loading="lazy"
-                      className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-ink-400 text-xs">
-                      Sin imagen
-                    </div>
-                  )}
+                  <img
+                    src={cover}
+                    alt=""
+                    loading="lazy"
+                    className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
+                  />
 
                   {/* Hover overlay */}
                   <span className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
                     <span className="text-white text-xs font-semibold flex items-center gap-3">
                       <span className="flex items-center gap-1">
                         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                        {p.copywriting ? '·' : ''}
                       </span>
                       <span className="flex items-center gap-1">
                         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -107,7 +114,9 @@ export default function FeedMockup({ posts = [] }) {
 
             {displayPosts.length === 0 && (
               <p className="col-span-3 text-center text-sm text-ink-500 py-12">
-                Aún no hay publicaciones para previsualizar.
+                Este mes aún no hay posts con foto final.
+                <br />
+                <span className="text-xs text-ink-400">Sube el diseño final desde «Editar publicación» y aparecerá aquí.</span>
               </p>
             )}
           </div>
@@ -124,9 +133,11 @@ export default function FeedMockup({ posts = [] }) {
             className="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-pop"
             onClick={(e) => e.stopPropagation()}
           >
-            {coverFor(open) && (
-              <img src={coverFor(open)} alt="" className="w-full aspect-square object-cover" />
-            )}
+            <img
+              src={`/api/assets/${disenoIdOf(open)}`}
+              alt=""
+              className="w-full aspect-[3/4] object-cover"
+            />
             <div className="p-5 space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 font-medium uppercase tracking-wider">
@@ -150,25 +161,10 @@ export default function FeedMockup({ posts = [] }) {
   );
 }
 
-/** Resuelve la URL de la miniatura: primero `diseno_final`, luego primera imagen de fondo. */
-function coverFor(post) {
-  const disenoId = typeof post.diseno_final === 'object'
+/** Resuelve el id de la foto final (diseno_final) o null si no hay. */
+function disenoIdOf(post) {
+  const id = typeof post.diseno_final === 'object'
     ? post.diseno_final?.id
     : post.diseno_final;
-  if (disenoId) {
-    return `/api/assets/${disenoId}`;
-  }
-  const first = post.imagenes_fondo?.[0];
-  if (!first) return null;
-
-  // Si es un objeto File-like { id }, usamos el proxy autenticado.
-  if (typeof first === 'object' && first.id) {
-    return `/api/assets/${first.id}`;
-  }
-  const s = String(first).trim();
-  // Si es un UUID de Directus sin http, pasamos por /api/assets/:id
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) {
-    return `/api/assets/${s}`;
-  }
-  return s;
+  return id || null;
 }

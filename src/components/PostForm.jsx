@@ -47,6 +47,63 @@ function titleCase(s) {
   return s.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1));
 }
 
+// ── Slides (repeater) ────────────────────────────────────────────────────────
+// Cada slide: { key, texto, imagen, file, preview }
+//   - `imagen`: valor persistido (uuid de directus_files o URL legacy).
+//   - `file`: File nuevo elegido en el input, aún no subido.
+//   - `preview`: object URL del File (para <img>); se revoca al quitar/reemplazar.
+// El campo JSON `imagenes_fondo` de Directus pasa a guardar [{ texto, imagen }].
+
+let slideKeySeq = 0;
+function newSlideKey() {
+  slideKeySeq += 1;
+  return `slide-${Date.now()}-${slideKeySeq}`;
+}
+
+function emptySlide() {
+  return { key: newSlideKey(), texto: '', imagen: null, file: null, preview: null };
+}
+
+/**
+ * Convierte los datos persistidos (legacy o nuevos) a slides del repeater.
+ *   - imagenes_fondo nuevo:  [{ texto, imagen }]  → igual.
+ *   - imagenes_fondo legacy: ['url', 'uuid']      → slides sin texto.
+ *   - textos_slides legacy:  textarea multilínea  → un slide por línea.
+ */
+function normalizeSlides(initial) {
+  const raw = Array.isArray(initial.imagenes_fondo) ? initial.imagenes_fondo : [];
+  const slides = raw.map((item) => {
+    if (item && typeof item === 'object') {
+      return { key: newSlideKey(), texto: item.texto ?? '', imagen: item.imagen ?? null, file: null, preview: null };
+    }
+    return { key: newSlideKey(), texto: '', imagen: item ?? null, file: null, preview: null };
+  });
+  if (slides.length === 0 && initial.textos_slides) {
+    String(initial.textos_slides)
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .forEach((linea) => slides.push({ key: newSlideKey(), texto: linea, imagen: null, file: null, preview: null }));
+  }
+  if (slides.length === 0) slides.push(emptySlide());
+  return slides;
+}
+
+/** URL de vista previa de un slide (object URL, proxy autenticado o URL directa). */
+function previewOf(slide) {
+  if (slide.preview) return slide.preview;
+  if (!slide.imagen) return null;
+  const s = String(slide.imagen).trim();
+  if (/^https?:\/\//i.test(s)) return s;
+  return `/api/assets/${s}`;
+}
+
+function revokePreview(slide) {
+  if (slide.preview && slide.preview.startsWith('blob:')) {
+    URL.revokeObjectURL(slide.preview);
+  }
+}
+
 /**
  * PostForm — formulario controlado para crear/editar una publicación.
  *
@@ -55,27 +112,27 @@ function titleCase(s) {
  *   - initial:  objeto publicación (o {} para creación).
  *   - onCancel: () => void
  *   - onSubmitted: (saved) => void  → se avisa tras guardar correctamente.
- *   - uploadFile(file): Promise<{ id }>  → helper opcional para subir el diseño.
  *
  * Notas de comportamiento:
  *   - `tipo_contenido` se carga dinámicamente a partir del cliente elegido.
- *   - `imagenes_fondo` se modela como JSON con array de URLs o IDs.
- *   - `diseno_final` se sube como File a Directus (campo Files).
+ *   - Los slides (texto + foto por slide) se guardan en `imagenes_fondo`
+ *     como JSON [{ texto, imagen }]. `textos_slides` queda como campo legacy
+ *     y se limpia (null) al guardar.
+ *   - `diseno_final` (foto final del mes) SOLO se gestiona en edición: una
+ *     publicación nueva debe pasar antes por revisión y diseño.
  */
 export default function PostForm({
   clientes = [],
   initial = {},
   onCancel,
   onSubmitted,
-  uploadFile,
 }) {
   const [clienteId, setClienteId] = useState(initial.cliente_id ?? clientes[0]?.id ?? '');
   const [tipo, setTipo] = useState(initial.tipo_contenido ?? '');
   const [formato, setFormato] = useState(initial.formato ?? 'post');
   const [copywriting, setCopywriting] = useState(initial.copywriting ?? '');
   const [hashtags, setHashtags] = useState((initial.hashtags ?? []).join(', '));
-  const [textosSlides, setTextosSlides] = useState(initial.textos_slides ?? '');
-  const [imagenes, setImagenes] = useState((initial.imagenes_fondo ?? []).join('\n'));
+  const [slides, setSlides] = useState(() => normalizeSlides(initial));
   // Fecha (Date) y hora ('HH:mm') gestionados por separado.
   const initialDate = parseFechaPublicacion(initial.fecha_publicacion);
   const [fecha, setFecha] = useState(initialDate);
@@ -90,6 +147,8 @@ export default function PostForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
+
+  const isEdit = Boolean(initial.id);
 
   const cliente = useMemo(
     () => clientes.find((c) => c.id === clienteId) ?? null,
@@ -135,6 +194,41 @@ export default function PostForm({
     return () => window.removeEventListener('studio-mb:new-post', onNew);
   }, []);
 
+  // ── Handlers del repeater de slides ─────────────────────────────────────
+  function addSlide() {
+    setSlides((prev) => [...prev, emptySlide()]);
+  }
+
+  function removeSlide(slide) {
+    revokePreview(slide);
+    setSlides((prev) => prev.filter((s) => s.key !== slide.key));
+  }
+
+  function setSlideTexto(key, texto) {
+    setSlides((prev) => prev.map((s) => (s.key === key ? { ...s, texto } : s)));
+  }
+
+  function setSlideFile(key, file) {
+    setSlides((prev) =>
+      prev.map((s) => {
+        if (s.key !== key) return s;
+        revokePreview(s);
+        const preview = file ? URL.createObjectURL(file) : null;
+        return { ...s, file, preview, imagen: file ? null : s.imagen };
+      }),
+    );
+  }
+
+  function clearSlideImagen(key) {
+    setSlides((prev) =>
+      prev.map((s) => {
+        if (s.key !== key) return s;
+        revokePreview(s);
+        return { ...s, file: null, preview: null, imagen: null };
+      }),
+    );
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
@@ -143,20 +237,9 @@ export default function PostForm({
     if (!fecha) return setError('Indica una fecha de publicación.');
     if (!hora) return setError('Indica una hora de publicación.');
 
-    const isEdit = Boolean(initial.id);
-
     const existingDisenoId = typeof initial.diseno_final === 'object'
       ? (initial.diseno_final?.id ?? null)
       : (initial.diseno_final ?? null);
-    let disenoFinalId = removeDiseno ? null : existingDisenoId;
-    if (disenoFile && uploadFile) {
-      try {
-        const uploaded = await uploadFile(disenoFile);
-        disenoFinalId = uploaded?.id ?? disenoFinalId;
-      } catch (err) {
-        return setError(`Subida fallida: ${err.message}`);
-      }
-    }
 
     const payload = {
       cliente_id: clienteId,
@@ -164,8 +247,8 @@ export default function PostForm({
       formato,
       copywriting,
       hashtags: hashtags.split(',').map((t) => t.trim()).filter(Boolean),
-      textos_slides: textosSlides,
-      imagenes_fondo: imagenes.split('\n').map((s) => s.trim()).filter(Boolean),
+      // Legacy: al guardar con el repeater, el textarea viejo queda limpio.
+      textos_slides: null,
       fecha_publicacion: (() => {
         if (!fecha) return null;
         const [h, m] = hora.split(':').map(Number);
@@ -177,12 +260,29 @@ export default function PostForm({
         return toISOlocal(d);
       })(),
       estado,
-      diseno_final: disenoFinalId,
+      diseno_final: removeDiseno ? null : existingDisenoId,
     };
 
     try {
       setSubmitting(true);
-      // 1) Optimistic: añadimos/actualizamos en el store con un placeholder.
+      // 1) Subimos las fotos nuevas de los slides ANTES de tocar el store,
+      //    así el rollback es trivial si alguna subida falla.
+      const slidesPersistidos = await Promise.all(
+        slides.map(async (s) => {
+          if (!s.file) {
+            return { texto: (s.texto ?? '').trim(), imagen: s.imagen || null };
+          }
+          const fd = new FormData();
+          fd.append('file', s.file);
+          const upRes = await fetch('/api/files', { method: 'POST', body: fd });
+          if (!upRes.ok) throw new Error(`Subida de foto de slide falló (${upRes.status})`);
+          const upJson = await upRes.json();
+          return { texto: (s.texto ?? '').trim(), imagen: upJson?.id ?? null };
+        }),
+      );
+      payload.imagenes_fondo = slidesPersistidos.filter((s) => s.texto || s.imagen);
+
+      // 2) Optimistic: añadimos/actualizamos en el store con un placeholder.
       const tempId = isEdit ? initial.id : `tmp-${Date.now()}`;
       const prevSnapshot = isEdit ? { ...initial } : null;
       const optimistic = {
@@ -199,7 +299,7 @@ export default function PostForm({
       setInfo(isEdit ? 'Actualizando publicación…' : 'Guardando publicación…');
 
       try {
-        // 2) Subida del diseño si hay archivo nuevo.
+        // 3) Subida del diseño final si hay archivo nuevo (solo edición).
         if (disenoFile) {
           const fd = new FormData();
           fd.append('file', disenoFile);
@@ -209,7 +309,7 @@ export default function PostForm({
           payload.diseno_final = upJson?.id ?? null;
         }
 
-        // 3) POST (crear) o PATCH (editar) según modo.
+        // 4) POST (crear) o PATCH (editar) según modo.
         const url = isEdit
           ? `/api/publicaciones/${initial.id}`
           : '/api/publicaciones';
@@ -226,7 +326,7 @@ export default function PostForm({
         }
         const saved = await res.json().catch(() => null);
 
-        // 4) Reemplazamos el placeholder por la versión real del server.
+        // 5) Reemplazamos el placeholder por la versión real del server.
         if (isEdit) {
           if (saved && saved.id) {
             updatePublicacion({ ...saved, _pending: false });
@@ -253,8 +353,8 @@ export default function PostForm({
           setTipo('');
           setCopywriting('');
           setHashtags('');
-          setTextosSlides('');
-          setImagenes('');
+          slides.forEach(revokePreview);
+          setSlides([emptySlide()]);
           setFecha(null);
           setHora('');
           setDisenoFile(null);
@@ -264,7 +364,7 @@ export default function PostForm({
           setRemoveDiseno(false);
         }
       } catch (err) {
-        // 5) Rollback: restauramos el estado anterior o quitamos el placeholder.
+        // 6) Rollback: restauramos el estado anterior o quitamos el placeholder.
         if (isEdit && prevSnapshot) {
           updatePublicacion({ ...prevSnapshot, _pending: false });
         } else {
@@ -280,11 +380,6 @@ export default function PostForm({
     }
   }
 
-  // Field está definido FUERA del componente (línea ~28) para no recrearlo
-  // en cada render (eso hacía perder el foco al escribir).
-  //
-  // inputBase también va fuera para evitar recreación en cada render.
-
   const inputBase = 'w-full px-3 py-2 rounded-lg border border-ink-200 bg-white text-sm text-ink-800 placeholder:text-ink-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 focus:outline-none transition disabled:bg-ink-50 disabled:text-ink-400';
 
   return (
@@ -292,7 +387,7 @@ export default function PostForm({
       <header className="flex items-center justify-between px-5 py-4 border-b border-ink-100">
         <div>
           <h3 className="text-base font-semibold text-ink-900">
-            {initial.id ? 'Editar publicación' : 'Nueva publicación'}
+            {isEdit ? 'Editar publicación' : 'Nueva publicación'}
           </h3>
           <p className="text-xs text-ink-500 mt-0.5">Se publica al pulsar Guardar.</p>
         </div>
@@ -382,80 +477,162 @@ export default function PostForm({
           />
         </Field>
 
-        <Field label="Textos por slide">
-          <textarea
-            id="slides"
-            rows={2}
-            value={textosSlides}
-            onChange={(e) => setTextosSlides(e.target.value)}
-            placeholder="Slide 1: …&#10;Slide 2: …"
-            className={inputBase}
-          />
-        </Field>
+        {/* ── Repeater de slides ─────────────────────────────────────────── */}
+        <Field label="Slides" hint="Cada slide tiene su texto y su foto. Añade tantos como necesites.">
+          <div className="space-y-3">
+            {slides.map((s, idx) => {
+              const preview = previewOf(s);
+              return (
+                <div key={s.key} className="rounded-xl border border-ink-200 bg-white p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+                      Slide {idx + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeSlide(s)}
+                      className="px-2 py-1 rounded text-xs font-medium text-ink-400 hover:text-red-600 hover:bg-red-50 transition"
+                      aria-label={`Quitar slide ${idx + 1}`}
+                    >
+                      Quitar
+                    </button>
+                  </div>
 
-        <Field label="Imágenes de fondo" hint="Una URL por línea. Se puede migrar a Files M2M en Directus.">
-          <textarea
-            id="imgs"
-            rows={2}
-            value={imagenes}
-            onChange={(e) => setImagenes(e.target.value)}
-            placeholder="https://…&#10;https://…"
-            className={inputBase}
-          />
-        </Field>
-
-        <Field label="Diseño final">
-          <input
-            id="diseno"
-            type="file"
-            accept="image/*,application/pdf"
-            onChange={(e) => {
-              setDisenoFile(e.target.files?.[0] ?? null);
-              setRemoveDiseno(false);
-            }}
-            className="block w-full text-sm text-ink-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:text-white hover:file:bg-brand-700 file:cursor-pointer"
-          />
-          {(() => {
-            const currentId = typeof initial.diseno_final === 'object'
-              ? initial.diseno_final?.id
-              : initial.diseno_final;
-            if (!currentId || removeDiseno || disenoFile) return null;
-            return (
-              <div className="mt-2 flex items-center gap-3 p-2 rounded-lg border border-ink-100 bg-ink-50/50">
-                <a
-                  href={`/api/assets/${currentId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-12 h-12 rounded-md overflow-hidden border border-ink-200 bg-white shrink-0 flex items-center justify-center"
-                >
-                  <img
-                    src={`/api/assets/${currentId}`}
-                    alt="Diseño actual"
-                    className="w-full h-full object-cover"
+                  <textarea
+                    rows={2}
+                    value={s.texto}
+                    onChange={(e) => setSlideTexto(s.key, e.target.value)}
+                    placeholder={`Texto del slide ${idx + 1}…`}
+                    className={inputBase}
                   />
-                </a>
-                <div className="flex-1 min-w-0">
+
+                  <div className="mt-2 flex items-start gap-3">
+                    <div className="shrink-0">
+                      {preview ? (
+                        <div className="relative w-16">
+                          <img
+                            src={preview}
+                            alt={`Foto slide ${idx + 1}`}
+                            className="w-16 aspect-[3/4] object-cover rounded-md border border-ink-200"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => clearSlideImagen(s.key)}
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center shadow hover:bg-red-600 transition"
+                            aria-label="Quitar foto"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="w-16 aspect-[3/4] rounded-md border border-dashed border-ink-300 bg-ink-50/50 flex flex-col items-center justify-center gap-0.5 cursor-pointer text-ink-400 hover:border-brand-400 hover:text-brand-500 transition">
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
+                          <span className="text-[9px] leading-none">Foto</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="sr-only"
+                            onChange={(e) => setSlideFile(s.key, e.target.files?.[0] ?? null)}
+                          />
+                        </label>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      {preview ? (
+                        <button
+                          type="button"
+                          onClick={() => clearSlideImagen(s.key)}
+                          className="text-xs font-medium text-brand-600 hover:underline"
+                        >
+                          Quitar foto
+                        </button>
+                      ) : (
+                        <label className="inline-block text-xs font-medium text-brand-600 hover:underline cursor-pointer">
+                          Añadir foto
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="sr-only"
+                            onChange={(e) => setSlideFile(s.key, e.target.files?.[0] ?? null)}
+                          />
+                        </label>
+                      )}
+                      <p className="text-[11px] text-ink-400">
+                        {preview ? 'Foto lista para subir al guardar.' : 'Sin foto todavía.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={addSlide}
+              className="w-full py-2 rounded-lg border border-dashed border-ink-300 text-sm font-medium text-ink-500 hover:border-brand-400 hover:text-brand-600 hover:bg-brand-50/40 transition flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
+              Añadir slide
+            </button>
+          </div>
+        </Field>
+
+        {/* Diseño final: SOLO en edición (una publicación nueva debe pasar
+            antes por revisión y diseño). */}
+        {isEdit && (
+          <Field label="Diseño final" hint="Foto definitiva que verá el cliente en el mockup del feed.">
+            <input
+              id="diseno"
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={(e) => {
+                setDisenoFile(e.target.files?.[0] ?? null);
+                setRemoveDiseno(false);
+              }}
+              className="block w-full text-sm text-ink-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:text-white hover:file:bg-brand-700 file:cursor-pointer"
+            />
+            {(() => {
+              const currentId = typeof initial.diseno_final === 'object'
+                ? initial.diseno_final?.id
+                : initial.diseno_final;
+              if (!currentId || removeDiseno || disenoFile) return null;
+              return (
+                <div className="mt-2 flex items-center gap-3 p-2 rounded-lg border border-ink-100 bg-ink-50/50">
                   <a
                     href={`/api/assets/${currentId}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs font-medium text-brand-600 hover:underline block truncate"
+                    className="w-12 h-12 rounded-md overflow-hidden border border-ink-200 bg-white shrink-0 flex items-center justify-center"
                   >
-                    Ver diseño subido ↗
+                    <img
+                      src={`/api/assets/${currentId}`}
+                      alt="Diseño actual"
+                      className="w-full h-full object-cover"
+                    />
                   </a>
-                  <p className="text-[11px] text-ink-400 font-mono truncate">{String(currentId).slice(0, 12)}…</p>
+                  <div className="flex-1 min-w-0">
+                    <a
+                      href={`/api/assets/${currentId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-medium text-brand-600 hover:underline block truncate"
+                    >
+                      Ver diseño subido ↗
+                    </a>
+                    <p className="text-[11px] text-ink-400 font-mono truncate">{String(currentId).slice(0, 12)}…</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setRemoveDiseno(true)}
+                    className="px-2 py-1 rounded text-xs font-medium text-red-600 hover:bg-red-50 transition"
+                  >
+                    Quitar
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setRemoveDiseno(true)}
-                  className="px-2 py-1 rounded text-xs font-medium text-red-600 hover:bg-red-50 transition"
-                >
-                  Quitar
-                </button>
-              </div>
-            );
-          })()}
-        </Field>
+              );
+            })()}
+          </Field>
+        )}
       </div>
 
       <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-ink-100 bg-ink-50/50">

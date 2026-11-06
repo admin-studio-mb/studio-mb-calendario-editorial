@@ -6,7 +6,6 @@ import Layout from '../../layouts/Layout.astro';
 import Calendar from '../../components/Calendar.jsx';
 import PostForm from '../../components/PostForm.jsx';
 import FeedMockup from '../../components/FeedMockup.jsx';
-import CommentThread from '../../components/CommentThread.jsx';
 import EditPostModal from '../../components/EditPostModal.jsx';
 import Kpis from '../../components/Kpis.jsx';
 import { env } from '../../lib/env.js';
@@ -71,10 +70,6 @@ const initialFeed = publicaciones.slice(0, 9);
 
     <aside class="space-y-4 lg:space-y-6 order-2 lg:order-3">
       <PostForm client:load clientes={clientes} />
-      <CommentThread
-        client:visible
-        currentUser={user}
-      />
     </aside>
 
     {/* FeedMockup en móvil: abajo del todo */}

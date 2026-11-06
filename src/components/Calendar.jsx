@@ -73,10 +73,14 @@ export default function Calendar({ initialPublicaciones = [], clientes = [] }) {
       if (filtros.estado && p.estado !== filtros.estado) return false;
       if (filtros.formato && p.formato !== filtros.formato) return false;
       if (t) {
+        const slidesTexto = (Array.isArray(p.imagenes_fondo) ? p.imagenes_fondo : [])
+          .map((s) => (s && typeof s === 'object' ? (s.texto ?? '') : ''))
+          .join(' ');
         const haystack = [
           p.tipo_contenido ?? '',
           p.copywriting ?? '',
           p.textos_slides ?? '',
+          slidesTexto,
         ].join(' ').toLowerCase();
         if (!haystack.includes(t)) return false;
       }

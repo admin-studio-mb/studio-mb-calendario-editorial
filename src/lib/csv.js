@@ -47,6 +47,12 @@ export function publicacionesToCsv(publicaciones, clienteNombre = new Map()) {
     }
     const cliente = clienteNombre.get(p.cliente_id) ?? p.cliente_id ?? '';
     const hashtags = (p.hashtags ?? []).map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' ');
+    // Textos de slides: legacy (textos_slides) + repeater (imagenes_fondo[].texto).
+    const slidesTexto = (Array.isArray(p.imagenes_fondo) ? p.imagenes_fondo : [])
+      .map((s) => (s && typeof s === 'object' ? (s.texto ?? '') : ''))
+      .filter(Boolean)
+      .join(' | ');
+    const textosSlides = [p.textos_slides ?? '', slidesTexto].filter(Boolean).join(' | ');
     return [
       fecha,
       hora,
@@ -56,7 +62,7 @@ export function publicacionesToCsv(publicaciones, clienteNombre = new Map()) {
       ESTADO_LABEL[p.estado] ?? p.estado ?? '',
       p.copywriting ?? '',
       hashtags,
-      p.textos_slides ?? '',
+      textosSlides,
     ].map(escape).join(',');
   });
   return [headers.join(','), ...rows].join('\r\n');
