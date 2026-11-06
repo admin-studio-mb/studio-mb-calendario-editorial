@@ -19,9 +19,8 @@ import { publicacionesToCsv, downloadCsv } from '../lib/csv.js';
  * Props:
  *   - initialPublicaciones: array inicial hidratado por el SSR.
  *   - clientes: array de clientes para el filtro y el tooltip.
- *   - apiBase: para llamadas a /api/publicaciones/:id (drag&drop).
  */
-export default function Calendar({ initialPublicaciones = [], clientes = [], apiBase = '' }) {
+export default function Calendar({ initialPublicaciones = [], clientes = [] }) {
   useEffect(() => {
     if (initialPublicaciones.length && publicacionesStore.get().length === 0) {
       hydratePublicaciones(initialPublicaciones);
@@ -136,20 +135,18 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], api
     updatePublicacion({ id: post.id, fecha_publicacion: iso, _pending: true });
     setDraggingId(null);
     setDropTarget(null);
-    if (apiBase) {
-      try {
-        const res = await fetch(`/api/publicaciones/${post.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fecha_publicacion: iso }),
-        });
-        if (!res.ok) throw new Error(`Mover falló (${res.status})`);
-        const saved = await res.json().catch(() => null);
-        if (saved && saved.id) updatePublicacion({ ...saved, _pending: false });
-      } catch (err) {
-        updatePublicacion({ id: post.id, fecha_publicacion: prevFecha, _pending: false });
-        alert(err.message ?? 'Error moviendo la publicación.');
-      }
+    try {
+      const res = await fetch(`/api/publicaciones/${post.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fecha_publicacion: iso }),
+      });
+      if (!res.ok) throw new Error(`Mover falló (${res.status})`);
+      const saved = await res.json().catch(() => null);
+      if (saved && saved.id) updatePublicacion({ ...saved, _pending: false });
+    } catch (err) {
+      updatePublicacion({ id: post.id, fecha_publicacion: prevFecha, _pending: false });
+      alert(err.message ?? 'Error moviendo la publicación.');
     }
   }
 
@@ -175,24 +172,22 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], api
   // PATCH usado por WeekView y ListView. Devuelve una función que actualiza.
   const patchFecha = (postId, newDate, prevFecha, _rollback) => {
     updatePublicacion({ id: postId, fecha_publicacion: typeof newDate === 'function' ? newDate(prevFecha) : newDate, _pending: true });
-    if (apiBase) {
-      (async () => {
-        try {
-          const iso = typeof newDate === 'function' ? newDate(prevFecha) : newDate;
-          const res = await fetch(`/api/publicaciones/${postId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fecha_publicacion: iso }),
-          });
-          if (!res.ok) throw new Error(`Mover falló (${res.status})`);
-          const saved = await res.json().catch(() => null);
-          if (saved && saved.id) updatePublicacion({ ...saved, _pending: false });
-        } catch (err) {
-          updatePublicacion({ id: postId, fecha_publicacion: prevFecha, _pending: false });
-          alert(err.message ?? 'Error moviendo la publicación.');
-        }
-      })();
-    }
+    (async () => {
+      try {
+        const iso = typeof newDate === 'function' ? newDate(prevFecha) : newDate;
+        const res = await fetch(`/api/publicaciones/${postId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fecha_publicacion: iso }),
+        });
+        if (!res.ok) throw new Error(`Mover falló (${res.status})`);
+        const saved = await res.json().catch(() => null);
+        if (saved && saved.id) updatePublicacion({ ...saved, _pending: false });
+      } catch (err) {
+        updatePublicacion({ id: postId, fecha_publicacion: prevFecha, _pending: false });
+        alert(err.message ?? 'Error moviendo la publicación.');
+      }
+    })();
   };
 
   const weekDays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];

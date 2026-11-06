@@ -11,9 +11,11 @@ import { parseFechaPublicacion } from '../lib/fecha.js';
  *
  * Props:
  *   - posts: Array inicial opcional (hidratado por SSR).
- *   - baseUrl: string (no requerido, ahora usa el proxy autenticado /api/assets/<id>).
+ *
+ *  Las imágenes se sirven por el proxy autenticado /api/assets/<id>, así que
+ *  no hace falta ninguna URL de Directus en el navegador.
  */
-export default function FeedMockup({ posts = [], baseUrl = '' }) {
+export default function FeedMockup({ posts = [] }) {
   const storePosts = useStore(publicacionesStore);
   const filtros = useStore(filtrosStore);
   const [open, setOpen] = useState(null);
@@ -52,7 +54,7 @@ export default function FeedMockup({ posts = [], baseUrl = '' }) {
         <div className="p-3">
           <div className="grid grid-cols-3 gap-1">
             {displayPosts.map((p) => {
-              const cover = coverFor(p, baseUrl);
+              const cover = coverFor(p);
               return (
                 <button
                   key={p.id}
@@ -122,8 +124,8 @@ export default function FeedMockup({ posts = [], baseUrl = '' }) {
             className="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-pop"
             onClick={(e) => e.stopPropagation()}
           >
-            {coverFor(open, baseUrl) && (
-              <img src={coverFor(open, baseUrl)} alt="" className="w-full aspect-square object-cover" />
+            {coverFor(open) && (
+              <img src={coverFor(open)} alt="" className="w-full aspect-square object-cover" />
             )}
             <div className="p-5 space-y-3">
               <div className="flex items-center justify-between text-xs">

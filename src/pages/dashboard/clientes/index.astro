@@ -37,8 +37,6 @@ const clientes = clientesRaw.map((c) => ({
   ...c,
   total_publicaciones: publicacionesRaw.filter((p) => p.cliente_id === c.id).length,
 }));
-
-const apiBase = `${Astro.url.protocol}//${Astro.url.host}`;
 ---
 <Layout title="Clientes · Studio mb" user={user}>
   <header class="mb-8">
@@ -51,7 +49,5 @@ const apiBase = `${Astro.url.protocol}//${Astro.url.host}`;
   <ClientesView
     client:load
     initialClientes={clientes}
-    apiBase={apiBase}
-    directusBaseUrl={env.PUBLIC_DIRECTUS_URL}
   />
 </Layout>

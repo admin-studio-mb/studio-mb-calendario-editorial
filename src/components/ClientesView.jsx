@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import ClienteForm from './ClienteForm.jsx';
 
-export default function ClientesView({ initialClientes = [], apiBase = '', directusBaseUrl = '' }) {
+export default function ClientesView({ initialClientes = [] }) {
   const [clientes, setClientes] = useState(initialClientes);
   const [editTarget, setEditTarget] = useState(null); // null = cerrado, 'new' = crear, objeto = editar
   const [deletingId, setDeletingId] = useState(null);
@@ -210,8 +210,6 @@ export default function ClientesView({ initialClientes = [], apiBase = '', direc
             <div className="p-5">
               <ClienteForm
                 initial={editTarget === 'new' ? {} : editTarget}
-                apiBase={apiBase}
-                directusBaseUrl={directusBaseUrl}
                 onCancel={() => setEditTarget(null)}
                 onSubmitted={handleSubmitted}
               />

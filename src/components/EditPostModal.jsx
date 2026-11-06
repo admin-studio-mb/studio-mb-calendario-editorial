@@ -13,7 +13,7 @@ import PostForm from './PostForm.jsx';
 import CommentThread from './CommentThread.jsx';
 import { removePublicacion, updatePublicacion, selectedPostIdStore } from '../stores/publicaciones.js';
 
-export default function EditPostModal({ clientes = [], currentUser = null, apiBase = '' }) {
+export default function EditPostModal({ clientes = [], currentUser = null }) {
   const [post, setPost] = useState(null);
   const [quickSaving, setQuickSaving] = useState(false);
 
@@ -186,7 +186,6 @@ export default function EditPostModal({ clientes = [], currentUser = null, apiBa
               key={`${post.id}-${post.estado}`}
               clientes={clientes}
               initial={post}
-              apiBase={apiBase}
               onCancel={close}
               onSubmitted={close}
             />
@@ -194,7 +193,6 @@ export default function EditPostModal({ clientes = [], currentUser = null, apiBa
           <div className="lg:col-span-2 p-4 bg-ink-50/30">
             <CommentThread
               currentUser={currentUser}
-              apiBase={apiBase}
             />
           </div>
         </div>

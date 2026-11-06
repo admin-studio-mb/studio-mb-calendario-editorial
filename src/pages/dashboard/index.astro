@@ -43,7 +43,6 @@ const publicaciones = publicacionesRaw.map((p) => ({
 
 // Comentarios: los carga el cliente on-demand según el post seleccionado.
 const initialFeed = publicaciones.slice(0, 9);
-const apiBase = `${Astro.url.protocol}//${Astro.url.host}`;
 ---
 <Layout title="Calendario · Studio mb" user={user}>
   {/* Hero */}
@@ -61,22 +60,20 @@ const apiBase = `${Astro.url.protocol}//${Astro.url.host}`;
 
   <section class="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
     <div class="lg:col-span-2 space-y-4 lg:space-y-6 order-1">
-      <Calendar client:load initialPublicaciones={publicaciones} clientes={clientes} apiBase={apiBase} />
+      <Calendar client:load initialPublicaciones={publicaciones} clientes={clientes} />
       <div class="hidden lg:block">
         <FeedMockup
           client:visible
           posts={initialFeed}
-          baseUrl={env.PUBLIC_DIRECTUS_URL}
         />
       </div>
     </div>
 
     <aside class="space-y-4 lg:space-y-6 order-2 lg:order-3">
-      <PostForm client:load clientes={clientes} apiBase={apiBase} />
+      <PostForm client:load clientes={clientes} />
       <CommentThread
         client:visible
         currentUser={user}
-        apiBase={apiBase}
       />
     </aside>
 
@@ -86,11 +83,10 @@ const apiBase = `${Astro.url.protocol}//${Astro.url.host}`;
         <FeedMockup
           client:visible
           posts={initialFeed}
-          baseUrl={env.PUBLIC_DIRECTUS_URL}
         />
       </div>
     )}
   </section>
 
-  <EditPostModal client:load clientes={clientes} currentUser={user} apiBase={apiBase} />
+  <EditPostModal client:load clientes={clientes} currentUser={user} />
 </Layout>

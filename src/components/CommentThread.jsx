@@ -13,9 +13,8 @@ import { initials } from '../lib/initials.js';
  *
  * Props:
  *   - currentUser: { id, first_name, last_name, email }
- *   - apiBase: base URL del front para llamar a /api/comentarios
  */
-export default function CommentThread({ currentUser, apiBase = '' }) {
+export default function CommentThread({ currentUser }) {
   const selectedPostId = useStore(selectedPostIdStore);
   const publicaciones = useStore(publicacionesStore);
   const post = publicaciones.find((p) => p.id === selectedPostId) ?? null;

@@ -9,8 +9,6 @@ import { useState, useRef } from 'react';
 
 export default function ClienteForm({
   initial = {},
-  apiBase = '',
-  directusBaseUrl = '',
   onCancel,
   onSubmitted,
 }) {

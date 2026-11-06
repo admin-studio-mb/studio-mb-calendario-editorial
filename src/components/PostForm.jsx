@@ -53,8 +53,8 @@ function titleCase(s) {
  * Props:
  *   - clientes: Array<{ id, nombre, tipos_contenido_disponibles: string[] }>
  *   - initial:  objeto publicación (o {} para creación).
- *   - onSubmit: (payload) => Promise<void> | void
  *   - onCancel: () => void
+ *   - onSubmitted: (saved) => void  → se avisa tras guardar correctamente.
  *   - uploadFile(file): Promise<{ id }>  → helper opcional para subir el diseño.
  *
  * Notas de comportamiento:
@@ -65,11 +65,9 @@ function titleCase(s) {
 export default function PostForm({
   clientes = [],
   initial = {},
-  onSubmit,
   onCancel,
   onSubmitted,
   uploadFile,
-  apiBase = '',
 }) {
   const [clienteId, setClienteId] = useState(initial.cliente_id ?? clientes[0]?.id ?? '');
   const [tipo, setTipo] = useState(initial.tipo_contenido ?? '');
@@ -184,105 +182,97 @@ export default function PostForm({
 
     try {
       setSubmitting(true);
-      // Si el front nos ha pasado un `apiBase`, creamos/actualizamos la
-      // publicación directamente vía el endpoint SSR.
-      if (apiBase) {
-        // 1) Optimistic: añadimos/actualizamos en el store con un placeholder.
-        const tempId = isEdit ? initial.id : `tmp-${Date.now()}`;
-        const prevSnapshot = isEdit ? { ...initial } : null;
-        const optimistic = {
-          id: tempId,
-          ...(isEdit ? initial : {}),
-          ...payload,
-          _pending: true,
-        };
-        if (isEdit) {
-          updatePublicacion(optimistic);
-        } else {
-          addPublicacion(optimistic);
-        }
-        setInfo(isEdit ? 'Actualizando publicación…' : 'Guardando publicación…');
-
-        try {
-          // 2) Subida del diseño si hay archivo nuevo.
-          if (disenoFile) {
-            const fd = new FormData();
-            fd.append('file', disenoFile);
-            const upRes = await fetch('/api/files', { method: 'POST', body: fd });
-            if (!upRes.ok) throw new Error(`Upload falló (${upRes.status})`);
-            const upJson = await upRes.json();
-            payload.diseno_final = upJson?.id ?? null;
-          }
-
-          // 3) POST (crear) o PATCH (editar) según modo.
-          const url = isEdit
-            ? `/api/publicaciones/${initial.id}`
-            : '/api/publicaciones';
-          const method = isEdit ? 'PATCH' : 'POST';
-
-          const res = await fetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
-          if (!res.ok) {
-            const text = await res.text().catch(() => '');
-            throw new Error(`Guardar falló (${res.status}): ${text || res.statusText}`);
-          }
-          const saved = await res.json().catch(() => null);
-
-          // 4) Reemplazamos el placeholder por la versión real del server.
-          if (isEdit) {
-            if (saved && saved.id) {
-              updatePublicacion({ ...saved, _pending: false });
-            } else {
-              updatePublicacion({ ...optimistic, _pending: false });
-            }
-          } else {
-            removePublicacion(tempId);
-            if (saved && saved.id) {
-              addPublicacion({ ...saved, _pending: false });
-            }
-          }
-          setInfo(isEdit ? '✓ Publicación actualizada' : '✓ Publicación guardada');
-          setTimeout(() => setInfo(''), 2500);
-
-          // En modo edición avisamos al padre (cerrará el modal).
-          if (isEdit && onSubmitted) {
-            onSubmitted(saved);
-          }
-
-          if (!isEdit) {
-            // Limpiamos el form solo en modo creación.
-            setClienteId(clientes[0]?.id ?? '');
-            setTipo('');
-            setCopywriting('');
-            setHashtags('');
-            setTextosSlides('');
-            setImagenes('');
-            setFecha(null);
-            setHora('');
-            setDisenoFile(null);
-            setRemoveDiseno(false);
-          } else {
-            setDisenoFile(null);
-            setRemoveDiseno(false);
-          }
-          return;
-        } catch (err) {
-          // 5) Rollback: restauramos el estado anterior o quitamos el placeholder.
-          if (isEdit && prevSnapshot) {
-            updatePublicacion({ ...prevSnapshot, _pending: false });
-          } else {
-            removePublicacion(tempId);
-          }
-          setError(err.message ?? 'Error guardando.');
-          setInfo('');
-          return;
-        }
+      // 1) Optimistic: añadimos/actualizamos en el store con un placeholder.
+      const tempId = isEdit ? initial.id : `tmp-${Date.now()}`;
+      const prevSnapshot = isEdit ? { ...initial } : null;
+      const optimistic = {
+        id: tempId,
+        ...(isEdit ? initial : {}),
+        ...payload,
+        _pending: true,
+      };
+      if (isEdit) {
+        updatePublicacion(optimistic);
+      } else {
+        addPublicacion(optimistic);
       }
+      setInfo(isEdit ? 'Actualizando publicación…' : 'Guardando publicación…');
 
-      await onSubmit?.(payload);
+      try {
+        // 2) Subida del diseño si hay archivo nuevo.
+        if (disenoFile) {
+          const fd = new FormData();
+          fd.append('file', disenoFile);
+          const upRes = await fetch('/api/files', { method: 'POST', body: fd });
+          if (!upRes.ok) throw new Error(`Upload falló (${upRes.status})`);
+          const upJson = await upRes.json();
+          payload.diseno_final = upJson?.id ?? null;
+        }
+
+        // 3) POST (crear) o PATCH (editar) según modo.
+        const url = isEdit
+          ? `/api/publicaciones/${initial.id}`
+          : '/api/publicaciones';
+        const method = isEdit ? 'PATCH' : 'POST';
+
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          throw new Error(`Guardar falló (${res.status}): ${text || res.statusText}`);
+        }
+        const saved = await res.json().catch(() => null);
+
+        // 4) Reemplazamos el placeholder por la versión real del server.
+        if (isEdit) {
+          if (saved && saved.id) {
+            updatePublicacion({ ...saved, _pending: false });
+          } else {
+            updatePublicacion({ ...optimistic, _pending: false });
+          }
+        } else {
+          removePublicacion(tempId);
+          if (saved && saved.id) {
+            addPublicacion({ ...saved, _pending: false });
+          }
+        }
+        setInfo(isEdit ? '✓ Publicación actualizada' : '✓ Publicación guardada');
+        setTimeout(() => setInfo(''), 2500);
+
+        // En modo edición avisamos al padre (cerrará el modal).
+        if (isEdit && onSubmitted) {
+          onSubmitted(saved);
+        }
+
+        if (!isEdit) {
+          // Limpiamos el form solo en modo creación.
+          setClienteId(clientes[0]?.id ?? '');
+          setTipo('');
+          setCopywriting('');
+          setHashtags('');
+          setTextosSlides('');
+          setImagenes('');
+          setFecha(null);
+          setHora('');
+          setDisenoFile(null);
+          setRemoveDiseno(false);
+        } else {
+          setDisenoFile(null);
+          setRemoveDiseno(false);
+        }
+      } catch (err) {
+        // 5) Rollback: restauramos el estado anterior o quitamos el placeholder.
+        if (isEdit && prevSnapshot) {
+          updatePublicacion({ ...prevSnapshot, _pending: false });
+        } else {
+          removePublicacion(tempId);
+        }
+        setError(err.message ?? 'Error guardando.');
+        setInfo('');
+      }
     } catch (err) {
       setError(err.message ?? 'Error guardando.');
     } finally {
