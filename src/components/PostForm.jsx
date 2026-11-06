@@ -521,7 +521,7 @@ export default function PostForm({
                       <input
                         type="text"
                         inputMode="url"
-                        value={s.imagen}
+                        value={s.imagen ?? ''}
                         onChange={(e) => setSlideImagen(s.key, e.target.value)}
                         placeholder="https://… (Unsplash, Drive, URL de la imagen)"
                         className={inputBase}
