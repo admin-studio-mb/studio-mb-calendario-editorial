@@ -141,7 +141,7 @@ export default function ListView({
       ) : (
         <div className="divide-y divide-ink-100">
           {grouped.map(([dayKey, posts]) => {
-            const dayDate = parseISO(dayKey + 'T12:00:00');
+            const dayDate = parseFechaPublicacion(dayKey + 'T12:00:00');
             const isDropTarget = dropTarget === dayKey && draggingId;
             const isToday = format(dayDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
             return (
