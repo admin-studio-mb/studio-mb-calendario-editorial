@@ -8,11 +8,16 @@
 //
 //  El rol `Cliente` solo puede CONFIRMAR (texto y diseño final); no puede
 //  crear, editar contenido, borrar ni marcar como publicado. El equipo
-//  (Administrator y cualquier otro rol) puede recorrer todo el flujo.
+//  (Administrator y Editor) puede recorrer todo el flujo.
 //
-//  Este módulo es la fuente única: lo usan el modal (UI) y el endpoint
+//  Este módulo es la fuente única: lo usan el modal (UI) y los endpoint
 //  PATCH /api/publicaciones/:id (validación en servidor).
 // ============================================================================
+
+import { esCliente } from './roles.js';
+
+export { esCliente };
+
 
 export const ESTADOS = ['borrador', 'revision', 'en_diseno', 'revision_diseno', 'aprobado', 'publicado'];
 
@@ -55,11 +60,6 @@ const TRANSICIONES_CLIENTE = new Set([
   'revision_diseno>aprobado',
   'revision_diseno>en_diseno',
 ]);
-
-/** ¿El usuario es del rol Cliente? (rol.name === 'Cliente'). */
-export function esCliente(user) {
-  return user?.role?.name === 'Cliente';
-}
 
 /**
  * Transiciones que puede ejecutar `user` desde `estado`.

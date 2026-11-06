@@ -442,7 +442,13 @@ requiere limitar campos en el permiso de Directus 12 (field-level
 permissions) — pendiente de decidir. Por la app, el flujo se cumple.
 
 Verificación: `python scripts/verify-role-guard.py` (7 checks, limpia sus
-datos temporales).
+datos temporales) y `python scripts/verify-editor-role.py` (8 checks del rol
+Editor: no gestiona clientes/usuarios, sí crea/borra publicaciones de
+cualquier cliente).
+
+El rol `Editor` y su policy `editor_acceso` (12 permisos, sin gestión de
+clientes/usuarios) se crean con `python scripts/setup-editor-role.py`
+(idempotente).
 
 Scripts de referencia en `scripts/`: `setup-client-permissions.py`,
 `add-comentario-cliente-id.py`, `verify-client-permissions.py`,
@@ -576,6 +582,7 @@ gh repo view admin-studio-mb/studio-mb-calendario-editorial
 - ✅ **Permisos por cliente** — rol `Cliente` + policy `cliente_acceso` + campo `directus_users.cliente_id`, verificados E2E (§6.13).
 - ✅ **Tests** — Vitest (58 tests) + build SSR Astro en verde.
 - ✅ **Guard por rol** — `src/lib/flujo.js` como fuente única de transiciones; la UI se adapta al rol (el Cliente no crea ni edita, solo confirma y comenta) y los endpoints validan en servidor (`verify-role-guard.py`, 7 checks).
+- ✅ **Roles Admin / Editor / Cliente** — rol `Editor` + policy `editor_acceso` creados en Directus (`setup-editor-role.py`); gestión de usuarios desde `/dashboard/usuarios` (solo Admin): crear Cliente/Editor/Admin, asignar cliente, suspender y borrar. Verificado con `verify-editor-role.py` (8 checks).
 - ⏳ Publicación automatizada a redes (fuera de alcance: hoy se hace a mano).
 - ⏳ Asignación de `cliente_id` a usuarios desde la UI de la app (hoy se hace en la UI de Directus).
 

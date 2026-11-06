@@ -7,6 +7,7 @@
 
 import { directusFetch } from '../../../lib/directus-fetch.js';
 import { clearDirectusCache } from '../../../lib/cache.js';
+import { esAdmin } from '../../../lib/roles.js';
 
 function json(payload, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -18,6 +19,11 @@ function json(payload, status = 200) {
 export async function PATCH({ params, request, locals }) {
   const token = locals?.token ?? null;
   if (!token) return json({ error: 'Unauthorized' }, 401);
+
+  // Edición de clientes: solo el Administrator.
+  if (!esAdmin(locals?.user)) {
+    return json({ error: 'Solo un administrador puede editar clientes.' }, 403);
+  }
 
   const id = params?.id;
   if (!id) return json({ error: 'Falta el id del cliente.' }, 400);
@@ -79,6 +85,11 @@ export async function PATCH({ params, request, locals }) {
 export async function DELETE({ params, locals }) {
   const token = locals?.token ?? null;
   if (!token) return json({ error: 'Unauthorized' }, 401);
+
+  // Borrado de clientes: solo el Administrator.
+  if (!esAdmin(locals?.user)) {
+    return json({ error: 'Solo un administrador puede borrar clientes.' }, 403);
+  }
 
   const id = params?.id;
   if (!id) return json({ error: 'Falta el id del cliente.' }, 400);

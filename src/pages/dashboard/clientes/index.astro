@@ -6,6 +6,7 @@
 import Layout from '../../../layouts/Layout.astro';
 import ClientesView from '../../../components/ClientesView.jsx';
 import { env } from '../../../lib/env.js';
+import { esAdmin } from '../../../lib/roles.js';
 
 export const prerender = false;
 
@@ -51,5 +52,6 @@ const clientes = clientesRaw.map((c) => ({
   <ClientesView
     client:load
     initialClientes={clientes}
+    canManage={esAdmin(user)}
   />
 </Layout>
