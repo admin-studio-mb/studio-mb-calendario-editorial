@@ -48,11 +48,10 @@ function titleCase(s) {
 }
 
 // ── Slides (repeater) ────────────────────────────────────────────────────────
-// Cada slide: { key, texto, imagen, file, preview }
-//   - `imagen`: valor persistido (uuid de directus_files o URL legacy).
-//   - `file`: File nuevo elegido en el input, aún no subido.
-//   - `preview`: object URL del File (para <img>); se revoca al quitar/reemplazar.
-// El campo JSON `imagenes_fondo` de Directus pasa a guardar [{ texto, imagen }].
+// Cada slide: { key, texto, imagen }
+//   - `imagen`: URL de la foto (Unsplash, Drive, cualquier imagen http).
+//     Legacy: también admite uuid de directus_files (se sirve por /api/assets/<id>).
+// El campo JSON `imagenes_fondo` de Directus guarda [{ texto, imagen }].
 
 let slideKeySeq = 0;
 function newSlideKey() {
@@ -61,7 +60,29 @@ function newSlideKey() {
 }
 
 function emptySlide() {
-  return { key: newSlideKey(), texto: '', imagen: null, file: null, preview: null };
+  return { key: newSlideKey(), texto: '', imagen: '' };
+}
+
+/**
+ * Convierte un enlace pegado por el usuario en una URL que <img> puede
+ * cargar directamente:
+ *   - Drive "file/d/<ID>/view" u "open?id=<ID>" → lh3.googleusercontent.com
+ *     (CDN directo de Google; el enlace normal de Drive no renderiza en <img>).
+ *   - Unsplash "unsplash.com/photos/<slug>" → endpoint de descarga (redirect).
+ *   - Cualquier otra URL → tal cual.
+ */
+function normalizarImagenUrl(raw) {
+  const s = String(raw ?? '').trim();
+  if (!s) return '';
+  let m = /drive\.google\.com\/file\/d\/([\w-]+)/.exec(s);
+  if (m) return `https://lh3.googleusercontent.com/d/${m[1]}`;
+  m = /drive\.google\.com\/open\?id=([\w-]+)/.exec(s);
+  if (m) return `https://lh3.googleusercontent.com/d/${m[1]}`;
+  if (/unsplash\.com\/photos\/[\w-]+/i.test(s) && !/images\.unsplash\.com/i.test(s)) {
+    m = /unsplash\.com\/photos\/([\w-]+)/.exec(s);
+    if (m) return `https://unsplash.com/photos/${m[1]}/download`;
+  }
+  return s;
 }
 
 /**
@@ -74,34 +95,27 @@ function normalizeSlides(initial) {
   const raw = Array.isArray(initial.imagenes_fondo) ? initial.imagenes_fondo : [];
   const slides = raw.map((item) => {
     if (item && typeof item === 'object') {
-      return { key: newSlideKey(), texto: item.texto ?? '', imagen: item.imagen ?? null, file: null, preview: null };
+      return { key: newSlideKey(), texto: item.texto ?? '', imagen: item.imagen ?? '' };
     }
-    return { key: newSlideKey(), texto: '', imagen: item ?? null, file: null, preview: null };
+    return { key: newSlideKey(), texto: '', imagen: item ?? '' };
   });
   if (slides.length === 0 && initial.textos_slides) {
     String(initial.textos_slides)
       .split('\n')
       .map((l) => l.trim())
       .filter(Boolean)
-      .forEach((linea) => slides.push({ key: newSlideKey(), texto: linea, imagen: null, file: null, preview: null }));
+      .forEach((linea) => slides.push({ key: newSlideKey(), texto: linea, imagen: '' }));
   }
   if (slides.length === 0) slides.push(emptySlide());
   return slides;
 }
 
-/** URL de vista previa de un slide (object URL, proxy autenticado o URL directa). */
+/** URL de vista previa de un slide (URL normalizada o proxy autenticado legacy). */
 function previewOf(slide) {
-  if (slide.preview) return slide.preview;
-  if (!slide.imagen) return null;
-  const s = String(slide.imagen).trim();
-  if (/^https?:\/\//i.test(s)) return s;
+  const s = String(slide.imagen ?? '').trim();
+  if (!s) return null;
+  if (/^https?:\/\//i.test(s)) return normalizarImagenUrl(s);
   return `/api/assets/${s}`;
-}
-
-function revokePreview(slide) {
-  if (slide.preview && slide.preview.startsWith('blob:')) {
-    URL.revokeObjectURL(slide.preview);
-  }
 }
 
 /**
@@ -200,7 +214,6 @@ export default function PostForm({
   }
 
   function removeSlide(slide) {
-    revokePreview(slide);
     setSlides((prev) => prev.filter((s) => s.key !== slide.key));
   }
 
@@ -208,25 +221,8 @@ export default function PostForm({
     setSlides((prev) => prev.map((s) => (s.key === key ? { ...s, texto } : s)));
   }
 
-  function setSlideFile(key, file) {
-    setSlides((prev) =>
-      prev.map((s) => {
-        if (s.key !== key) return s;
-        revokePreview(s);
-        const preview = file ? URL.createObjectURL(file) : null;
-        return { ...s, file, preview, imagen: file ? null : s.imagen };
-      }),
-    );
-  }
-
-  function clearSlideImagen(key) {
-    setSlides((prev) =>
-      prev.map((s) => {
-        if (s.key !== key) return s;
-        revokePreview(s);
-        return { ...s, file: null, preview: null, imagen: null };
-      }),
-    );
+  function setSlideImagen(key, imagen) {
+    setSlides((prev) => prev.map((s) => (s.key === key ? { ...s, imagen } : s)));
   }
 
   async function handleSubmit(e) {
@@ -265,21 +261,11 @@ export default function PostForm({
 
     try {
       setSubmitting(true);
-      // 1) Subimos las fotos nuevas de los slides ANTES de tocar el store,
-      //    así el rollback es trivial si alguna subida falla.
-      const slidesPersistidos = await Promise.all(
-        slides.map(async (s) => {
-          if (!s.file) {
-            return { texto: (s.texto ?? '').trim(), imagen: s.imagen || null };
-          }
-          const fd = new FormData();
-          fd.append('file', s.file);
-          const upRes = await fetch('/api/files', { method: 'POST', body: fd });
-          if (!upRes.ok) throw new Error(`Subida de foto de slide falló (${upRes.status})`);
-          const upJson = await upRes.json();
-          return { texto: (s.texto ?? '').trim(), imagen: upJson?.id ?? null };
-        }),
-      );
+      // 1) Normalizamos las URLs de las fotos (Drive/Unsplash → imagen directa).
+      const slidesPersistidos = slides.map((s) => ({
+        texto: (s.texto ?? '').trim(),
+        imagen: normalizarImagenUrl(s.imagen) || null,
+      }));
       payload.imagenes_fondo = slidesPersistidos.filter((s) => s.texto || s.imagen);
 
       // 2) Optimistic: añadimos/actualizamos en el store con un placeholder.
@@ -353,7 +339,6 @@ export default function PostForm({
           setTipo('');
           setCopywriting('');
           setHashtags('');
-          slides.forEach(revokePreview);
           setSlides([emptySlide()]);
           setFecha(null);
           setHora('');
@@ -478,7 +463,7 @@ export default function PostForm({
         </Field>
 
         {/* ── Repeater de slides ─────────────────────────────────────────── */}
-        <Field label="Slides" hint="Cada slide tiene su texto y su foto. Añade tantos como necesites.">
+        <Field label="Slides" hint="Cada slide tiene su texto y su foto. Pega la URL de la imagen: sirve el enlace para compartir de Google Drive, el de Unsplash o cualquier URL directa.">
           <div className="space-y-3">
             {slides.map((s, idx) => {
               const preview = previewOf(s);
@@ -507,58 +492,42 @@ export default function PostForm({
                   />
 
                   <div className="mt-2 flex items-start gap-3">
-                    <div className="shrink-0">
+                    <div className="shrink-0 relative w-16 aspect-[3/4]">
                       {preview ? (
-                        <div className="relative w-16">
-                          <img
-                            src={preview}
-                            alt={`Foto slide ${idx + 1}`}
-                            className="w-16 aspect-[3/4] object-cover rounded-md border border-ink-200"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => clearSlideImagen(s.key)}
-                            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center shadow hover:bg-red-600 transition"
-                            aria-label="Quitar foto"
-                          >
-                            ✕
-                          </button>
-                        </div>
+                        <img
+                          src={preview}
+                          alt={`Foto slide ${idx + 1}`}
+                          className="absolute inset-0 w-full h-full object-cover rounded-md border border-ink-200 bg-ink-100"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
                       ) : (
-                        <label className="w-16 aspect-[3/4] rounded-md border border-dashed border-ink-300 bg-ink-50/50 flex flex-col items-center justify-center gap-0.5 cursor-pointer text-ink-400 hover:border-brand-400 hover:text-brand-500 transition">
-                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
+                        <div className="absolute inset-0 rounded-md border border-dashed border-ink-300 bg-ink-50/50 flex flex-col items-center justify-center gap-0.5 text-ink-400">
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
                           <span className="text-[9px] leading-none">Foto</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="sr-only"
-                            onChange={(e) => setSlideFile(s.key, e.target.files?.[0] ?? null)}
-                          />
-                        </label>
+                        </div>
                       )}
-                    </div>
-                    <div className="flex-1 min-w-0 space-y-1">
-                      {preview ? (
+                      {s.imagen && (
                         <button
                           type="button"
-                          onClick={() => clearSlideImagen(s.key)}
-                          className="text-xs font-medium text-brand-600 hover:underline"
+                          onClick={() => setSlideImagen(s.key, '')}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center shadow hover:bg-red-600 transition"
+                          aria-label="Quitar foto"
                         >
-                          Quitar foto
+                          ✕
                         </button>
-                      ) : (
-                        <label className="inline-block text-xs font-medium text-brand-600 hover:underline cursor-pointer">
-                          Añadir foto
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="sr-only"
-                            onChange={(e) => setSlideFile(s.key, e.target.files?.[0] ?? null)}
-                          />
-                        </label>
                       )}
-                      <p className="text-[11px] text-ink-400">
-                        {preview ? 'Foto lista para subir al guardar.' : 'Sin foto todavía.'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <input
+                        type="text"
+                        inputMode="url"
+                        value={s.imagen}
+                        onChange={(e) => setSlideImagen(s.key, e.target.value)}
+                        placeholder="https://… (Unsplash, Drive, URL de la imagen)"
+                        className={inputBase}
+                      />
+                      <p className="text-[11px] text-ink-400 mt-1">
+                        Pega el enlace para compartir de Google Drive, la URL de Unsplash o cualquier imagen.
                       </p>
                     </div>
                   </div>
