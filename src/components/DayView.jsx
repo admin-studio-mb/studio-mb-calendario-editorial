@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import {
-  format, parseISO, isSameDay, addDays, subDays,
+  format, isSameDay, addDays, subDays,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import PostPill from './PostPill.jsx';
+import { parseFechaPublicacion, toISOlocal } from '../lib/fecha.js';
 
 /**
  * DayView — un único día con los posts como cards completas.
@@ -30,8 +31,8 @@ export default function DayView({
 
   const posts = useMemo(
     () => publicaciones
-      .filter((p) => p.fecha_publicacion && isSameDay(parseISO(p.fecha_publicacion), cursor))
-      .sort((a, b) => parseISO(a.fecha_publicacion) - parseISO(b.fecha_publicacion)),
+      .filter((p) => p.fecha_publicacion && isSameDay(parseFechaPublicacion(p.fecha_publicacion), cursor))
+      .sort((a, b) => parseFechaPublicacion(a.fecha_publicacion) - parseFechaPublicacion(b.fecha_publicacion)),
     [publicaciones, cursor],
   );
 
@@ -65,10 +66,10 @@ export default function DayView({
     if (!id) return;
     const post = publicaciones.find((p) => p.id === id);
     if (!post) return;
-    const oldFecha = parseISO(post.fecha_publicacion);
+    const oldFecha = parseFechaPublicacion(post.fecha_publicacion);
     const nuevaFecha = new Date(cursor);
     nuevaFecha.setHours(oldFecha.getHours(), oldFecha.getMinutes(), 0, 0);
-    const iso = nuevaFecha.toISOString();
+    const iso = toISOlocal(nuevaFecha);
     if (post.fecha_publicacion === iso) {
       setDraggingId(null);
       setDropTarget(false);
@@ -138,7 +139,7 @@ export default function DayView({
         ) : (
           <div className="space-y-3">
             {posts.map((p) => {
-              const hora = p.fecha_publicacion ? format(parseISO(p.fecha_publicacion), 'HH:mm') : '';
+              const hora = p.fecha_publicacion ? format(parseFechaPublicacion(p.fecha_publicacion), 'HH:mm') : '';
               const isSelected = p.id === selectedPostId;
               const isDragging = draggingId === p.id;
               return (

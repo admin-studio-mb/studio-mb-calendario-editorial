@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import {
   startOfWeek, endOfWeek, addDays, addWeeks, subWeeks,
-  format, isSameDay, parseISO,
+  format, isSameDay,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import PostPill from './PostPill.jsx';
+import { parseFechaPublicacion, toISOlocal } from '../lib/fecha.js';
 
 /**
  * WeekView — 7 columnas (lun-dom) con los posts de cada día debajo.
@@ -34,8 +35,9 @@ export default function WeekView({
   const byDay = useMemo(() => {
     const map = new Map();
     for (const p of publicaciones) {
-      if (!p.fecha_publicacion) continue;
-      const key = format(parseISO(p.fecha_publicacion), 'yyyy-MM-dd');
+      const fecha = parseFechaPublicacion(p.fecha_publicacion);
+      if (!fecha) continue;
+      const key = format(fecha, 'yyyy-MM-dd');
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(p);
     }
@@ -72,10 +74,10 @@ export default function WeekView({
     if (!id) return;
     const post = publicaciones.find((p) => p.id === id);
     if (!post) return;
-    const oldFecha = post.fecha_publicacion ? parseISO(post.fecha_publicacion) : new Date();
+    const oldFecha = parseFechaPublicacion(post.fecha_publicacion) ?? new Date();
     const nuevaFecha = new Date(day);
     nuevaFecha.setHours(oldFecha.getHours(), oldFecha.getMinutes(), 0, 0);
-    const iso = nuevaFecha.toISOString();
+    const iso = toISOlocal(nuevaFecha);
     if (post.fecha_publicacion === iso) {
       setDraggingId(null);
       setDropTarget(null);

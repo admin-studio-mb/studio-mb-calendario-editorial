@@ -3,10 +3,10 @@ import { useStore } from '@nanostores/react';
 import {
   startOfMonth, endOfMonth, startOfWeek, endOfWeek,
   addDays, addMonths, subMonths, format, isSameDay, isSameMonth,
-  parseISO,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { publicacionesStore, cursorStore, filtrosStore, selectedPostIdStore, hydratePublicaciones, updatePublicacion } from '../stores/publicaciones.js';
+import { parseFechaPublicacion, toISOlocal } from '../lib/fecha.js';
 import WeekView from './WeekView.jsx';
 import ListView from './ListView.jsx';
 import DayView from './DayView.jsx';
@@ -101,8 +101,9 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], api
   const byDay = useMemo(() => {
     const map = new Map();
     for (const p of publicacionesFiltradas) {
-      if (!p.fecha_publicacion) continue;
-      const key = format(parseISO(p.fecha_publicacion), 'yyyy-MM-dd');
+      const fecha = parseFechaPublicacion(p.fecha_publicacion);
+      if (!fecha) continue;
+      const key = format(fecha, 'yyyy-MM-dd');
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(p);
     }
@@ -122,10 +123,10 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], api
     if (!id) return;
     const post = publicaciones.find((p) => p.id === id);
     if (!post) return;
-    const oldFecha = post.fecha_publicacion ? parseISO(post.fecha_publicacion) : new Date();
+    const oldFecha = parseFechaPublicacion(post.fecha_publicacion) ?? new Date();
     const nuevaFecha = new Date(day);
     nuevaFecha.setHours(oldFecha.getHours(), oldFecha.getMinutes(), 0, 0);
-    const iso = nuevaFecha.toISOString();
+    const iso = toISOlocal(nuevaFecha);
     if (post.fecha_publicacion === iso) {
       setDraggingId(null);
       setDropTarget(null);

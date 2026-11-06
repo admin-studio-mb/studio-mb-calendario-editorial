@@ -5,6 +5,7 @@
 // ============================================================================
 
 import { directusFetch } from '../../lib/directus-fetch.js';
+import { clearDirectusCache } from '../../lib/cache.js';
 
 export const prerender = false;
 
@@ -15,6 +16,13 @@ export async function GET({ url, locals }) {
   const publicacionId = url.searchParams.get('publicacion_id');
   if (!publicacionId) return json({ error: 'publicacion_id requerido.' }, 400);
 
+  // El hilo se relee al abrir un post y tras cada comentario. Como Directus
+  // cachea los GET en Redis y no invalida al escribir, hay que limpiar la
+  // caché ANTES de leer para que el hilo refleje el estado real.
+  // (Los parámetros tipo ?t= NO sirven: Directus ignora los parámetros
+  // extra al calcular la clave de caché. Ver AGENTS.md §6.7.)
+  await clearDirectusCache(token);
+
   const filter = JSON.stringify({ publicacion_id: { _eq: publicacionId } });
   const r = await directusFetch({
     path: '/items/comentarios',
@@ -23,7 +31,7 @@ export async function GET({ url, locals }) {
       filter,
       sort: 'fecha_creacion',
       limit: 200,
-      fields: 'id,publicacion_id,texto,fecha_creacion,usuario_id.id,usuario_id.first_name,usuario_id.last_name,usuario_id.email',
+      fields: 'id,publicacion_id,cliente_id,texto,fecha_creacion,usuario_id.id,usuario_id.first_name,usuario_id.last_name,usuario_id.email',
     },
   });
 
@@ -55,12 +63,30 @@ export async function POST({ request, locals }) {
   const userId = locals.user?.id ?? null;
   if (!userId) return json({ error: 'No se pudo identificar al usuario.' }, 401);
 
+  // Para los permisos por cliente (Directus 12), el comentario lleva el
+  // `cliente_id` desnormalizado: heredado de la publicación, nunca del
+  // cliente (así un usuario de cliente no puede atribuir sus comentarios a
+  // otra cuenta ni colarse en el hilo de otro cliente).
+  const pub = await directusFetch({
+    path: `/items/publicaciones/${publicacionId}`,
+    method: 'GET',
+    token,
+    search: { fields: 'id,cliente_id' },
+  });
+  if (!pub.ok || !pub.data?.id) {
+    console.error('[api/comentarios POST] publicación no encontrada', publicacionId, pub.status, pub.raw);
+    return json({ error: 'La publicación no existe.' }, 404);
+  }
+
+  const clienteId = pub.data.cliente_id ?? null;
+
   const r = await directusFetch({
     path: '/items/comentarios',
     method: 'POST',
     token,
     body: {
       publicacion_id: publicacionId,
+      cliente_id: clienteId,
       usuario_id: userId,
       texto,
     },
@@ -70,6 +96,10 @@ export async function POST({ request, locals }) {
     console.error('[api/comentarios POST]', r.status, r.raw);
     return json({ error: 'No se pudo guardar el comentario.', detail: r.raw }, r.status);
   }
+
+  // Directus 12 NO invalida la caché al crear items: sin esto, el hilo que
+  // se acaba de abrir seguiría mostrando la lista anterior.
+  await clearDirectusCache(token);
 
   return json(r.data, 201);
 }

@@ -5,6 +5,7 @@
 // ============================================================================
 
 import { directusFetch } from '../../lib/directus-fetch.js';
+import { clearDirectusCache } from '../../lib/cache.js';
 
 function json(payload, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -59,16 +60,7 @@ export async function POST({ request, locals }) {
   }
 
   // Invalidar cache.
-  try {
-    await directusFetch({
-      path: '/utils/cache/clear',
-      method: 'POST',
-      token,
-      search: { system: 'true' },
-    });
-  } catch (e) {
-    console.warn('[api/clientes POST] cache clear falló:', e?.message);
-  }
+  await clearDirectusCache(token);
 
   return json(r.data, 201);
 }

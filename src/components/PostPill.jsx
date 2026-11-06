@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { format, parseISO, isValid } from 'date-fns';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { parseFechaPublicacion } from '../lib/fecha.js';
 
 const ESTADO_LABEL = {
   borrador: 'Borrador',
@@ -137,7 +138,7 @@ function PostTooltip({ post, anchorRect, clienteNombre }) {
   x = Math.max(8, Math.min(window.innerWidth - tooltipW - 8, x));
 
   const fecha = post.fecha_publicacion
-    ? format(parseISO(post.fecha_publicacion), "d 'de' MMMM, HH:mm", { locale: es })
+    ? format(parseFechaPublicacion(post.fecha_publicacion), "d 'de' MMMM, HH:mm", { locale: es })
     : 'Sin fecha';
 
   const snippet = post.copywriting

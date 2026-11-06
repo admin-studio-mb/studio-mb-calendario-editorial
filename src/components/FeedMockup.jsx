@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '@nanostores/react';
 import { publicacionesStore, filtrosStore } from '../stores/publicaciones.js';
+import { parseFechaPublicacion } from '../lib/fecha.js';
 
 /**
  * FeedMockup — renderiza un grid 3 columnas al estilo Instagram con las
@@ -27,7 +28,8 @@ export default function FeedMockup({ posts = [], baseUrl = '' }) {
     });
     // Ordenamos de más reciente a más antigua por fecha_publicacion (estilo feed IG)
     return [...filtered]
-      .sort((a, b) => new Date(b.fecha_publicacion || 0) - new Date(a.fecha_publicacion || 0))
+      .sort((a, b) => (parseFechaPublicacion(b.fecha_publicacion)?.getTime() ?? 0)
+        - (parseFechaPublicacion(a.fecha_publicacion)?.getTime() ?? 0))
       .slice(0, 9);
   }, [storePosts, posts, filtros]);
 

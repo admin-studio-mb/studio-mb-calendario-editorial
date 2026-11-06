@@ -5,6 +5,8 @@
 //  Escapado correcto de comas, comillas y saltos de línea (RFC 4180).
 // ============================================================================
 
+import { parseFechaPublicacion } from './fecha.js';
+
 const ESTADO_LABEL = {
   borrador: 'Borrador',
   revision: 'Revisión',
@@ -14,7 +16,6 @@ const ESTADO_LABEL = {
   publicado: 'Publicado',
 };
 const FORMATO_LABEL = { post: 'Post', reel: 'Reel', carrusel: 'Carrusel', story: 'Story' };
-
 export function escape(value) {
   if (value == null) return '';
   const s = String(value);
@@ -35,8 +36,8 @@ export function publicacionesToCsv(publicaciones, clienteNombre = new Map()) {
   const rows = publicaciones.map((p) => {
     let fecha = '', hora = '';
     if (p.fecha_publicacion) {
-      const d = new Date(p.fecha_publicacion);
-      if (!isNaN(d)) {
+      const d = parseFechaPublicacion(p.fecha_publicacion);
+      if (d && !Number.isNaN(d.getTime())) {
         const yyyy = d.getFullYear();
         const mm = String(d.getMonth() + 1).padStart(2, '0');
         const dd = String(d.getDate()).padStart(2, '0');

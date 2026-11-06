@@ -1,44 +1,108 @@
 {
   "version": 1,
-  "directus": "12.x",
+  "directus": "12.3.1",
   "vendor": "postgres",
+  "_notas": [
+    "Refleja el estado real de cms.studiomb.es (verificado por API).",
+    "fecha_publicacion es timestamp WITHOUT time zone y guarda HORA DE PARED (Europe/Madrid). El front usa src/lib/fecha.js. Ver AGENTS.md 6.8.",
+    "comentarios.cliente_id esta desnormalizado a proposito: Directus 12 no admite filtros relacionales en validation de permisos create. Ver AGENTS.md 6.10 y 6.13.",
+    "archivado es el archive_field de las 3 colecciones (soft-delete)."
+  ],
   "collections": [
     {
       "collection": "clientes",
       "schema": {},
+      "meta": { "archive_field": "archivado" },
       "fields": [
-        { "field": "nombre", "type": "string", "schema": { "is_nullable": false } },
-        { "field": "logo", "type": "uuid", "schema": { "is_nullable": true, "foreign_key_table": "directus_files", "foreign_key_column": "id" } },
-        { "field": "tipos_contenido_disponibles", "type": "json", "schema": { "default_value": "[]" } }
+        { "field": "nombre", "type": "string", "schema": { "is_nullable": false }, "meta": { "required": true } },
+        { "field": "logo", "type": "uuid", "schema": { "is_nullable": true, "foreign_key_table": "directus_files", "foreign_key_column": "id" }, "meta": { "special": ["file"], "interface": "file-image" } },
+        { "field": "tipos_contenido_disponibles", "type": "json", "schema": { "default_value": "[]" }, "meta": { "special": ["cast-json"], "interface": "tags" } },
+        { "field": "archivado", "type": "boolean", "schema": { "default_value": false, "is_nullable": false } }
       ]
     },
     {
       "collection": "publicaciones",
       "schema": {},
+      "meta": { "archive_field": "archivado" },
       "fields": [
-        { "field": "cliente_id", "type": "uuid", "schema": { "is_nullable": true, "foreign_key_table": "clientes", "foreign_key_column": "id" } },
+        { "field": "cliente_id", "type": "uuid", "schema": { "is_nullable": true, "foreign_key_table": "clientes", "foreign_key_column": "id" }, "meta": { "special": ["m2o"] } },
         { "field": "tipo_contenido", "type": "string", "schema": { "is_nullable": true } },
-        { "field": "formato", "type": "string", "schema": { "is_nullable": true } },
-        { "field": "imagenes_fondo", "type": "json", "schema": { "default_value": "[]" } },
+        { "field": "formato", "type": "string", "schema": { "is_nullable": true }, "meta": { "interface": "select-dropdown", "options": { "choices": [
+          { "text": "Post", "value": "post", "icon": "post_add" },
+          { "text": "Reel", "value": "reel", "icon": "videocam" },
+          { "text": "Carrusel", "value": "carrusel", "icon": "photo_library" },
+          { "text": "Story", "value": "story", "icon": "slow_motion_video" }
+        ] } } },
+        { "field": "imagenes_fondo", "type": "json", "schema": { "default_value": "[]" }, "meta": { "special": ["cast-json"] } },
         { "field": "textos_slides", "type": "text", "schema": { "is_nullable": true } },
         { "field": "copywriting", "type": "text", "schema": { "is_nullable": true } },
-        { "field": "hashtags", "type": "json", "schema": { "default_value": "[]" } },
-        { "field": "fecha_creacion", "type": "timestamp", "schema": { "is_nullable": true, "default_value": "now()" } },
-        { "field": "fecha_publicacion", "type": "timestamp", "schema": { "is_nullable": true } },
-        { "field": "diseno_final", "type": "uuid", "schema": { "is_nullable": true, "foreign_key_table": "directus_files", "foreign_key_column": "id" } },
-        { "field": "estado", "type": "string", "schema": { "is_nullable": true, "default_value": "Borrador" } }
+        { "field": "hashtags", "type": "json", "schema": { "default_value": "[]" }, "meta": { "special": ["cast-json"] } },
+        { "field": "fecha_creacion", "type": "timestamp", "schema": { "is_nullable": true } },
+        { "field": "fecha_publicacion", "type": "dateTime", "schema": { "is_nullable": true, "data_type": "timestamp without time zone" } },
+        { "field": "diseno_final", "type": "uuid", "schema": { "is_nullable": true, "foreign_key_table": "directus_files", "foreign_key_column": "id" }, "meta": { "special": ["file"] } },
+        { "field": "estado", "type": "string", "schema": { "is_nullable": true, "default_value": "borrador" }, "meta": { "interface": "select-dropdown", "options": { "choices": [
+          { "text": "Borrador", "value": "borrador", "color": "#E35169", "icon": "draw" },
+          { "text": "Revision texto", "value": "revision", "color": "#3B82F6", "icon": "eye_tracking" },
+          { "text": "En diseno", "value": "en_diseno", "color": "#9333EA", "icon": "palette" },
+          { "text": "Revision diseno", "value": "revision_diseno", "color": "#EC4899", "icon": "image" },
+          { "text": "Aprobado", "value": "aprobado", "color": "#2ECDA7", "icon": "check_circle" },
+          { "text": "Publicado", "value": "publicado", "color": "#14B8A6", "icon": "send" }
+        ] } } },
+        { "field": "archivado", "type": "boolean", "schema": { "default_value": false, "is_nullable": false } }
       ]
     },
     {
       "collection": "comentarios",
       "schema": {},
+      "meta": { "archive_field": "archivado" },
       "fields": [
-        { "field": "publicacion_id", "type": "uuid", "schema": { "is_nullable": false, "foreign_key_table": "publicaciones", "foreign_key_column": "id" } },
-        { "field": "usuario_id", "type": "uuid", "schema": { "is_nullable": true, "foreign_key_table": "directus_users", "foreign_key_column": "id" } },
-        { "field": "texto", "type": "text", "schema": { "is_nullable": false } },
-        { "field": "fecha_creacion", "type": "timestamp", "schema": { "is_nullable": true, "default_value": "now()" } }
+        { "field": "publicacion_id", "type": "uuid", "schema": { "is_nullable": false, "foreign_key_table": "publicaciones", "foreign_key_column": "id" }, "meta": { "special": ["m2o"], "required": true } },
+        { "field": "usuario_id", "type": "uuid", "schema": { "is_nullable": true, "foreign_key_table": "directus_users", "foreign_key_column": "id" }, "meta": { "special": ["m2o"] } },
+        { "field": "cliente_id", "type": "uuid", "schema": { "is_nullable": true, "foreign_key_table": "clientes", "foreign_key_column": "id" }, "meta": { "special": ["m2o"], "readonly": true, "hidden": true } },
+        { "field": "texto", "type": "text", "schema": { "is_nullable": false }, "meta": { "required": true } },
+        { "field": "fecha_creacion", "type": "timestamp", "schema": { "is_nullable": true } },
+        { "field": "archivado", "type": "boolean", "schema": { "default_value": false, "is_nullable": false } }
       ]
     }
   ],
-  "fields": []
+  "fields": [
+    {
+      "collection": "directus_users",
+      "field": "cliente_id",
+      "type": "uuid",
+      "schema": { "is_nullable": true, "foreign_key_table": "clientes", "foreign_key_column": "id" },
+      "meta": { "special": ["m2o"], "interface": "select-dropdown-m2o", "display": "related-values" }
+    }
+  ],
+  "roles": [
+    { "name": "Administrator", "admin_access": true, "app_access": true },
+    { "name": "Cliente", "admin_access": false, "app_access": true, "policy": "cliente_acceso" }
+  ],
+  "policies": [
+    {
+      "name": "full_access",
+      "admin_access": true,
+      "app_access": true,
+      "enforce_tfa": false
+    },
+    {
+      "name": "cliente_acceso",
+      "admin_access": false,
+      "app_access": true,
+      "enforce_tfa": false,
+      "permissions": [
+        { "collection": "clientes", "action": "read", "permissions": { "id": { "_eq": "$CURRENT_USER.cliente_id" } } },
+        { "collection": "publicaciones", "action": "read", "permissions": { "cliente_id": { "_eq": "$CURRENT_USER.cliente_id" } } },
+        { "collection": "publicaciones", "action": "create", "permissions": {}, "validation": { "cliente_id": { "_eq": "$CURRENT_USER.cliente_id" } } },
+        { "collection": "publicaciones", "action": "update", "permissions": { "cliente_id": { "_eq": "$CURRENT_USER.cliente_id" } }, "validation": { "cliente_id": { "_eq": "$CURRENT_USER.cliente_id" } } },
+        { "collection": "comentarios", "action": "read", "permissions": { "cliente_id": { "_eq": "$CURRENT_USER.cliente_id" } } },
+        { "collection": "comentarios", "action": "create", "permissions": {}, "validation": { "cliente_id": { "_eq": "$CURRENT_USER.cliente_id" }, "usuario_id": { "_eq": "$CURRENT_USER" } } },
+        { "collection": "comentarios", "action": "update", "permissions": { "usuario_id": { "_eq": "$CURRENT_USER" } } },
+        { "collection": "comentarios", "action": "delete", "permissions": { "usuario_id": { "_eq": "$CURRENT_USER" } } },
+        { "collection": "directus_files", "action": "read", "permissions": {} },
+        { "collection": "directus_users", "action": "read", "permissions": { "id": { "_eq": "$CURRENT_USER" } } },
+        { "collection": "directus_users", "action": "update", "permissions": { "id": { "_eq": "$CURRENT_USER" } }, "validation": { "cliente_id": { "_eq": "$CURRENT_USER.cliente_id" } } }
+      ]
+    }
+  ]
 }

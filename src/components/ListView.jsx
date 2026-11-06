@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import {
-  format, parseISO, isSameMonth,
+  format, isSameMonth,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import PostPill from './PostPill.jsx';
+import { parseFechaPublicacion, toISOlocal } from '../lib/fecha.js';
 
 /**
  * ListView — posts del mes del cursor, agrupados por día.
@@ -28,8 +29,8 @@ export default function ListView({
   // Filtramos por el mes del cursor.
   const sorted = useMemo(
     () => [...publicaciones]
-      .filter((p) => p.fecha_publicacion && isSameMonth(parseISO(p.fecha_publicacion), cursor))
-      .sort((a, b) => new Date(a.fecha_publicacion) - new Date(b.fecha_publicacion)),
+      .filter((p) => p.fecha_publicacion && isSameMonth(parseFechaPublicacion(p.fecha_publicacion), cursor))
+      .sort((a, b) => parseFechaPublicacion(a.fecha_publicacion) - parseFechaPublicacion(b.fecha_publicacion)),
     [publicaciones, cursor]
   );
 
@@ -37,7 +38,7 @@ export default function ListView({
   const grouped = useMemo(() => {
     const map = new Map();
     for (const p of sorted) {
-      const key = format(parseISO(p.fecha_publicacion), 'yyyy-MM-dd');
+      const key = format(parseFechaPublicacion(p.fecha_publicacion), 'yyyy-MM-dd');
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(p);
     }
@@ -74,11 +75,11 @@ export default function ListView({
     if (!id) return;
     const post = publicaciones.find((p) => p.id === id);
     if (!post) return;
-    const oldFecha = parseISO(post.fecha_publicacion);
+    const oldFecha = parseFechaPublicacion(post.fecha_publicacion);
     const [hh, mm] = [oldFecha.getHours(), oldFecha.getMinutes()];
     const nuevaFecha = new Date(isoDay);
     nuevaFecha.setHours(hh, mm, 0, 0);
-    const iso = nuevaFecha.toISOString();
+    const iso = toISOlocal(nuevaFecha);
     if (post.fecha_publicacion === iso) {
       setDraggingId(null);
       setDropTarget(null);
@@ -249,7 +250,7 @@ function ListItem({ post, clienteNombre, isSelected, isDragging, onClick, onDrag
           {clienteNombre && <span>{clienteNombre}</span>}
           {clienteNombre && post.fecha_publicacion && <span> · </span>}
           {post.fecha_publicacion && (
-            <span>{format(parseISO(post.fecha_publicacion), 'HH:mm')}</span>
+            <span>{format(parseFechaPublicacion(post.fecha_publicacion), 'HH:mm')}</span>
           )}
         </p>
       </div>
@@ -301,7 +302,7 @@ function FloatingTooltip({ post, clienteNombre, anchorRect }) {
   }, []);
 
   const fecha = post.fecha_publicacion
-    ? format(parseISO(post.fecha_publicacion), "d 'de' MMMM, HH:mm", { locale: es })
+    ? format(parseFechaPublicacion(post.fecha_publicacion), "d 'de' MMMM, HH:mm", { locale: es })
     : 'Sin fecha';
 
   const snippet = post.copywriting

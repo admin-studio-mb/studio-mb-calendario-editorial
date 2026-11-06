@@ -6,6 +6,8 @@
 // ============================================================================
 
 import { directusFetch } from '../../../lib/directus-fetch.js';
+import { clearDirectusCache } from '../../../lib/cache.js';
+import { normalizarFechaPublicacion } from '../../../lib/fecha.js';
 
 const REQUIRED_STRING_FIELDS = ['cliente_id', 'formato', 'estado'];
 const VALID_FORMATO = ['post', 'reel', 'carrusel', 'story'];
@@ -63,6 +65,13 @@ export async function PATCH({ params, request, locals }) {
     if (body[k] !== undefined) payload[k] = body[k];
   }
 
+  // La fecha se normaliza a hora de pared (naive) antes de mandarla.
+  if (payload.fecha_publicacion !== undefined) {
+    const norm = normalizarFechaPublicacion(payload.fecha_publicacion);
+    if (!norm) return json({ error: 'fecha_publicacion inválida.' }, 400);
+    payload.fecha_publicacion = norm;
+  }
+
   const r = await directusFetch({
     path: `/items/publicaciones/${id}`,
     method: 'PATCH',
@@ -76,16 +85,7 @@ export async function PATCH({ params, request, locals }) {
   }
 
   // Invalidamos el cache para que el siguiente SSR vea el cambio.
-  try {
-    await directusFetch({
-      path: '/utils/cache/clear',
-      method: 'POST',
-      token,
-      search: { system: 'true' },
-    });
-  } catch (e) {
-    console.warn('[api/publicaciones PATCH] cache clear falló:', e?.message);
-  }
+  await clearDirectusCache(token);
 
   return json(r.data);
 }
@@ -108,16 +108,7 @@ export async function DELETE({ params, locals }) {
     return json({ error: 'No se pudo eliminar la publicación.', detail: r.raw }, r.status);
   }
 
-  try {
-    await directusFetch({
-      path: '/utils/cache/clear',
-      method: 'POST',
-      token,
-      search: { system: 'true' },
-    });
-  } catch (e) {
-    console.warn('[api/publicaciones DELETE] cache clear falló:', e?.message);
-  }
+  await clearDirectusCache(token);
 
   return json({ ok: true });
 }

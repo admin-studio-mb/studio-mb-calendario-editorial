@@ -237,6 +237,184 @@ VALUES (gen_random_uuid(), '<role_uuid>', '<policy_uuid>');
 Tras esto, restart duro (`docker restart studio-mb-directus`) para vaciar
 caché de policies en memoria.
 
+### 6.7 Directus 12 NO invalida la caché al escribir (Redis)
+
+**Síntoma**: el usuario crea un comentario (o una publicación) y no aparece
+hasta que expira la caché de Redis (minutos). Los listados SSR devuelven datos
+viejos.
+
+**Causa**: Directus 12 cachea los GET en Redis y **no borra la caché
+al crear/actualizar/borrar items**.
+
+**Solución**: llamar a `POST /utils/cache/clear?system=true`:
+- **Después** de cada mutación (crear/editar/borrar).
+- **Antes** de leer listados que deben estar frescos (p.ej. el hilo de
+  comentarios al abrir un post).
+
+En el front está centralizado en `src/lib/cache.js`
+(`clearDirectusCache(token)`), que usan TODOS los endpoints de escritura.
+
+**⚠️ Los parámetros tipo `?t=<timestamp>` NO son cache-buster.** Directus
+calcula la clave de caché sobre la query **normalizada** e ignora los
+parámetros extra. Comprobado en producción:
+
+| Petición | ¿Invalida la caché? |
+|---|---|
+| `?t=123456` | ❌ no |
+| `?_=123456` | ❌ no |
+| `?t=...&_=...` | ❌ no |
+| `POST /utils/cache/clear?system=true` | ✅ sí |
+
+El `cache: 'no-store'` de `fetch` sólo afecta al **caché HTTP intermedio**
+(proxy/NPM), **no** al de Directus.
+
+```js
+// src/lib/cache.js
+export async function clearDirectusCache(token) {
+  const r = await directusFetch({
+    path: '/utils/cache/clear', method: 'POST', token, search: { system: 'true' },
+  });
+  return r.ok;
+}
+```
+
+### 6.8 `timestamp without time zone` + `toISOString()` = desfase de horas
+
+**Síntoma**: el usuario programa un post a las 09:00 y el calendario muestra
+las 08:00 (o las 07:00 en horario de verano).
+
+**Causa**: `publicaciones.fecha_publicacion` es `timestamp WITHOUT time zone`.
+El front mandaba `date.toISOString()` (UTC, con "Z"), Directus guardaba esa
+hora UTC tal cual, y al releerla el navegador la interpretaba como hora
+local → una hora menos (dos en CEST).
+
+**Invariante**: el valor SIEMPRE es **hora de pared** (hora local de la
+agencia, Europe/Madrid) en formato naive `YYYY-MM-DDTHH:mm:ss`, sin `Z`.
+
+- Para escribir: `toISOlocal(new Date(...))` (nunca `toISOString()`).
+- Para leer: `parseFechaPublicacion(valor)` (nunca `parseISO()` pelado).
+- Todo pasa por `src/lib/fecha.js`, que es la única fuente de verdad.
+
+En el servidor, `normalizarFechaPublicacion()` acepta ambos formatos: si
+llega con `Z`/offset lo convierte a hora de la agencia; si llega naive lo
+respeta.
+
+### 6.9 `archivado` (soft-delete) NO filtra los listados por defecto
+
+Las 3 colecciones tienen `archive_field = 'archivado'`. Directus **excluye
+los archivados de los listados**, pero sólo si NO pides ese campo
+explícitamente:
+
+| Query | Resultado |
+|---|---|
+| `GET /items/clientes` | sólo los no archivados ✓ |
+| `GET /items/clientes?fields=id,nombre,archivado` | **incluye los archivados** ✗ |
+
+**Regla**: nunca pedir `archivado` en `fields` de los listados de la app.
+
+### 6.10 Los permisos por cliente NO admiten filtro relacional en `validation`
+
+Directus 12 **no soporta** filtros relacionales en el `validation` de un
+permiso `create`. Comprobado:
+
+| Sintaxis | Resultado |
+|---|---|
+| `validation: {publicacion_id: {cliente_id: {_eq: "$CURRENT_USER.cliente_id"}}}` | HTTP 400 "Value is required" (siempre, incluso con UUID literal) |
+| `validation: {publicacion_id: {_in: {publicaciones: {...}}}}` | HTTP 400 |
+| `validation: {publicacion_id: {_some: {...}}}` | se ignora (no bloquea nada) |
+| `permissions` (en vez de `validation`) en `create` | se ignora |
+
+**Solución aplicada — desnormalizar el filtro**: se añadió `cliente_id` a
+`comentarios` (FK → `clientes.id`, `SET NULL`), heredado de la publicación.
+Con un campo PLANO todo funciona:
+
+- `comentarios.read` → `permissions: {cliente_id: {_eq: "$CURRENT_USER.cliente_id"}}`
+- `comentarios.create` → `validation: {cliente_id: {_eq: "$CURRENT_USER.cliente_id"}, usuario_id: {_eq: "$CURRENT_USER"}}`
+
+El endpoint `/api/comentarios` POST **hereda el `cliente_id` de la
+publicación** y lo envía; nunca lo acepta del cliente.
+
+**En `read` sí funciona el filtro relacional** (deep filter):
+`{publicacion_id: {cliente_id: {_eq: "..."}}}` → HTTP 200.
+
+### 6.11 `DELETE` de un usuario con registros asociados → HTTP 500
+
+Los campos `creado_por` / `actualizado_por` son FK a `directus_users` con
+`ON DELETE NO ACTION`. Si el usuario creó registros, Directus devuelve:
+
+```
+delete from "directus_users" where "id" in ($1) - update or delete on table
+"directus_users" violates foreign key constraint "publicaciones_creado_por_foreign"
+```
+
+**Antes de borrar un usuario**: nullar `creado_por`/`actualizado_por` de sus
+registros o borrar esos registros primero.
+
+### 6.12 `PATCH /items/:collection/:id` — el id va en la URL
+
+En Directus 12, `PATCH /items/comentarios` con `{"id": ...}` en el body
+devuelve `400 "data is required"`. El id va en la ruta:
+`PATCH /items/comentarios/<id>` con el body del patch.
+
+---
+
+## 6.13 Permisos por cliente — configurados y verificados
+
+Estado real en `cms.studiomb.es` (verificado E2E con un usuario real):
+
+- **Rol** `Cliente` (id `0156e14e-94d9-45c1-9816-57a937c59836`) — no admin.
+- **Policy** `cliente_acceso` (id `89b9031c-d420-4ed5-9977-66827948f99b`),
+  `admin_access=false`, `app_access=true`, vinculada al rol vía
+  `directus_access`.
+- **Campo** `directus_users.cliente_id` (uuid, FK → `clientes.id`,
+  `SET NULL`). Así cada usuario de cliente sabe a qué cliente pertenece.
+- **Permisos** de la policy:
+
+| Colección | Acción | Filtro |
+|---|---|---|
+| `clientes` | read | `id = $CURRENT_USER.cliente_id` |
+| `publicaciones` | read | `cliente_id = $CURRENT_USER.cliente_id` |
+| `publicaciones` | create | `validation: cliente_id = $CURRENT_USER.cliente_id` |
+| `publicaciones` | update | `permissions` + `validation` por `cliente_id` |
+| `comentarios` | read | `cliente_id = $CURRENT_USER.cliente_id` (campo desnormalizado) |
+| `comentarios` | create | `validation: cliente_id + usuario_id` |
+| `comentarios` | update/delete | `usuario_id = $CURRENT_USER` (sólo el autor) |
+| `directus_files` | read | — |
+| `directus_users` | read/update | `id = $CURRENT_USER` |
+
+**Cómo se da de alta un cliente** (por ahora, en la UI de Directus):
+
+1. Settings → Data Model → `directus_users` → añadir el usuario con rol
+   **Cliente**.
+2. En ese usuario, poner `cliente_id` = su cliente.
+3. Listo: entra en `calendar.studiomb.es` y sólo ve lo suyo.
+
+**Limitación conocida y su impacto real**: Directus 12 no puede validar en
+`create` que el `publicacion_id` de un comentario pertenezca al cliente
+(ver §6.10). Consecuencia: un cliente con su JWT de Directus podría crear
+un comentario apuntando a la publicación de otro cliente **siempre que
+`cliente_id` sea el suyo**. La validación `cliente_id = $CURRENT_USER.cliente_id`
+impide atribuirlo a otro (verificado: HTTP 400).
+
+Efecto real de ese residuo: el comentario queda **invisible para el cliente
+legítimo** (su `read` filtra por su propio `cliente_id`) y **visible sólo para
+el atacante**. Es decir, no hay fuga de información ni contaminación del hilo
+del otro cliente — el daño se limita a ruido en la BBDD. En la **app** no
+ocurre: `/api/comentarios` POST consulta la publicación con el JWT del
+usuario (403 si es ajena) y responde 404 sin crear nada (verificado E2E).
+
+**Refuerzo opcional** (decisión de arquitectura, pendiente de confirmar):
+quitar `comentarios.create` al rol `Cliente` y que el endpoint cree el
+comentario con credenciales de servicio. Coste: `creado_por` en Directus
+pasaría a ser el admin (el `usuario_id` —autor visible— seguiría siendo el
+correcto) y la app passingía a depender de `PUBLIC_DIRECTUS_STATIC_TOKEN`,
+que hoy es opcional en el `.env` del VPS (si falta, los comentarios dejarían
+de funcionar). **No se ha aplicado** por ese motivo.
+
+Scripts de referencia en `scripts/`: `setup-client-permissions.py`,
+`add-comentario-cliente-id.py`, `verify-client-permissions.py`,
+`verify-app-flow-client.py`. Ver `scripts/README.md`.
+
 ---
 
 ## 7. Configuración MCP en opencode
@@ -335,10 +513,11 @@ gh repo view admin-studio-mb/studio-mb-calendario-editorial
 | `DIRECTUS_INTERNAL_URL` | `http://studio-mb-directus:8055` |
 | `SESSION_COOKIE_SECRET` | `openssl rand -hex 32` |
 | `SESSION_COOKIE_NAME` | `studio_mb_session` |
+| `PUBLIC_DIRECTUS_STATIC_TOKEN` | token estático de un admin — **sólo para scripts de auditoría/ops** (`scripts/*.py`). Está en `.gitignore`. **No** lo usa la app en runtime. |
 
 ---
 
-## 10. Estado del proyecto (sept 2026)
+## 10. Estado del proyecto (nov 2026)
 
 - ✅ Fase 1 — Infraestructura Directus
 - ✅ Fase 2 — Astro config + Tailwind + SDK + auth JWT
@@ -350,14 +529,21 @@ gh repo view admin-studio-mb/studio-mb-calendario-editorial
 - ✅ Fase 6 — Colecciones `clientes` / `publicaciones` / `comentarios` creadas vía MCP fields-tool (tras recrear `clientes` por typo `ararchivados`; rename de campo choca con 403 §6.5). Values de `formato` y `estado` en minúscula; frontend adaptado en `Calendar.jsx`, `PostForm.jsx`, `FeedMockup.jsx`.
 - ✅ `PUBLIC_URL` corregido a `https://cms.studiomb.es` (antes apuntaba a `calendar.studiomb.es`, residuo de prueba). `/.well-known/oauth-authorization-server` ya apunta todo a `cms`.
 - ✅ Fase 7 — Endpoints SSR `/api/publicaciones`, `/api/files`, `/api/comentarios`
-- ✅ Fase 8 — Sembrar datos de prueba (2 clientes, 8 publicaciones, 4 comentarios) y admin `ivan.luengo@studiomb.es`
+- ✅ Fase 8 — Sembrar datos de prueba y admin `ivan.luengo@studiomb.es`
 - ✅ Upgrade stack a las últimas estables: Astro **7.3.3**, React **19.3.0**, Tailwind CSS **4.3.3** (vía `@tailwindcss/vite`), `@astrojs/node` **11.1.6**, `@astrojs/react` **6.0.6**. `astro:env` para tipado de variables. `security.checkOrigin: false` por mismatch de origen con NPM.
 - ✅ Optimistic update con Nanostores — crear publicación refresca el calendario sin recargar. Rollback si el POST falla con aviso al usuario.
 - ✅ Cache busting: `cache: 'no-store'` + `t=<ts>` + `POST /utils/cache/clear` tras mutaciones para evitar que Directus sirva listas cacheadas.
 - ✅ Cookie: bug `Max-Age=60` corregido (Directus devuelve `expires` en **ms epoch**, antes se calculaba como segundos y daba negativo). Ahora 8h en local, alineable a 1 semana en prod.
 - ✅ Rediseño visual: layout con sidebar + KPIs en dashboard + FeedMockup estilo Instagram + login split screen. Tailwind 4 con paleta `brand` y `ink` en `@theme`.
-- ⏳ Fase 9 — Despliegue del frontend en VPS (`calendar.studiomb.es`)
-- ⏳ Permisos por cliente — policy con filtro `cliente_id = $CURRENT_USER.cliente_id` cuando llegue el caso real
+- ✅ **Fase 9** — Frontend desplegado en `calendar.studiomb.es` (Docker + NPM).
+- ✅ **Flujo editorial completo** de 6 estados (`borrador` → `revision` → `en_diseno` → `revision_diseno` → `aprobado` → `publicado`) con botones de acción rápida en el modal de detalle y comentarios integrados en el propio modal.
+- ✅ **Rutas relativas en el navegador** (`/api/...` en vez de URL absoluta) — evita el error `fetch failed` por Mixed Content detrás de NPM (§6 del informe de la auditoría).
+- ✅ **Zona horaria corregida** — `src/lib/fecha.js` como fuente única; los 15 posts existentes re-corregidos (+1h/+2h según DST).
+- ✅ **Caché de Directus** — `src/lib/cache.js` centraliza `POST /utils/cache/clear`; ya no hay comentarios/publicaciones que "no aparecen".
+- ✅ **Permisos por cliente** — rol `Cliente` + policy `cliente_acceso` + campo `directus_users.cliente_id`, verificados E2E (§6.13).
+- ✅ **Tests** — Vitest (51 tests) + build SSR Astro en verde.
+- ⏳ Publicación automatizada a redes (fuera de alcance: hoy se hace a mano).
+- ⏳ Asignación de `cliente_id` a usuarios desde la UI de la app (hoy se hace en la UI de Directus).
 
 ---
 
@@ -369,3 +555,6 @@ gh repo view admin-studio-mb/studio-mb-calendario-editorial
 4. **El frontend va a `calendar.studiomb.es` y el backend a `cms.studiomb.es`**. No los mezcles.
 5. **No subir imagen de Directus sin documentar el §6 correspondiente**. Cada gotcha conocido tiene que quedar en este archivo.
 6. **El usuario trabaja paso a paso**, pegando salidas literales. Responde con bloques `bash` ejecutables etiquetados ("VPS" o "Windows PowerShell"), no prosa.
+7. **Nunca uses `toISOString()` para fechas de publicación** ni `parseISO()` para leerlas — pasa por `src/lib/fecha.js` (§6.8).
+8. **Toda mutación en Directus va seguida de `clearDirectusCache()`** (§6.7).
+9. **Verifica con datos, no con suposiciones**: los scripts de `scripts/` auditan el estado real de Directus contra la API antes de dar por bueno cualquier cambio.

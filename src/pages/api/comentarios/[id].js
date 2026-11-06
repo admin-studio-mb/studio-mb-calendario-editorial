@@ -5,6 +5,7 @@
 // ============================================================================
 
 import { directusFetch } from '../../../lib/directus-fetch.js';
+import { clearDirectusCache } from '../../../lib/cache.js';
 
 export const prerender = false;
 
@@ -56,6 +57,7 @@ export async function PATCH({ params, request, locals }) {
     console.error('[api/comentarios PATCH]', r.status, r.raw);
     return json({ error: 'No se pudo editar el comentario.', detail: r.raw }, r.status);
   }
+  await clearDirectusCache(token);
   return json(r.data, 200);
 }
 
@@ -86,6 +88,7 @@ export async function DELETE({ params, locals }) {
     console.error('[api/comentarios DELETE]', r.status, r.raw);
     return json({ error: 'No se pudo eliminar el comentario.', detail: r.raw }, r.status);
   }
+  await clearDirectusCache(token);
   return new Response(null, { status: 204 });
 }
 

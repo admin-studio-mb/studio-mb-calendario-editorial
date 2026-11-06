@@ -18,7 +18,10 @@ const baseHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 const baseUrl = env.DIRECTUS_INTERNAL_URL;
 
 async function fetchCollection(path) {
-  const url = `${baseUrl}/items/${path}?limit=-1&t=${Date.now()}`;
+  // `cache: 'no-store'` evita el cache HTTP intermedio. OJO: el cache de
+  // Directus (Redis) es otro — ése se invalida con POST /utils/cache/clear
+  // tras cada mutación (ver src/lib/cache.js y AGENTS.md §6.7).
+  const url = `${baseUrl}/items/${path}?limit=-1`;
   const res = await fetch(url, { headers: baseHeaders, cache: 'no-store' });
   if (!res.ok) {
     console.error(`[dashboard] ${path} → ${res.status}`);
@@ -37,14 +40,6 @@ const publicaciones = publicacionesRaw.map((p) => ({
   ...p,
   cliente: p.cliente_id ?? null,
 }));
-
-// KPIs
-const now = new Date();
-const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
-const enMes = publicaciones.filter((p) => p.fecha_publicacion >= startOfMonth && p.fecha_publicacion < endOfMonth).length;
-const pendientesRevision = publicaciones.filter((p) => p.estado === 'revision').length;
-const aprobadas = publicaciones.filter((p) => p.estado === 'aprobado').length;
 
 // Comentarios: los carga el cliente on-demand según el post seleccionado.
 const initialFeed = publicaciones.slice(0, 9);

@@ -12,6 +12,8 @@
 // ============================================================================
 
 import { directusFetch } from '../../lib/directus-fetch.js';
+import { clearDirectusCache } from '../../lib/cache.js';
+import { normalizarFechaPublicacion } from '../../lib/fecha.js';
 
 export const prerender = false;
 
@@ -34,7 +36,8 @@ export async function POST({ request, locals }) {
   const err = validate(body);
   if (err) return json({ error: err }, 400);
 
-  // No permitimos que el cliente envíe campos no esperados (incl. usuario_id).
+  // Payload: la fecha va como HORA DE PARED local (naive, sin Z) porque
+  // Directus la guarda en `timestamp without time zone`.
   const payload = {
     cliente_id: body.cliente_id,
     tipo_contenido: body.tipo_contenido ?? null,
@@ -43,7 +46,7 @@ export async function POST({ request, locals }) {
     hashtags: Array.isArray(body.hashtags) ? body.hashtags : [],
     textos_slides: body.textos_slides ?? null,
     imagenes_fondo: Array.isArray(body.imagenes_fondo) ? body.imagenes_fondo : [],
-    fecha_publicacion: new Date(body.fecha_publicacion).toISOString(),
+    fecha_publicacion: normalizarFechaPublicacion(body.fecha_publicacion),
     estado: body.estado ?? 'borrador',
     diseno_final: body.diseno_final ?? null,
   };
@@ -61,18 +64,9 @@ export async function POST({ request, locals }) {
   }
 
   // Invalidamos el cache de Directus para que el siguiente SSR del dashboard
-  // vea la nueva publicación. Sin esto, el listado puede venir de Redis (cache
-  // interna) y no incluir lo recién creado. Best-effort: si falla seguimos.
-  try {
-    await directusFetch({
-      path: '/utils/cache/clear',
-      method: 'POST',
-      token,
-      search: { system: 'true' },
-    });
-  } catch (e) {
-    console.warn('[api/publicaciones POST] cache clear falló:', e?.message);
-  }
+  // vea la nueva publicación. Sin esto, Directus sirve la lista cacheada
+  // (Redis) y la publicación no aparece hasta que expira.
+  await clearDirectusCache(token);
 
   return json(r.data, 201);
 }
@@ -81,8 +75,7 @@ function validate(b) {
   if (!b || typeof b !== 'object') return 'Body requerido.';
   if (!b.cliente_id || typeof b.cliente_id !== 'string') return 'cliente_id obligatorio.';
   if (!b.fecha_publicacion) return 'fecha_publicacion obligatoria.';
-  const d = new Date(b.fecha_publicacion);
-  if (Number.isNaN(d.getTime())) return 'fecha_publicacion inválida.';
+  if (!normalizarFechaPublicacion(b.fecha_publicacion)) return 'fecha_publicacion inválida.';
   if (b.formato && !FORMATOS.has(b.formato)) return `formato debe ser uno de: ${[...FORMATOS].join(', ')}.`;
   if (b.estado && !ESTADOS.has(b.estado)) return `estado debe ser uno de: ${[...ESTADOS].join(', ')}.`;
   return null;

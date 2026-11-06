@@ -14,7 +14,10 @@ const baseHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 const baseUrl = env.DIRECTUS_INTERNAL_URL;
 
 async function fetchCollection(path) {
-  const url = `${baseUrl}/items/${path}?limit=-1&t=${Date.now()}`;
+  // `cache: 'no-store'` evita el cache HTTP intermedio. OJO: el cache de
+  // Directus (Redis) es otro — ése se invalida con POST /utils/cache/clear
+  // tras cada mutación (ver src/lib/cache.js y AGENTS.md §6.7).
+  const url = `${baseUrl}/items/${path}?limit=-1`;
   const res = await fetch(url, { headers: baseHeaders, cache: 'no-store' });
   if (!res.ok) {
     console.error(`[dashboard/clientes] ${path} → ${res.status}`);

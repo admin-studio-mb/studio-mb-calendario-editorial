@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { addPublicacion, updatePublicacion, removePublicacion } from '../stores/publicaciones.js';
 import DateField from './DateField.jsx';
 import TimePicker from './TimePicker.jsx';
+import { toISOlocal, parseFechaPublicacion } from '../lib/fecha.js';
 
 const FORMATOS = ['post', 'reel', 'carrusel', 'story'];
 const ESTADOS = ['borrador', 'revision', 'en_diseno', 'revision_diseno', 'aprobado', 'publicado'];
@@ -78,7 +79,7 @@ export default function PostForm({
   const [textosSlides, setTextosSlides] = useState(initial.textos_slides ?? '');
   const [imagenes, setImagenes] = useState((initial.imagenes_fondo ?? []).join('\n'));
   // Fecha (Date) y hora ('HH:mm') gestionados por separado.
-  const initialDate = initial.fecha_publicacion ? new Date(initial.fecha_publicacion) : null;
+  const initialDate = parseFechaPublicacion(initial.fecha_publicacion);
   const [fecha, setFecha] = useState(initialDate);
   const [hora, setHora] = useState(
     initialDate
@@ -172,7 +173,10 @@ export default function PostForm({
         const [h, m] = hora.split(':').map(Number);
         const d = new Date(fecha);
         d.setHours(h || 0, m || 0, 0, 0);
-        return d.toISOString();
+        // Enviamos HORA DE PARED local (naive, sin Z). Si mandáramos
+        // toISOString() (UTC), Directus guardaría la hora UTC y el calendario
+        // mostraría una hora antes (2 en horario de verano).
+        return toISOlocal(d);
       })(),
       estado,
       diseno_final: disenoFinalId,

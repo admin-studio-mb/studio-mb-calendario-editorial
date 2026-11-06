@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 import { useStore } from '@nanostores/react';
-import { format, parseISO, isSameMonth } from 'date-fns';
+import { format, isSameMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { publicacionesStore, cursorStore, filtrosStore } from '../stores/publicaciones.js';
+import { parseFechaPublicacion } from '../lib/fecha.js';
 
 /**
  * Kpis — 4 tarjetas resumen que reaccionan al cursor y al cliente filtrado.
@@ -27,8 +28,8 @@ export default function Kpis() {
     let aprobadas = 0;
     for (const p of list) {
       if (!p.fecha_publicacion) continue;
-      const fecha = parseISO(p.fecha_publicacion);
-      if (!isSameMonth(fecha, cursor)) continue;
+      const fecha = parseFechaPublicacion(p.fecha_publicacion);
+      if (!fecha || !isSameMonth(fecha, cursor)) continue;
       enMes++;
       if (p.estado === 'revision' || p.estado === 'revision_diseno') enRevision++;
       else if (p.estado === 'aprobado' || p.estado === 'publicado') aprobadas++;
