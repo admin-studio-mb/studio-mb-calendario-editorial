@@ -420,8 +420,17 @@ se lee de `/users/me?fields=...,role.id,role.name` en `getCurrentUser()`
 
 | Rol | Qué puede en la app |
 |---|---|
-| Equipo (Administrator/otros) | Todo: crear, editar, borrar, recorrer las 6 transiciones. |
+| `Administrator` | Todo: contenido, **gestión de clientes** y **gestión de usuarios** (`/dashboard/usuarios`). |
+| `Editor` | Contenido de TODOS los clientes: crear/editar/borrar publicaciones, diseños y comentarios. **No** gestiona clientes ni usuarios. |
 | `Cliente` | Ver su calendario/mockup, comentar y **confirmar**: `revision→en_diseno`, `revision_diseno→aprobado`, `revision_diseno→en_diseno`. |
+
+**Alta de usuarios desde la web** (`/dashboard/usuarios`, solo Administrator):
+crear Cliente (con cliente asignado obligatorio), Editor o Administrador;
+editar, suspender y borrar. Los endpoints `/api/usuarios` y
+`/api/usuarios/[id]` validan el rol en servidor (403 para no-admin) y
+protegen contra autobloqueo (no puedes cambiarte el rol, suspenderte ni
+borrarte a ti mismo). El borrado de un usuario con registros asociados
+devuelve 409 explicando que hay que suspenderlo o reasignar (§6.11).
 
 Guard en servidor (`/api/publicaciones`, `/api/publicaciones/[id]`):
 - POST y DELETE → 403 para Cliente.
