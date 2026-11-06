@@ -411,6 +411,39 @@ correcto) y la app passingía a depender de `PUBLIC_DIRECTUS_STATIC_TOKEN`,
 que hoy es opcional en el `.env` del VPS (si falta, los comentarios dejarían
 de funcionar). **No se ha aplicado** por ese motivo.
 
+### 6.13.1 Rol y flujo editorial en la app (`src/lib/flujo.js`)
+
+La UI y los endpoints de la app se adaptan al rol del usuario. **Fuente
+única**: `src/lib/flujo.js` (estados, transiciones y `esCliente()`). El rol
+se lee de `/users/me?fields=...,role.id,role.name` en `getCurrentUser()`
+(middleware).
+
+| Rol | Qué puede en la app |
+|---|---|
+| Equipo (Administrator/otros) | Todo: crear, editar, borrar, recorrer las 6 transiciones. |
+| `Cliente` | Ver su calendario/mockup, comentar y **confirmar**: `revision→en_diseno`, `revision_diseno→aprobado`, `revision_diseno→en_diseno`. |
+
+Guard en servidor (`/api/publicaciones`, `/api/publicaciones/[id]`):
+- POST y DELETE → 403 para Cliente.
+- PATCH → 403 si el body toca cualquier campo que no sea `estado`.
+- PATCH de `estado` → se lee el estado actual con el JWT del usuario y se
+  valida la transición contra `flujo.js`; si no es válida → 403.
+
+En la UI: el Cliente no ve el panel "Nueva publicación" ni el nav "Clientes";
+en el modal ve una vista de solo lectura + sus botones de confirmación +
+el hilo de comentarios. El select de `estado` desapareció del formulario:
+el estado solo cambia con los botones del flujo.
+
+**Limitación honesta**: el guard vive en los endpoints de la app. Si un
+Cliente usa su JWT de Directus **directamente** contra `cms.studiomb.es`
+puede seguir haciendo `PATCH` de `estado` dentro de sus publicaciones (la
+policy permite `update` con `validation` por `cliente_id`). Cerrarlo del todo
+requiere limitar campos en el permiso de Directus 12 (field-level
+permissions) — pendiente de decidir. Por la app, el flujo se cumple.
+
+Verificación: `python scripts/verify-role-guard.py` (7 checks, limpia sus
+datos temporales).
+
 Scripts de referencia en `scripts/`: `setup-client-permissions.py`,
 `add-comentario-cliente-id.py`, `verify-client-permissions.py`,
 `verify-app-flow-client.py`. Ver `scripts/README.md`.
@@ -541,7 +574,8 @@ gh repo view admin-studio-mb/studio-mb-calendario-editorial
 - ✅ **Zona horaria corregida** — `src/lib/fecha.js` como fuente única; los 15 posts existentes re-corregidos (+1h/+2h según DST).
 - ✅ **Caché de Directus** — `src/lib/cache.js` centraliza `POST /utils/cache/clear`; ya no hay comentarios/publicaciones que "no aparecen".
 - ✅ **Permisos por cliente** — rol `Cliente` + policy `cliente_acceso` + campo `directus_users.cliente_id`, verificados E2E (§6.13).
-- ✅ **Tests** — Vitest (51 tests) + build SSR Astro en verde.
+- ✅ **Tests** — Vitest (58 tests) + build SSR Astro en verde.
+- ✅ **Guard por rol** — `src/lib/flujo.js` como fuente única de transiciones; la UI se adapta al rol (el Cliente no crea ni edita, solo confirma y comenta) y los endpoints validan en servidor (`verify-role-guard.py`, 7 checks).
 - ⏳ Publicación automatizada a redes (fuera de alcance: hoy se hace a mano).
 - ⏳ Asignación de `cliente_id` a usuarios desde la UI de la app (hoy se hace en la UI de Directus).
 

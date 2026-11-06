@@ -13,6 +13,9 @@ import { env } from '../../lib/env.js';
 export const prerender = false;
 
 const { user, token } = Astro.locals;
+// Rol Cliente: no crea publicaciones; solo ve su calendario/mockup y confirma
+// desde el modal de cada post. El resto (equipo) tiene la vista completa.
+const esCliente = user?.role?.name === 'Cliente';
 const baseHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 const baseUrl = env.DIRECTUS_INTERNAL_URL;
 
@@ -57,8 +60,8 @@ const initialFeed = publicaciones.slice(0, 9);
   {/* KPIs (reaccionan al cursor del calendario) */}
   <Kpis client:load />
 
-  <section class="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-    <div class="lg:col-span-2 space-y-4 lg:space-y-6 order-1">
+  <section class={esCliente ? 'grid grid-cols-1 gap-4 lg:gap-6' : 'grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6'}>
+    <div class={esCliente ? 'space-y-4 lg:space-y-6 order-1' : 'lg:col-span-2 space-y-4 lg:space-y-6 order-1'}>
       <Calendar client:load initialPublicaciones={publicaciones} clientes={clientes} />
       <div class="hidden lg:block">
         <FeedMockup
@@ -68,9 +71,11 @@ const initialFeed = publicaciones.slice(0, 9);
       </div>
     </div>
 
-    <aside class="space-y-4 lg:space-y-6 order-2 lg:order-3">
-      <PostForm client:load clientes={clientes} />
-    </aside>
+    {!esCliente && (
+      <aside class="space-y-4 lg:space-y-6 order-2 lg:order-3">
+        <PostForm client:load clientes={clientes} />
+      </aside>
+    )}
 
     {/* FeedMockup en móvil: abajo del todo */}
     {initialFeed.length > 0 && (

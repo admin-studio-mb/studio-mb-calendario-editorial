@@ -8,6 +8,7 @@
 import { directusFetch } from '../../../lib/directus-fetch.js';
 import { clearDirectusCache } from '../../../lib/cache.js';
 import { normalizarFechaPublicacion } from '../../../lib/fecha.js';
+import { esCliente, transicionPermitida } from '../../../lib/flujo.js';
 
 const REQUIRED_STRING_FIELDS = ['cliente_id', 'formato', 'estado'];
 const VALID_FORMATO = ['post', 'reel', 'carrusel', 'story'];
@@ -32,6 +33,36 @@ export async function PATCH({ params, request, locals }) {
     body = await request.json();
   } catch {
     return json({ error: 'Body JSON inválido.' }, 400);
+  }
+
+  // ── Restricciones del rol Cliente ─────────────────────────────────────
+  // El cliente solo puede CONFIRMAR (cambiar `estado` con una transición
+  // válida del flujo). No edita contenido, no borra, no publica.
+  const user = locals?.user ?? null;
+  if (esCliente(user)) {
+    const campos = Object.keys(body).filter((k) => body[k] !== undefined);
+    if (campos.some((k) => k !== 'estado')) {
+      return json({ error: 'Los clientes solo pueden confirmar la publicación.' }, 403);
+    }
+    if (!body.estado) {
+      return json({ error: 'Falta el estado.' }, 400);
+    }
+    const actual = await directusFetch({
+      path: `/items/publicaciones/${id}`,
+      method: 'GET',
+      token,
+      search: { fields: 'estado' },
+    });
+    if (!actual.ok) {
+      return json({ error: 'No se pudo leer la publicación.' }, actual.status || 500);
+    }
+    const estadoActual = actual.data?.estado;
+    if (!transicionPermitida(estadoActual, body.estado, user)) {
+      return json(
+        { error: `Transición no permitida: ${estadoActual} → ${body.estado}` },
+        403,
+      );
+    }
   }
 
   // Validación de campos básicos.
@@ -93,6 +124,11 @@ export async function PATCH({ params, request, locals }) {
 export async function DELETE({ params, locals }) {
   const token = locals?.token ?? null;
   if (!token) return json({ error: 'Unauthorized' }, 401);
+
+  // El rol Cliente no puede borrar publicaciones.
+  if (esCliente(locals?.user)) {
+    return json({ error: 'No autorizado.' }, 403);
+  }
 
   const id = params?.id;
   if (!id) return json({ error: 'Falta el id de la publicación.' }, 400);

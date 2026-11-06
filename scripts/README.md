@@ -40,6 +40,7 @@ python scripts/<script>.py
 |---|---|
 | `verify-client-permissions.py` | 13 comprobaciones de aislamiento con un usuario de cliente real: sólo ve su cliente, sus publicaciones, no puede leer/editar/borrar lo ajeno. |
 | `verify-app-flow-client.py` | El flujo de la app con usuario cliente: el GET de la publicación ajena da 403, la expansión de `usuario_id` funciona, listar→crear→listar. |
+| `verify-role-guard.py` | El guard por rol de `/api/publicaciones`: con un usuario Cliente temporal verifica 403 al crear/editar/borrar/saltarse el flujo, 200 al confirmar (revision→en_diseno) y que el estado persiste. Limpia todo al final. |
 | `e2e-app.py` | E2E contra la app local (Astro preview): login → crear cliente → crear publicación → comentar → editar → cambiar estado → borrar → logout. Necesita `DIRECTUS_ADMIN_PASS` y `DIRECTUS_EMAIL`. |
 
 ## Orden recomendado para reconstruir un entorno
@@ -56,7 +57,8 @@ python scripts/audit-directus.py            # comprobar
 
 - **Limpia la caché** después de cualquier cambio: `POST /utils/cache/clear?system=true`.
   Directus 12 cachea los GET en Redis y no invalida al escribir (AGENTS.md §6.7).
-- **Los listados que deben ser frescos** llevan `&t=<timestamp>`.
+- **Los listados que deben ser frescos** se fuerzan con `POST /utils/cache/clear?system=true`.
+  Los parámetros `?t=` / `?_=` **NO** invalidan la caché de Directus (AGENTS.md §6.7).
 - **No pidas `archivado` en `fields`** de los listados: incluiría los
   soft-deletes (AGENTS.md §6.9).
 - **Borrar un usuario** que creó registros falla con HTTP 500 por las FK

@@ -14,6 +14,7 @@
 import { directusFetch } from '../../lib/directus-fetch.js';
 import { clearDirectusCache } from '../../lib/cache.js';
 import { normalizarFechaPublicacion } from '../../lib/fecha.js';
+import { esCliente } from '../../lib/flujo.js';
 
 export const prerender = false;
 
@@ -24,6 +25,11 @@ export async function POST({ request, locals }) {
   const token = locals.token ?? null;
   if (!token) {
     return json({ error: 'Unauthorized' }, 401);
+  }
+
+  // El rol Cliente no crea publicaciones: las crea la agencia.
+  if (esCliente(locals?.user)) {
+    return json({ error: 'Los clientes no pueden crear publicaciones.' }, 403);
   }
 
   let body;

@@ -98,9 +98,12 @@ export function clearSession(cookies) {
 export async function getCurrentUser(token) {
   if (!token) return null;
   try {
-    const res = await fetch(`${env.DIRECTUS_INTERNAL_URL}/users/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    // Pedimos el rol explícitamente (`role.id`/`role.name`) para poder
+    // adaptar la UI y las transiciones del flujo según el rol del usuario.
+    const res = await fetch(
+      `${env.DIRECTUS_INTERNAL_URL}/users/me?fields=id,email,first_name,last_name,role.id,role.name`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
     if (!res.ok) return null;
     const { data } = await res.json();
     return data;

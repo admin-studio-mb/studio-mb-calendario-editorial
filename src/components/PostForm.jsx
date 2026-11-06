@@ -5,7 +5,6 @@ import TimePicker from './TimePicker.jsx';
 import { toISOlocal, parseFechaPublicacion } from '../lib/fecha.js';
 
 const FORMATOS = ['post', 'reel', 'carrusel', 'story'];
-const ESTADOS = ['borrador', 'revision', 'en_diseno', 'revision_diseno', 'aprobado', 'publicado'];
 
 /** Title Case con soporte de acentos: 'post' → 'Post', 'revision' → 'Revisión'. */
 const LABEL_OVERRIDES = {
@@ -155,7 +154,6 @@ export default function PostForm({
       ? `${String(initialDate.getHours()).padStart(2, '0')}:${String(initialDate.getMinutes()).padStart(2, '0')}`
       : '',
   );
-  const [estado, setEstado] = useState(initial.estado ?? 'borrador');
   const [disenoFile, setDisenoFile] = useState(null);
   const [removeDiseno, setRemoveDiseno] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -255,7 +253,9 @@ export default function PostForm({
         // mostraría una hora antes (2 en horario de verano).
         return toISOlocal(d);
       })(),
-      estado,
+      // El estado solo se fija al crear (siempre borrador). Al editar NO se
+      // envía: se cambia únicamente con los botones de flujo del modal.
+      ...(isEdit ? {} : { estado: 'borrador' }),
       diseno_final: removeDiseno ? null : existingDisenoId,
     };
 
@@ -418,12 +418,6 @@ export default function PostForm({
           <Field label="Formato">
             <select id="formato" value={formato} onChange={(e) => setFormato(e.target.value)} className={inputBase}>
               {FORMATOS.map((f) => <option key={f} value={f}>{titleCase(f)}</option>)}
-            </select>
-          </Field>
-
-          <Field label="Estado">
-            <select id="estado" value={estado} onChange={(e) => setEstado(e.target.value)} className={inputBase}>
-              {ESTADOS.map((s) => <option key={s} value={s}>{titleCase(s)}</option>)}
             </select>
           </Field>
 
