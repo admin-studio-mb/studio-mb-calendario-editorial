@@ -10,6 +10,8 @@ import { env } from '../../../lib/env.js';
 export const prerender = false;
 
 const { user, token } = Astro.locals;
+// El rol Cliente no gestiona clientes: si llega por URL, de vuelta al calendario.
+if (user?.role?.name === 'Cliente') return Astro.redirect('/dashboard');
 const baseHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 const baseUrl = env.DIRECTUS_INTERNAL_URL;
 
