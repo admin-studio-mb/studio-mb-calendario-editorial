@@ -12,6 +12,7 @@ Uso:
 import http.cookiejar
 import json
 import os
+import secrets
 import sys
 import urllib.error
 import urllib.parse
@@ -22,7 +23,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIRECTUS = "https://cms.studiomb.es"
 APP = os.environ.get("APP_URL", "http://127.0.0.1:4321").rstrip("/")
 EMAIL = "zz-e2e-rol@studiomb.es"
-PASSWORD = "Tmp_ZZ_Rol_2026!"
+# Contraseña aleatoria por ejecución: nunca se hardcodea (el usuario es
+# temporal y se borra al final del script).
+PASSWORD = os.environ.get("E2E_TEMP_PASSWORD") or secrets.token_urlsafe(18)
 
 
 def read_static_token():

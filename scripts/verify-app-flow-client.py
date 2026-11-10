@@ -10,6 +10,7 @@
 """
 import json
 import os
+import secrets
 import time
 import urllib.error
 import urllib.parse
@@ -28,7 +29,7 @@ def read_token():
 
 
 ADMIN = read_token()
-TMP_PASSWORD = os.environ.get("E2E_TEMP_PASSWORD") or "Probe_Cl1ente_2026!"
+TMP_PASSWORD = os.environ.get("E2E_TEMP_PASSWORD") or secrets.token_urlsafe(18)
 
 
 def api(path, method="GET", body=None, token=None, query=None):

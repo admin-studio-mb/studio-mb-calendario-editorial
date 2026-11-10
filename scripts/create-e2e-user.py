@@ -5,6 +5,7 @@ Se borra al terminar. La contraseña se genera aquí y sólo vive en este script
 """
 import json
 import os
+import secrets
 import sys
 import urllib.error
 import urllib.parse
@@ -13,7 +14,7 @@ import urllib.request
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASE = "https://cms.studiomb.es"
 EMAIL = "e2e-temp@studiomb.es"
-PASSWORD = os.environ.get("E2E_TEMP_PASSWORD") or "Tmp_E2E_2026_xK9!"
+PASSWORD = os.environ.get("E2E_TEMP_PASSWORD") or secrets.token_urlsafe(18)
 
 
 def read_token():
