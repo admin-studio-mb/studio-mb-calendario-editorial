@@ -593,7 +593,7 @@ gh repo view admin-studio-mb/studio-mb-calendario-editorial
 - ✅ **Guard por rol** — `src/lib/flujo.js` como fuente única de transiciones; la UI se adapta al rol (el Cliente no crea ni edita, solo confirma y comenta) y los endpoints validan en servidor (`verify-role-guard.py`, 7 checks).
 - ✅ **Roles Admin / Editor / Cliente** — rol `Editor` + policy `editor_acceso` creados en Directus (`setup-editor-role.py`); gestión de usuarios desde `/dashboard/usuarios` (solo Admin): crear Cliente/Editor/Admin, asignar cliente, suspender y borrar. Verificado con `verify-editor-role.py` (8 checks).
 - ⏳ Publicación automatizada a redes (fuera de alcance: hoy se hace a mano).
-- ⏳ Asignación de `cliente_id` a usuarios desde la UI de la app (hoy se hace en la UI de Directus).
+- ✅ **Alta de clientes y usuarios desde la web** — `/dashboard/usuarios` (solo Admin) crea Cliente/Editor/Admin, asigna `cliente_id` y gestiona suspensión/borrado; `/dashboard/clientes` da de alta clientes (Admin). Ya no hace falta tocar la UI de Directus.
 
 ---
 
