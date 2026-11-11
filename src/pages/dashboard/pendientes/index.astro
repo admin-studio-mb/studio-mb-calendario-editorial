@@ -1,0 +1,55 @@
+---
+// ============================================================================
+//  /dashboard/pendientes — lo que espera confirmación.
+//    revision        → confirmar texto
+//    revision_diseno → aprobar diseño
+//  El cliente ve solo lo suyo (permisos Directus); el equipo ve todo.
+// ============================================================================
+import Layout from '../../../layouts/Layout.astro';
+import PendientesView from '../../../components/PendientesView.jsx';
+import { directusFetch } from '../../../lib/directus-fetch.js';
+
+export const prerender = false;
+
+const { user, token } = Astro.locals;
+if (!user) return Astro.redirect('/login');
+
+const [rPosts, rClientes] = await Promise.all([
+  directusFetch({
+    path: '/items/publicaciones',
+    token,
+    search: {
+      'filter[estado][_in]': 'revision,revision_diseno',
+      fields: 'id,cliente_id,tipo_contenido,formato,copywriting,hashtags,imagenes_fondo,fecha_publicacion,estado,diseno_final',
+      limit: '-1',
+      sort: 'fecha_publicacion',
+    },
+  }),
+  directusFetch({
+    path: '/items/clientes',
+    token,
+    search: { limit: '-1', fields: 'id,nombre' },
+  }),
+]);
+
+if (!rPosts.ok) console.error('[dashboard/pendientes] publicaciones →', rPosts.status);
+if (!rClientes.ok) console.error('[dashboard/pendientes] clientes →', rClientes.status);
+
+const publicaciones = rPosts.ok && Array.isArray(rPosts.data) ? rPosts.data : [];
+const clientes = rClientes.ok && Array.isArray(rClientes.data) ? rClientes.data : [];
+---
+<Layout title="Pendientes · Studio mb" user={user}>
+  <header class="mb-8">
+    <h1 class="text-2xl md:text-3xl font-bold text-ink-900 tracking-tight">Pendientes</h1>
+    <p class="mt-1 text-sm text-ink-500">
+      Publicaciones que esperan una confirmación: primero el texto, luego el diseño.
+    </p>
+  </header>
+
+  <PendientesView
+    client:load
+    initialPosts={publicaciones}
+    clientes={clientes}
+    currentUser={user}
+  />
+</Layout>

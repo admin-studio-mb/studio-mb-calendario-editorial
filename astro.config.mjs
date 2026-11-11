@@ -68,6 +68,20 @@ export default defineConfig({
         optional: true,
         default: '',
       }),
+
+      // SMTP para notificaciones por email. Si faltan host/user/pass,
+      // el envío se omite y solo funciona la campanita.
+      SMTP_HOST: envField.string({ context: 'server', access: 'public', optional: true, default: '' }),
+      SMTP_PORT: envField.string({ context: 'server', access: 'public', optional: true, default: '587' }),
+      SMTP_USER: envField.string({ context: 'server', access: 'public', optional: true, default: '' }),
+      SMTP_PASS: envField.string({ context: 'server', access: 'secret', optional: true, default: '' }),
+      SMTP_FROM: envField.string({
+        context: 'server',
+        access: 'public',
+        optional: true,
+        default: 'Studio mb <no-reply@studiomb.es>',
+      }),
+      SMTP_SECURE: envField.string({ context: 'server', access: 'public', optional: true, default: '' }),
     },
   },
 
@@ -77,9 +91,10 @@ export default defineConfig({
     plugins: [tailwindcss()],
     ssr: {
       // El SDK de Directus y date-fns deben externalizarse para que no se
-      // intenten empaquetar dentro del bundle SSR de Astro.
+      // intenten empaquetar dentro del bundle SSR de Astro. nodemailer usa
+      // requires dinámicos: también va externalizado.
       noExternal: [],
-      external: ['@directus/sdk', 'date-fns'],
+      external: ['@directus/sdk', 'date-fns', 'nodemailer'],
     },
   },
 });

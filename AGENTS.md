@@ -594,6 +594,8 @@ gh repo view admin-studio-mb/studio-mb-calendario-editorial
 - ✅ **Roles Admin / Editor / Cliente** — rol `Editor` + policy `editor_acceso` creados en Directus (`setup-editor-role.py`); gestión de usuarios desde `/dashboard/usuarios` (solo Admin): crear Cliente/Editor/Admin, asignar cliente, suspender y borrar. Verificado con `verify-editor-role.py` (8 checks).
 - ⏳ Publicación automatizada a redes (fuera de alcance: hoy se hace a mano).
 - ✅ **Alta de clientes y usuarios desde la web** — `/dashboard/usuarios` (solo Admin) crea Cliente/Editor/Admin, asigna `cliente_id` y gestiona suspensión/borrado; `/dashboard/clientes` da de alta clientes (Admin). Ya no hace falta tocar la UI de Directus.
+- ✅ **Notificaciones** — colección `notificaciones` + campanita en el sidebar (badge, marcar leídas, poll 30 s) + email vía SMTP (nodemailer). Eventos: comentarios y cambios de estado. Verificado con `verify-notificaciones.py` (8 checks). Requiere `PUBLIC_DIRECTUS_STATIC_TOKEN` y, para email, `SMTP_*`.
+- ✅ **Página Pendientes** — `/dashboard/pendientes`: posts en `revision` (confirmar texto, con "Confirmar todos") y `revision_diseno` (aprobar diseño), con las acciones permitidas por rol.
 
 ---
 

@@ -21,22 +21,31 @@
 // ============================================================================
 
 import { directusFetch } from './directus-fetch.js';
+import { env } from './env.js';
 
 /**
  * Limpia la caché de Directus. Best-effort: si falla, la operación sigue.
  *
- * @param {string|null} token  JWT del usuario (hace falta permiso de sistema).
+ * `/utils/cache/clear` exige permisos de administrador: el token de un
+ * Cliente o Editor devuelve 403 y la caché quedaría sucia. Por eso, si hay
+ * `PUBLIC_DIRECTUS_STATIC_TOKEN` (admin, server-side), se usa siempre ése.
+ *
+ * @param {string|null} token  JWT del usuario (fallback si no hay estático).
  * @returns {Promise<boolean>} true si se limpió.
  */
 export async function clearDirectusCache(token) {
-  if (!token) return false;
+  const t = env.PUBLIC_DIRECTUS_STATIC_TOKEN || token;
+  if (!t) return false;
   try {
     const r = await directusFetch({
       path: '/utils/cache/clear',
       method: 'POST',
-      token,
+      token: t,
       search: { system: 'true' },
     });
+    if (!r.ok) {
+      console.warn('[cache] cache/clear respondió', r.status);
+    }
     return r.ok;
   } catch (err) {
     console.warn('[cache] no se pudo limpiar la caché de Directus:', err?.message ?? err);

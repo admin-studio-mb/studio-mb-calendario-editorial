@@ -31,6 +31,20 @@ services:
       SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-studio_mb_session}
       SESSION_COOKIE_SECRET: ${SESSION_COOKIE_SECRET:?SESSION_COOKIE_SECRET es obligatorio}
 
+      # Token estático admin (server-side). Necesario para crear
+      # notificaciones para otros usuarios y para limpiar la caché de
+      # Directus (un Cliente/Editor no puede: /utils/cache/clear → 403).
+      PUBLIC_DIRECTUS_STATIC_TOKEN: ${PUBLIC_DIRECTUS_STATIC_TOKEN:-}
+
+      # SMTP para notificaciones por email. Si falta host/user/pass, los
+      # emails se omiten y solo funciona la campanita.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-Studio mb <no-reply@studiomb.es>}
+      SMTP_SECURE: ${SMTP_SECURE:-}
+
     networks:
       - servicios-internos
       - nginx-proxy-manager_default

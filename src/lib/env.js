@@ -23,6 +23,12 @@ import {
   SESSION_COOKIE_NAME as _SCN,
   SESSION_COOKIE_SECRET as _SCS,
   PUBLIC_DIRECTUS_STATIC_TOKEN as _PST,
+  SMTP_HOST as _SMTP_HOST,
+  SMTP_PORT as _SMTP_PORT,
+  SMTP_USER as _SMTP_USER,
+  SMTP_PASS as _SMTP_PASS,
+  SMTP_FROM as _SMTP_FROM,
+  SMTP_SECURE as _SMTP_SECURE,
 } from 'astro:env/server';
 
 // En producción, priorizamos process.env (que es lo que ve Node al arrancar
@@ -49,4 +55,10 @@ export const env = {
   SESSION_COOKIE_NAME: pick(_SCN, 'SESSION_COOKIE_NAME', 'studio_mb_session'),
   SESSION_COOKIE_SECRET: pick(_SCS, 'SESSION_COOKIE_SECRET', ''),
   PUBLIC_DIRECTUS_STATIC_TOKEN: pick(_PST, 'PUBLIC_DIRECTUS_STATIC_TOKEN', ''),
+  SMTP_HOST: pick(_SMTP_HOST, 'SMTP_HOST', ''),
+  SMTP_PORT: pick(_SMTP_PORT, 'SMTP_PORT', '587'),
+  SMTP_USER: pick(_SMTP_USER, 'SMTP_USER', ''),
+  SMTP_PASS: pick(_SMTP_PASS, 'SMTP_PASS', ''),
+  SMTP_FROM: pick(_SMTP_FROM, 'SMTP_FROM', 'Studio mb <no-reply@studiomb.es>'),
+  SMTP_SECURE: pick(_SMTP_SECURE, 'SMTP_SECURE', ''),
 };

@@ -3,6 +3,7 @@
 //  Layout principal — sidebar colapsable + área de contenido.
 // ============================================================================
 import '../styles/globals.css';
+import Notificaciones from '../components/Notificaciones.jsx';
 
 const { title = 'Studio mb · Calendario', user } = Astro.props;
 // El rol Cliente no gestiona clientes: ocultamos esa sección del sidebar.
@@ -76,6 +77,13 @@ function initials(u) {
           </svg>
           <span class="sidebar-text">Calendario</span>
         </a>
+        <a href="/dashboard/pendientes" class="nav-item group">
+          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 11l3 3L22 4" />
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+          </svg>
+          <span class="sidebar-text">Pendientes</span>
+        </a>
         {!esCliente && (
           <a href="/dashboard/clientes" class="nav-item group">
             <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -111,6 +119,7 @@ function initials(u) {
       {/* Botón Dark/Light + Logout + Avatar al fondo (siempre visibles, también colapsado) */}
       <div class="p-3 border-t border-ink-100 space-y-2">
         <div class="flex items-center gap-1 sidebar-actions">
+          <Notificaciones client:load />
           <button
             id="theme-toggle"
             type="button"

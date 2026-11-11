@@ -6,6 +6,7 @@
 
 import { directusFetch } from '../../lib/directus-fetch.js';
 import { clearDirectusCache } from '../../lib/cache.js';
+import { notificarComentario } from '../../lib/notificaciones.js';
 
 export const prerender = false;
 
@@ -71,7 +72,7 @@ export async function POST({ request, locals }) {
     path: `/items/publicaciones/${publicacionId}`,
     method: 'GET',
     token,
-    search: { fields: 'id,cliente_id' },
+    search: { fields: 'id,cliente_id,tipo_contenido,fecha_publicacion' },
   });
   if (!pub.ok || !pub.data?.id) {
     console.error('[api/comentarios POST] publicación no encontrada', publicacionId, pub.status, pub.raw);
@@ -100,6 +101,13 @@ export async function POST({ request, locals }) {
   // Directus 12 NO invalida la caché al crear items: sin esto, el hilo que
   // se acaba de abrir seguiría mostrando la lista anterior.
   await clearDirectusCache(token);
+
+  // Notificación + email a la otra parte (best-effort: nunca rompe el POST).
+  await notificarComentario({
+    autor: locals.user,
+    publicacion: pub.data,
+    texto,
+  });
 
   return json(r.data, 201);
 }

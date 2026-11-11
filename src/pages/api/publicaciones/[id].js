@@ -9,6 +9,7 @@ import { directusFetch } from '../../../lib/directus-fetch.js';
 import { clearDirectusCache } from '../../../lib/cache.js';
 import { normalizarFechaPublicacion } from '../../../lib/fecha.js';
 import { esCliente, transicionPermitida } from '../../../lib/flujo.js';
+import { notificarEstado } from '../../../lib/notificaciones.js';
 
 const REQUIRED_STRING_FIELDS = ['cliente_id', 'formato', 'estado'];
 const VALID_FORMATO = ['post', 'reel', 'carrusel', 'story'];
@@ -35,10 +36,26 @@ export async function PATCH({ params, request, locals }) {
     return json({ error: 'Body JSON inválido.' }, 400);
   }
 
-  // ── Restricciones del rol Cliente ─────────────────────────────────────
+  // ── Restricciones del rol Cliente y datos previos ─────────────────────
   // El cliente solo puede CONFIRMAR (cambiar `estado` con una transición
   // válida del flujo). No edita contenido, no borra, no publica.
   const user = locals?.user ?? null;
+
+  // Datos previos: los usan el guard de rol y las notificaciones.
+  let prev = null;
+  if (body.estado !== undefined) {
+    const actual = await directusFetch({
+      path: `/items/publicaciones/${id}`,
+      method: 'GET',
+      token,
+      search: { fields: 'id,estado,cliente_id,tipo_contenido,fecha_publicacion' },
+    });
+    if (!actual.ok) {
+      return json({ error: 'No se pudo leer la publicación.' }, actual.status || 500);
+    }
+    prev = actual.data;
+  }
+
   if (esCliente(user)) {
     const campos = Object.keys(body).filter((k) => body[k] !== undefined);
     if (campos.some((k) => k !== 'estado')) {
@@ -47,16 +64,7 @@ export async function PATCH({ params, request, locals }) {
     if (!body.estado) {
       return json({ error: 'Falta el estado.' }, 400);
     }
-    const actual = await directusFetch({
-      path: `/items/publicaciones/${id}`,
-      method: 'GET',
-      token,
-      search: { fields: 'estado' },
-    });
-    if (!actual.ok) {
-      return json({ error: 'No se pudo leer la publicación.' }, actual.status || 500);
-    }
-    const estadoActual = actual.data?.estado;
+    const estadoActual = prev?.estado;
     if (!transicionPermitida(estadoActual, body.estado, user)) {
       return json(
         { error: `Transición no permitida: ${estadoActual} → ${body.estado}` },
@@ -117,6 +125,16 @@ export async function PATCH({ params, request, locals }) {
 
   // Invalidamos el cache para que el siguiente SSR vea el cambio.
   await clearDirectusCache(token);
+
+  // Notificación + email a la parte que tiene que actuar (best-effort).
+  if (body.estado !== undefined && prev && prev.estado !== body.estado) {
+    await notificarEstado({
+      actor: user,
+      publicacion: { ...prev, id },
+      anterior: prev.estado,
+      nuevo: body.estado,
+    });
+  }
 
   return json(r.data);
 }
