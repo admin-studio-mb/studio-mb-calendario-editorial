@@ -260,7 +260,9 @@ function PostReadOnly({ post, clientes = [] }) {
       </div>
 
       <div>
-        <p className="text-[11px] uppercase tracking-wider text-ink-400 font-semibold mb-1">Copywriting</p>
+        <p className="text-[11px] uppercase tracking-wider text-ink-400 font-semibold mb-1">
+          Descripción del post (copy)
+        </p>
         <p className="text-sm text-ink-700 whitespace-pre-line leading-relaxed">
           {post.copywriting || '—'}
         </p>
@@ -277,7 +279,10 @@ function PostReadOnly({ post, clientes = [] }) {
 
       {slides.length > 0 && (
         <div>
-          <p className="text-[11px] uppercase tracking-wider text-ink-400 font-semibold mb-2">Slides</p>
+          <p className="text-[11px] uppercase tracking-wider text-ink-400 font-semibold mb-1">
+            Textos de los slides
+          </p>
+          <p className="text-[11px] text-ink-400 mb-2">El texto de cada slide aparece dentro de la imagen.</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {slides.map((s, idx) => {
               const esObjeto = s && typeof s === 'object';

@@ -7,6 +7,7 @@
 // ============================================================================
 import Layout from '../../../layouts/Layout.astro';
 import PendientesView from '../../../components/PendientesView.jsx';
+import EditPostModal from '../../../components/EditPostModal.jsx';
 import { directusFetch } from '../../../lib/directus-fetch.js';
 
 export const prerender = false;
@@ -52,4 +53,8 @@ const clientes = rClientes.ok && Array.isArray(rClientes.data) ? rClientes.data 
     clientes={clientes}
     currentUser={user}
   />
+
+  {/* El modal de detalle (fotos, textos y comentarios) también aquí:
+      Pendientes lanza el evento 'studio-mb:edit-post' con "Ver completo". */}
+  <EditPostModal client:load clientes={clientes} currentUser={user} />
 </Layout>

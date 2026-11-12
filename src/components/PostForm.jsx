@@ -434,7 +434,7 @@ export default function PostForm({
           </Field>
         </div>
 
-        <Field label="Copywriting">
+        <Field label="Copywriting" hint="Texto que se publica como descripción del post.">
           <textarea
             id="copy"
             rows={3}
@@ -457,7 +457,7 @@ export default function PostForm({
         </Field>
 
         {/* ── Repeater de slides ─────────────────────────────────────────── */}
-        <Field label="Slides" hint="Cada slide tiene su texto y su foto. Pega la URL de la imagen: sirve el enlace para compartir de Google Drive, el de Unsplash o cualquier URL directa.">
+        <Field label="Slides" hint="Texto + foto por slide. El texto de cada slide aparece dentro de la imagen; la descripción del post va arriba (Copywriting).">
           <div className="space-y-3">
             {slides.map((s, idx) => {
               const preview = previewOf(s);

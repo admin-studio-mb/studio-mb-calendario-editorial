@@ -9,11 +9,12 @@
 //  y que el guard del servidor). Incluye "Confirmar todos" para los textos.
 // ============================================================================
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { parseFechaPublicacion } from '../lib/fecha.js';
 import { transicionesPermitidas, ESTADO_LABEL } from '../lib/flujo.js';
+import { publicacionesStore, hydratePublicaciones } from '../stores/publicaciones.js';
 
 const TONO_CLASSES = {
   blue: 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200',
@@ -47,6 +48,23 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
+
+  // Si el usuario confirma/aprueba desde el modal (que actualiza el store),
+  // quitamos de la lista los posts que ya no están pendientes. Para eso el
+  // store debe tener los posts de esta página.
+  useEffect(() => {
+    if (publicacionesStore.get().length === 0 && initialPosts.length > 0) {
+      hydratePublicaciones(initialPosts);
+    }
+    const unsub = publicacionesStore.subscribe((list) => {
+      if (!Array.isArray(list) || list.length === 0) return;
+      setPosts((prev) => prev.filter((p) => {
+        const cur = list.find((x) => x.id === p.id);
+        return !cur || cur.estado === 'revision' || cur.estado === 'revision_diseno';
+      }));
+    });
+    return unsub;
+  }, []);
 
   const clienteNombre = useMemo(() => {
     const m = new Map();
@@ -138,50 +156,105 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
     const slides = Array.isArray(post.imagenes_fondo) ? post.imagenes_fondo : [];
     return (
       <article className="card overflow-hidden">
-        <div className="flex flex-col sm:flex-row gap-0">
-          <div className="sm:w-28 shrink-0 bg-ink-100">
-            {disenoId ? (
-              <img
-                src={`/api/assets/${disenoId}`}
-                alt="Diseño final"
-                className="w-full h-full sm:h-full aspect-[3/4] sm:aspect-auto object-cover"
-              />
-            ) : slides.length > 0 && slideImg(slides[0]?.imagen) ? (
-              <img
-                src={slideImg(slides[0].imagen)}
-                alt="Slide 1"
-                className="w-full h-full aspect-[3/4] sm:aspect-auto object-cover"
-              />
+        <div className="p-4 space-y-4">
+          {/* Cabecera */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px] font-medium">
+              {ESTADO_LABEL[post.estado] ?? post.estado}
+            </span>
+            <span className="text-xs text-ink-500">{fechaLabel(post)}</span>
+            <span className="text-xs text-ink-400">·</span>
+            <span className="text-xs text-ink-500">{clienteNombre.get(post.cliente_id) ?? '—'}</span>
+            {post.formato && (
+              <span className="px-2 py-0.5 rounded-full bg-ink-100 text-ink-600 text-[11px]">{post.formato}</span>
+            )}
+            {post.tipo_contenido && (
+              <span className="text-xs text-ink-500">{post.tipo_contenido}</span>
+            )}
+          </div>
+
+          {/* Descripción del post (copywriting) */}
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-ink-400 font-semibold mb-1">
+              Descripción del post (copy)
+            </p>
+            <p className="text-sm text-ink-800 whitespace-pre-line leading-relaxed">
+              {post.copywriting || <span className="text-ink-400">Sin descripción</span>}
+            </p>
+            {Array.isArray(post.hashtags) && post.hashtags.length > 0 && (
+              <p className="text-[11px] text-brand-600 mt-1.5">
+                {post.hashtags.map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' ')}
+              </p>
+            )}
+          </div>
+
+          {/* Textos de los slides */}
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-ink-400 font-semibold mb-2">
+              Textos de los slides · {slides.length}
+              <span className="normal-case tracking-normal font-normal text-ink-400">
+                {' '}— el texto que va dentro de cada imagen
+              </span>
+            </p>
+            {slides.length === 0 ? (
+              <p className="text-xs text-ink-400">Este post no tiene slides.</p>
             ) : (
-              <div className="w-full aspect-[3/4] sm:h-full flex items-center justify-center text-ink-400 text-[11px] p-2 text-center">
-                Sin diseño aún
+              <div className="flex gap-3 overflow-x-auto pb-1">
+                {slides.map((s, idx) => {
+                  const esObjeto = s && typeof s === 'object';
+                  const texto = esObjeto ? (s.texto ?? '') : '';
+                  const img = esObjeto ? slideImg(s.imagen) : slideImg(s);
+                  return (
+                    <div key={idx} className="shrink-0 w-28">
+                      {img ? (
+                        <img
+                          src={img}
+                          alt={`Slide ${idx + 1}`}
+                          className="w-28 aspect-[3/4] object-cover rounded-md border border-ink-200 bg-ink-100"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <div className="w-28 aspect-[3/4] rounded-md border border-dashed border-ink-300 bg-ink-50 flex items-center justify-center text-[10px] text-ink-400">
+                          Sin foto
+                        </div>
+                      )}
+                      <p className="text-[10px] uppercase tracking-wider text-ink-400 font-semibold mt-1">
+                        Slide {idx + 1}
+                      </p>
+                      {texto ? (
+                        <p className="text-[11px] text-ink-700 whitespace-pre-line leading-snug">{texto}</p>
+                      ) : (
+                        <p className="text-[11px] text-ink-300">Sin texto</p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
 
-          <div className="flex-1 p-4 space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px] font-medium">
-                {ESTADO_LABEL[post.estado] ?? post.estado}
-              </span>
-              <span className="text-xs text-ink-500">{fechaLabel(post)}</span>
-              <span className="text-xs text-ink-400">·</span>
-              <span className="text-xs text-ink-500">{clienteNombre.get(post.cliente_id) ?? '—'}</span>
-              {post.formato && (
-                <span className="px-2 py-0.5 rounded-full bg-ink-100 text-ink-600 text-[11px]">{post.formato}</span>
-              )}
+          {/* Diseño final (si lo hay) */}
+          {disenoId && (
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-ink-400 font-semibold mb-2">Diseño final</p>
+              <img
+                src={`/api/assets/${disenoId}`}
+                alt="Diseño final"
+                className="w-28 aspect-[3/4] object-cover rounded-md border border-ink-200 bg-ink-100"
+              />
             </div>
+          )}
 
-            <p className="text-sm text-ink-800 whitespace-pre-line line-clamp-3">
-              {post.copywriting || <span className="text-ink-400">Sin copywriting</span>}
-            </p>
-
-            {Array.isArray(post.hashtags) && post.hashtags.length > 0 && (
-              <p className="text-[11px] text-brand-600 line-clamp-1">
-                {post.hashtags.map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' ')}
-              </p>
-            )}
-
+          {/* Acciones */}
+          <div className="flex items-center gap-2 flex-wrap pt-1">
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('studio-mb:edit-post', { detail: post }))}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-ink-700 hover:bg-ink-50 border border-ink-200 transition"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              Ver completo
+            </button>
             <Acciones post={post} />
           </div>
         </div>
