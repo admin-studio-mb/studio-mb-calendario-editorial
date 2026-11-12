@@ -3,12 +3,11 @@
 //  Dashboard principal — SSR.
 // ============================================================================
 import Layout from '../../layouts/Layout.astro';
-import Calendar from '../../components/Calendar.jsx';
-import PostForm from '../../components/PostForm.jsx';
-import FeedMockup from '../../components/FeedMockup.jsx';
+import DashboardShell from '../../components/DashboardShell.jsx';
 import EditPostModal from '../../components/EditPostModal.jsx';
 import Kpis from '../../components/Kpis.jsx';
 import { env } from '../../lib/env.js';
+import { normalizarPrefs } from '../../lib/prefs.js';
 
 export const prerender = false;
 
@@ -45,6 +44,9 @@ const publicaciones = publicacionesRaw.map((p) => ({
 
 // Comentarios: los carga el cliente on-demand según el post seleccionado.
 const initialFeed = publicaciones.slice(0, 9);
+
+// Preferencias de UI del usuario (panel "Nueva publicación" fijo o modal).
+const prefs = normalizarPrefs(user?.preferencias);
 ---
 <Layout title="Calendario · Studio mb" user={user}>
   {/* Hero */}
@@ -60,33 +62,14 @@ const initialFeed = publicaciones.slice(0, 9);
   {/* KPIs (reaccionan al cursor del calendario) */}
   <Kpis client:load />
 
-  <section class={esCliente ? 'grid grid-cols-1 gap-4 lg:gap-6' : 'grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6'}>
-    <div class={esCliente ? 'space-y-4 lg:space-y-6 order-1' : 'lg:col-span-2 space-y-4 lg:space-y-6 order-1'}>
-      <Calendar client:load initialPublicaciones={publicaciones} clientes={clientes} />
-      <div class="hidden lg:block">
-        <FeedMockup
-          client:visible
-          posts={initialFeed}
-        />
-      </div>
-    </div>
-
-    {!esCliente && (
-      <aside class="space-y-4 lg:space-y-6 order-2 lg:order-3">
-        <PostForm client:load clientes={clientes} />
-      </aside>
-    )}
-
-    {/* FeedMockup en móvil: abajo del todo */}
-    {initialFeed.length > 0 && (
-      <div class="lg:hidden order-3">
-        <FeedMockup
-          client:visible
-          posts={initialFeed}
-        />
-      </div>
-    )}
-  </section>
+  <DashboardShell
+    client:load
+    publicaciones={publicaciones}
+    clientes={clientes}
+    initialFeed={initialFeed}
+    mostrarPanel={prefs.panelNueva !== false}
+    puedeCrear={!esCliente}
+  />
 
   <EditPostModal client:load clientes={clientes} currentUser={user} />
 </Layout>

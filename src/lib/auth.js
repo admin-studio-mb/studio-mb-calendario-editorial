@@ -101,7 +101,7 @@ export async function getCurrentUser(token) {
     // Pedimos el rol explícitamente (`role.id`/`role.name`) para poder
     // adaptar la UI y las transiciones del flujo según el rol del usuario.
     const res = await fetch(
-      `${env.DIRECTUS_INTERNAL_URL}/users/me?fields=id,email,first_name,last_name,role.id,role.name`,
+      `${env.DIRECTUS_INTERNAL_URL}/users/me?fields=id,email,first_name,last_name,role.id,role.name,preferencias`,
       { headers: { Authorization: `Bearer ${token}` } },
     );
     if (!res.ok) return null;

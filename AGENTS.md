@@ -492,6 +492,28 @@ solo de las propias (`usuario = $CURRENT_USER`).
 - `scripts/setup-redes.py` (idempotente): campos + fields de permisos +
   backfill (posts sin red → instagram; clientes sin redes → las tres).
 
+### 6.16 Preferencias de UI por usuario (`/dashboard/configuracion`)
+
+- Columna `directus_users.preferencias` (JSON) — `scripts/setup-preferencias.py`
+  (idempotente). Default `{}`; las claves se normalizan en `src/lib/prefs.js`.
+- Claves: `panelNueva` (bool, default `true`) → mostrar el panel fijo "Nueva
+  publicación" a la derecha del calendario.
+- Permisos: `cliente_acceso` ya actualizaba su propio usuario (se añadió
+  `preferencias` a sus fields); `editor_acceso` recibe un permiso `update` de
+  `directus_users` limitado a `preferencias` y `id = $CURRENT_USER`. Admin
+  tiene full access.
+- Endpoint `GET/PATCH /api/preferencias` (merge parcial, whitelist booleana,
+  400 si no hay nada válido). Guarda con el JWT del usuario.
+- `getCurrentUser()` pide `preferencias`; el dashboard las lee en SSR y las pasa
+  a `DashboardShell`.
+- **Con `panelNueva: false`**: el dashboard no renderiza el aside y el
+  calendario ocupa todo el ancho; en su lugar, la barra de filtros muestra un
+  botón **"Añadir publicación"** (separado tras un divisor) que abre `PostForm`
+  en modal. `PostForm` llama a `onSubmitted` también al crear, para cerrar el
+  modal.
+- La página de Configuración es visible para todos los roles; los toggles
+  guardan al instante (optimista con rollback si el PATCH falla).
+
 Scripts de referencia en `scripts/`: `setup-client-permissions.py`,
 `add-comentario-cliente-id.py`, `verify-client-permissions.py`,
 `verify-app-flow-client.py`. Ver `scripts/README.md`.

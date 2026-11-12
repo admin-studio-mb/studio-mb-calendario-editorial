@@ -21,7 +21,7 @@ import { publicacionesToCsv, downloadCsv } from '../lib/csv.js';
  *   - initialPublicaciones: array inicial hidratado por el SSR.
  *   - clientes: array de clientes para el filtro y el tooltip.
  */
-export default function Calendar({ initialPublicaciones = [], clientes = [] }) {
+export default function Calendar({ initialPublicaciones = [], clientes = [], mostrarBotonNueva = false, onNuevaPublicacion }) {
   useEffect(() => {
     if (initialPublicaciones.length && publicacionesStore.get().length === 0) {
       hydratePublicaciones(initialPublicaciones);
@@ -382,6 +382,21 @@ export default function Calendar({ initialPublicaciones = [], clientes = [] }) {
               </svg>
               CSV
             </button>
+
+            {/* Añadir publicación (cuando el panel lateral está oculto) */}
+            {mostrarBotonNueva && (
+              <>
+                <div className="w-px h-5 bg-ink-200 mx-0.5" aria-hidden="true"></div>
+                <button
+                  type="button"
+                  onClick={() => onNuevaPublicacion?.()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-br from-brand-600 to-brand-700 text-white shadow-sm hover:shadow-md transition"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
+                  Añadir publicación
+                </button>
+              </>
+            )}
           </div>
         </header>
       </section>

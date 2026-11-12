@@ -347,8 +347,9 @@ export default function PostForm({
         setInfo(isEdit ? '✓ Publicación actualizada' : '✓ Publicación guardada');
         setTimeout(() => setInfo(''), 2500);
 
-        // En modo edición avisamos al padre (cerrará el modal).
-        if (isEdit && onSubmitted) {
+        // En modo edición avisamos al padre (cerrará el modal). También en
+        // creación: el modal de "Añadir publicación" se cierra al guardar.
+        if (onSubmitted) {
           onSubmitted(saved);
         }
 
