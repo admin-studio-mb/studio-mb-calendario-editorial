@@ -32,6 +32,7 @@ python scripts/<script>.py
 | `setup-client-permissions.py` | Crea el campo `directus_users.cliente_id`, el rol `Cliente`, la policy `cliente_acceso` y sus permisos. | Sí |
 | `setup-editor-role.py` | Crea el rol `Editor` y la policy `editor_acceso` (12 permisos: todo el contenido de todos los clientes, sin gestión de clientes/usuarios). | Sí |
 | `setup-notificaciones.py` | Crea la colección `notificaciones`, sus campos/relaciones y los permisos read/update de las policies Cliente y Editor. | Sí |
+| `setup-redes.py` | Añade `publicaciones.red` y `clientes.redes`, amplía los fields de los permisos y hace backfill (posts → instagram; clientes → 3 redes con tipos). | Sí |
 | `add-comentario-cliente-id.py` | Añade `comentarios.cliente_id` (desnormalizado), hace backfill y reconfigura los permisos de comentarios. | Sí |
 | `fix-client-permissions.py` | Corrige los permisos de comentarios (deep filter + `validation`). | Sí |
 | `create-e2e-user.py` | Crea un usuario admin temporal para el E2E. | Sí |

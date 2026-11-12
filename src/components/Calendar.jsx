@@ -6,6 +6,7 @@ import {
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { publicacionesStore, cursorStore, filtrosStore, selectedPostIdStore, hydratePublicaciones, updatePublicacion } from '../stores/publicaciones.js';
+import { REDES } from '../lib/redes.js';
 import { parseFechaPublicacion, toISOlocal } from '../lib/fecha.js';
 import WeekView from './WeekView.jsx';
 import ListView from './ListView.jsx';
@@ -61,7 +62,7 @@ export default function Calendar({ initialPublicaciones = [], clientes = [] }) {
   }
   function clearFiltros() {
     setClienteFiltroState(null);
-    filtrosStore.set({ texto: '', estado: '', formato: '', clienteId: '' });
+    filtrosStore.set({ texto: '', estado: '', formato: '', clienteId: '', red: '' });
   }
   const [draggingId, setDraggingId] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
@@ -77,6 +78,7 @@ export default function Calendar({ initialPublicaciones = [], clientes = [] }) {
       if (clienteFiltro && p.cliente_id !== clienteFiltro) return false;
       if (filtros.estado && p.estado !== filtros.estado) return false;
       if (filtros.formato && p.formato !== filtros.formato) return false;
+      if (filtros.red && p.red !== filtros.red) return false;
       if (t) {
         const slidesTexto = (Array.isArray(p.imagenes_fondo) ? p.imagenes_fondo : [])
           .map((s) => (s && typeof s === 'object' ? (s.texto ?? '') : ''))
@@ -313,6 +315,22 @@ export default function Calendar({ initialPublicaciones = [], clientes = [] }) {
               <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-ink-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
             </div>
 
+            {/* Filtro red social */}
+            <div className="relative">
+              <select
+                value={filtros.red || ''}
+                onChange={(e) => setFiltros({ red: e.target.value })}
+                className="appearance-none pl-3 pr-8 py-1.5 rounded-lg text-xs font-medium bg-ink-50 hover:bg-ink-100 border border-ink-100 text-ink-700 focus:outline-none focus:ring-2 focus:ring-brand-100 cursor-pointer transition"
+                aria-label="Filtrar por red social"
+              >
+                <option value="">Todas las redes</option>
+                {REDES.map((r) => (
+                  <option key={r.id} value={r.id}>{r.nombre}</option>
+                ))}
+              </select>
+              <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-ink-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+
             {/* Filtro cliente */}
             {clientes.length > 0 && (
               <div className="relative">
@@ -332,7 +350,7 @@ export default function Calendar({ initialPublicaciones = [], clientes = [] }) {
             )}
 
             {/* Botón limpiar filtros cuando hay alguno activo */}
-            {(filtros.texto || filtros.estado || filtros.formato || clienteFiltro) && (
+            {(filtros.texto || filtros.estado || filtros.formato || filtros.red || clienteFiltro) && (
               <button
                 type="button"
                 onClick={() => { clearFiltros(); setClienteFiltro(null); }}

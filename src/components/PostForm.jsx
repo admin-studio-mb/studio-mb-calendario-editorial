@@ -3,6 +3,7 @@ import { addPublicacion, updatePublicacion, removePublicacion } from '../stores/
 import DateField from './DateField.jsx';
 import TimePicker from './TimePicker.jsx';
 import { toISOlocal, parseFechaPublicacion } from '../lib/fecha.js';
+import { redesDeCliente, tiposDeRed, redNombre } from '../lib/redes.js';
 
 const FORMATOS = ['post', 'reel', 'carrusel', 'story'];
 
@@ -141,6 +142,7 @@ export default function PostForm({
   onSubmitted,
 }) {
   const [clienteId, setClienteId] = useState(initial.cliente_id ?? clientes[0]?.id ?? '');
+  const [red, setRed] = useState(initial.red ?? null);
   const [tipo, setTipo] = useState(initial.tipo_contenido ?? '');
   const [formato, setFormato] = useState(initial.formato ?? 'post');
   const [copywriting, setCopywriting] = useState(initial.copywriting ?? '');
@@ -167,13 +169,29 @@ export default function PostForm({
     [clientes, clienteId],
   );
 
-  const tiposDisponibles = useMemo(
-    () => (Array.isArray(cliente?.tipos_contenido_disponibles) ? cliente.tipos_contenido_disponibles : []),
-    [cliente],
-  );
+  const clienteRedes = useMemo(() => redesDeCliente(cliente), [cliente]);
 
-  // Si cambia el cliente y el tipo anterior no está disponible, lo cambiamos
-  // al primero de la lista. Si la lista está vacía, limpiamos.
+  const tiposDisponibles = useMemo(() => {
+    // Con redes configuradas, los tipos salen de la red elegida; si el
+    // cliente aún no tiene redes, se usa la lista legacy.
+    if (clienteRedes.length > 0 && red) return tiposDeRed(cliente, red);
+    return Array.isArray(cliente?.tipos_contenido_disponibles) ? cliente.tipos_contenido_disponibles : [];
+  }, [cliente, clienteRedes, red]);
+
+  // Red válida para el cliente actual.
+  useEffect(() => {
+    if (!cliente) return;
+    if (clienteRedes.length === 0) {
+      if (red !== null) setRed(null);
+      return;
+    }
+    if (!clienteRedes.some((r) => r.red === red)) {
+      setRed(clienteRedes[0].red);
+    }
+  }, [cliente, clienteRedes, red]);
+
+  // Si cambia la red/cliente y el tipo anterior no está disponible, lo
+  // cambiamos al primero de la lista. Si la lista está vacía, limpiamos.
   useEffect(() => {
     if (!cliente) return;
     if (!tiposDisponibles.length) {
@@ -237,6 +255,7 @@ export default function PostForm({
 
     const payload = {
       cliente_id: clienteId,
+      red: red || null,
       tipo_contenido: tipo,
       formato,
       copywriting,
@@ -414,6 +433,21 @@ export default function PostForm({
               ))}
             </select>
           </Field>
+
+          {clienteRedes.length > 0 && (
+            <Field label="Red social">
+              <select
+                id="red"
+                value={red ?? ''}
+                onChange={(e) => setRed(e.target.value)}
+                className={inputBase}
+              >
+                {clienteRedes.map((r) => (
+                  <option key={r.red} value={r.red}>{redNombre(r.red)}</option>
+                ))}
+              </select>
+            </Field>
+          )}
 
           <Field label="Formato">
             <select id="formato" value={formato} onChange={(e) => setFormato(e.target.value)} className={inputBase}>

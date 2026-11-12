@@ -39,6 +39,7 @@ export default function FeedMockup({ posts = [] }) {
       if (filtros.clienteId && p.cliente_id !== filtros.clienteId) return false;
       if (filtros.estado && p.estado !== filtros.estado) return false;
       if (filtros.formato && p.formato !== filtros.formato) return false;
+      if (filtros.red && p.red !== filtros.red) return false;
       return true;
     });
     // Último día del mes primero (arriba a la izquierda).

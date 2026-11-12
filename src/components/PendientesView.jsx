@@ -14,6 +14,8 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { parseFechaPublicacion } from '../lib/fecha.js';
 import { transicionesPermitidas, ESTADO_LABEL } from '../lib/flujo.js';
+import { redNombre } from '../lib/redes.js';
+import RedIcon from './RedIcon.jsx';
 import { publicacionesStore, hydratePublicaciones } from '../stores/publicaciones.js';
 
 const TONO_CLASSES = {
@@ -165,6 +167,12 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
             <span className="text-xs text-ink-500">{fechaLabel(post)}</span>
             <span className="text-xs text-ink-400">·</span>
             <span className="text-xs text-ink-500">{clienteNombre.get(post.cliente_id) ?? '—'}</span>
+            {post.red && (
+              <span className="inline-flex items-center gap-1 text-xs text-ink-600">
+                <RedIcon red={post.red} className="w-3.5 h-3.5" conTitulo={false} />
+                {redNombre(post.red)}
+              </span>
+            )}
             {post.formato && (
               <span className="px-2 py-0.5 rounded-full bg-ink-100 text-ink-600 text-[11px]">{post.formato}</span>
             )}

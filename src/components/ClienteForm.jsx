@@ -6,6 +6,30 @@
 // ============================================================================
 
 import { useState, useRef } from 'react';
+import { REDES } from '../lib/redes.js';
+import RedIcon from './RedIcon.jsx';
+
+/**
+ * Estado inicial de redes:
+ *  - Si el cliente ya tiene `redes` → tal cual.
+ *  - Si es legacy (solo tipos_contenido_disponibles) → Instagram con esos
+ *    tipos + LinkedIn/Facebook con los defaults.
+ *  - Cliente nuevo → las tres redes con sus tipos por defecto.
+ */
+function redesIniciales(initial) {
+  const raw = Array.isArray(initial.redes) ? initial.redes.filter((r) => r && r.red) : [];
+  if (raw.length > 0) {
+    return raw.map((r) => ({ red: r.red, tipos: Array.isArray(r.tipos) ? r.tipos : [] }));
+  }
+  const legacy = Array.isArray(initial.tipos_contenido_disponibles)
+    ? initial.tipos_contenido_disponibles.filter(Boolean)
+    : [];
+  const all = REDES.map((r) => ({ red: r.id, tipos: [...r.tiposDefault] }));
+  if (legacy.length > 0) {
+    return all.map((r) => (r.red === 'instagram' ? { ...r, tipos: legacy } : r));
+  }
+  return all;
+}
 
 export default function ClienteForm({
   initial = {},
@@ -14,8 +38,8 @@ export default function ClienteForm({
 }) {
   const isEdit = Boolean(initial.id);
   const [nombre, setNombre] = useState(initial.nombre ?? '');
-  const [tipos, setTipos] = useState(initial.tipos_contenido_disponibles ?? []);
-  const [nuevoTipo, setNuevoTipo] = useState('');
+  const [redes, setRedes] = useState(() => redesIniciales(initial));
+  const [nuevoTipo, setNuevoTipo] = useState({}); // { redId: 'texto en curso' }
   const [logoId, setLogoId] = useState(initial.logo ?? null);
   const [logoPreview, setLogoPreview] = useState(null);
   const [logoFile, setLogoFile] = useState(null);
@@ -31,19 +55,30 @@ export default function ClienteForm({
     setLogoPreview(URL.createObjectURL(f));
   }
 
-  function addTipo() {
-    const t = nuevoTipo.trim();
-    if (!t) return;
-    if (tipos.includes(t)) {
-      setNuevoTipo('');
-      return;
-    }
-    setTipos([...tipos, t]);
-    setNuevoTipo('');
+  function toggleRed(redId, activa) {
+    setRedes((prev) => {
+      if (activa) {
+        if (prev.some((r) => r.red === redId)) return prev;
+        const def = REDES.find((r) => r.id === redId)?.tiposDefault ?? [];
+        return [...prev, { red: redId, tipos: [...def] }];
+      }
+      return prev.filter((r) => r.red !== redId);
+    });
   }
 
-  function removeTipo(t) {
-    setTipos(tipos.filter((x) => x !== t));
+  function addTipoRed(redId) {
+    const t = (nuevoTipo[redId] ?? '').trim();
+    if (!t) return;
+    setRedes((prev) => prev.map((r) => (
+      r.red === redId && !r.tipos.includes(t) ? { ...r, tipos: [...r.tipos, t] } : r
+    )));
+    setNuevoTipo((prev) => ({ ...prev, [redId]: '' }));
+  }
+
+  function removeTipoRed(redId, t) {
+    setRedes((prev) => prev.map((r) => (
+      r.red === redId ? { ...r, tipos: r.tipos.filter((x) => x !== t) } : r
+    )));
   }
 
   async function handleSubmit(e) {
@@ -51,7 +86,13 @@ export default function ClienteForm({
     setError('');
 
     if (!nombre.trim()) return setError('El nombre es obligatorio.');
-    if (tipos.length === 0) return setError('Añade al menos un tipo de contenido.');
+    const redesActivas = redes.filter((r) => r.tipos.length > 0);
+    if (redesActivas.length === 0) {
+      return setError('Activa al menos una red y asígnale tipos de post.');
+    }
+    // El campo legacy se mantiene sincronizado (unión de tipos) para no
+    // romper validaciones antiguas ni clientes que aún no tienen `redes`.
+    const tiposUnion = [...new Set(redesActivas.flatMap((r) => r.tipos))];
 
     setSubmitting(true);
 
@@ -71,7 +112,8 @@ export default function ClienteForm({
 
       const payload = {
         nombre: nombre.trim(),
-        tipos_contenido_disponibles: tipos,
+        tipos_contenido_disponibles: tiposUnion,
+        redes: redesActivas.map((r) => ({ red: r.red, tipos: r.tipos })),
         logo: uploadedLogoId || null,
       };
 
@@ -175,48 +217,81 @@ export default function ClienteForm({
         />
       </div>
 
-      {/* Tipos de contenido */}
+      {/* Redes sociales y tipos de post por red */}
       <div>
-        <span className="block text-xs font-semibold uppercase tracking-wider text-ink-500 mb-1.5">Tipos de contenido</span>
-        <div className="flex flex-wrap gap-2 mb-2">
-          {tipos.length === 0 && (
-            <span className="text-xs text-ink-400">Aún no hay tipos definidos.</span>
-          )}
-          {tipos.map((t) => (
-            <span key={t} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 text-xs font-medium border border-brand-100">
-              {t}
-              <button
-                type="button"
-                onClick={() => removeTipo(t)}
-                className="text-brand-500 hover:text-brand-700"
-                aria-label={`Quitar ${t}`}
+        <span className="block text-xs font-semibold uppercase tracking-wider text-ink-500 mb-1.5">Redes sociales</span>
+        <p className="text-[11px] text-ink-400 mb-2">
+          Activa las redes con las que trabajáis con este cliente y define los tipos de post de cada una.
+        </p>
+        <div className="space-y-3">
+          {REDES.map((meta) => {
+            const activa = redes.find((r) => r.red === meta.id);
+            return (
+              <div
+                key={meta.id}
+                className={`rounded-xl border p-3 transition ${activa ? 'border-ink-200 bg-white' : 'border-ink-100 bg-ink-50/40'}`}
               >
-                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-              </button>
-            </span>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={nuevoTipo}
-            onChange={(e) => setNuevoTipo(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                addTipo();
-              }
-            }}
-            placeholder="Ej: Promo, Noticia, Behind the scenes…"
-            className={inputBase}
-          />
-          <button
-            type="button"
-            onClick={addTipo}
-            className="shrink-0 px-3 py-2 rounded-lg bg-ink-100 text-sm font-medium text-ink-700 hover:bg-ink-200 transition"
-          >
-            Añadir
-          </button>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(activa)}
+                    onChange={(e) => toggleRed(meta.id, e.target.checked)}
+                    className="accent-brand-600"
+                  />
+                  <RedIcon red={meta.id} className="w-4 h-4" conTitulo={false} />
+                  <span className="text-sm font-medium text-ink-800">{meta.nombre}</span>
+                </label>
+
+                {activa && (
+                  <div className="mt-2 pl-6">
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {activa.tipos.length === 0 && (
+                        <span className="text-[11px] text-ink-400">Sin tipos definidos.</span>
+                      )}
+                      {activa.tipos.map((t) => (
+                        <span
+                          key={t}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 text-xs font-medium border border-brand-100"
+                        >
+                          {t}
+                          <button
+                            type="button"
+                            onClick={() => removeTipoRed(meta.id, t)}
+                            className="text-brand-500 hover:text-brand-700"
+                            aria-label={`Quitar ${t}`}
+                          >
+                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={nuevoTipo[meta.id] ?? ''}
+                        onChange={(e) => setNuevoTipo((prev) => ({ ...prev, [meta.id]: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addTipoRed(meta.id);
+                          }
+                        }}
+                        placeholder={`Ej: ${meta.tiposDefault.join(', ')}`}
+                        className={inputBase}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => addTipoRed(meta.id)}
+                        className="shrink-0 px-3 py-2 rounded-lg bg-ink-100 text-sm font-medium text-ink-700 hover:bg-ink-200 transition"
+                      >
+                        Añadir
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

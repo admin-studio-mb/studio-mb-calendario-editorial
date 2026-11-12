@@ -13,6 +13,7 @@ import { notificarEstado } from '../../../lib/notificaciones.js';
 
 const REQUIRED_STRING_FIELDS = ['cliente_id', 'formato', 'estado'];
 const VALID_FORMATO = ['post', 'reel', 'carrusel', 'story'];
+const VALID_RED = ['instagram', 'linkedin', 'facebook'];
 const VALID_ESTADO = ['borrador', 'revision', 'en_diseno', 'revision_diseno', 'aprobado', 'publicado'];
 
 function json(payload, status = 200) {
@@ -82,6 +83,9 @@ export async function PATCH({ params, request, locals }) {
   if (body.formato !== undefined && !VALID_FORMATO.includes(body.formato)) {
     return json({ error: `Formato inválido. Valores permitidos: ${VALID_FORMATO.join(', ')}` }, 400);
   }
+  if (body.red !== undefined && body.red !== null && !VALID_RED.includes(body.red)) {
+    return json({ error: `Red inválida. Valores permitidos: ${VALID_RED.join(', ')}` }, 400);
+  }
   if (body.estado !== undefined && !VALID_ESTADO.includes(body.estado)) {
     return json({ error: `Estado inválido. Valores permitidos: ${VALID_ESTADO.join(', ')}` }, 400);
   }
@@ -89,6 +93,7 @@ export async function PATCH({ params, request, locals }) {
   // Solo permitimos editar estos campos. Ignoramos silenciosamente el resto.
   const allowed = [
     'cliente_id',
+    'red',
     'tipo_contenido',
     'formato',
     'copywriting',

@@ -31,6 +31,7 @@ describe('publicacionesToCsv', () => {
         cliente_id: 'cli-1',
         tipo_contenido: 'Promo',
         formato: 'post',
+        red: 'linkedin',
         estado: 'aprobado',
         copywriting: 'Hola',
         hashtags: ['#vino'],
@@ -38,9 +39,10 @@ describe('publicacionesToCsv', () => {
       },
     ], map);
     const lines = csv.split('\r\n');
-    expect(lines[0]).toBe('Fecha,Hora,Cliente,Tipo,Formato,Estado,Copywriting,Hashtags,Textos slides');
+    expect(lines[0]).toBe('Fecha,Hora,Cliente,Red,Tipo,Formato,Estado,Copywriting,Hashtags,Textos slides');
     expect(lines[1]).toContain('2026-09-22');
     expect(lines[1]).toContain('Bodegas La Vega');
+    expect(lines[1]).toContain('LinkedIn');
     expect(lines[1]).toContain('Promo');
     expect(lines[1]).toContain('Post');
     expect(lines[1]).toContain('Aprobado');

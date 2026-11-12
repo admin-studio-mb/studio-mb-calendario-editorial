@@ -16,6 +16,7 @@ const ESTADO_LABEL = {
   publicado: 'Publicado',
 };
 const FORMATO_LABEL = { post: 'Post', reel: 'Reel', carrusel: 'Carrusel', story: 'Story' };
+const RED_LABEL = { instagram: 'Instagram', linkedin: 'LinkedIn', facebook: 'Facebook' };
 export function escape(value) {
   if (value == null) return '';
   const s = String(value);
@@ -32,7 +33,7 @@ export function escape(value) {
  * @returns {string} contenido CSV con cabecera
  */
 export function publicacionesToCsv(publicaciones, clienteNombre = new Map()) {
-  const headers = ['Fecha', 'Hora', 'Cliente', 'Tipo', 'Formato', 'Estado', 'Copywriting', 'Hashtags', 'Textos slides'];
+  const headers = ['Fecha', 'Hora', 'Cliente', 'Red', 'Tipo', 'Formato', 'Estado', 'Copywriting', 'Hashtags', 'Textos slides'];
   const rows = publicaciones.map((p) => {
     let fecha = '', hora = '';
     if (p.fecha_publicacion) {
@@ -57,6 +58,7 @@ export function publicacionesToCsv(publicaciones, clienteNombre = new Map()) {
       fecha,
       hora,
       cliente,
+      RED_LABEL[p.red] ?? p.red ?? '',
       p.tipo_contenido ?? '',
       FORMATO_LABEL[p.formato] ?? p.formato ?? '',
       ESTADO_LABEL[p.estado] ?? p.estado ?? '',

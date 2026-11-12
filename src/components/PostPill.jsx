@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { parseFechaPublicacion } from '../lib/fecha.js';
+import { redNombre } from '../lib/redes.js';
+import RedIcon from './RedIcon.jsx';
 
 const ESTADO_LABEL = {
   borrador: 'Borrador',
@@ -115,9 +117,12 @@ export default function PostPill({
           isSelected ? 'ring-2 ring-brand-500 ring-offset-1 ring-offset-white' : '',
           isDragging ? 'opacity-40' : '',
         ].join(' ')}
-        title={post._pending ? 'Guardando…' : `${post.tipo_contenido ?? ''} · ${post.formato ?? ''}`}
+        title={post._pending ? 'Guardando…' : `${redNombre(post.red) ? redNombre(post.red) + ' · ' : ''}${post.tipo_contenido ?? ''} · ${post.formato ?? ''}`}
       >
-        {post.tipo_contenido ?? post.formato ?? 'Publicación'}
+        <span className="flex items-center gap-1 min-w-0">
+          {post.red && <RedIcon red={post.red} className="w-3 h-3" conTitulo={false} />}
+          <span className="truncate">{post.tipo_contenido ?? post.formato ?? 'Publicación'}</span>
+        </span>
       </button>
 
       {tooltipRect && createPortal(
@@ -177,6 +182,12 @@ function PostTooltip({ post, anchorRect, clienteNombre }) {
           <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
           {fecha}
         </span>
+        {post.red && (
+          <span className="inline-flex items-center gap-1">
+            <RedIcon red={post.red} className="w-3 h-3" conTitulo={false} />
+            {redNombre(post.red)}
+          </span>
+        )}
       </div>
       {snippet && (
         <p className="mt-2 text-xs text-ink-700 leading-relaxed whitespace-pre-line" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>

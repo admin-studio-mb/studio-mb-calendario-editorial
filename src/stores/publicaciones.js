@@ -53,7 +53,7 @@ export const cursorStore = atom(new Date());
  *
  * @type {import('nanostores').WritableAtom<Filtros>}
  */
-export const filtrosStore = atom({ texto: '', estado: '', formato: '', clienteId: '' });
+export const filtrosStore = atom({ texto: '', estado: '', formato: '', clienteId: '', red: '' });
 
 /**
  * ID del post seleccionado en el calendario. Lo usan Calendar (resaltar la
@@ -118,5 +118,5 @@ export function removePublicacion(id) {
 export function resetPublicaciones() {
   publicacionesStore.set([]);
   selectedPostIdStore.set(null);
-  filtrosStore.set({ texto: '', estado: '', formato: '', clienteId: '' });
+  filtrosStore.set({ texto: '', estado: '', formato: '', clienteId: '', red: '' });
 }

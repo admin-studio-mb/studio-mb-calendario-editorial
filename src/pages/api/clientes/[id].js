@@ -9,6 +9,24 @@ import { directusFetch } from '../../../lib/directus-fetch.js';
 import { clearDirectusCache } from '../../../lib/cache.js';
 import { esAdmin } from '../../../lib/roles.js';
 
+const REDES_VALIDAS = ['instagram', 'linkedin', 'facebook'];
+
+/** Valida y sanea redes: [{ red, tipos: string[] }]. Devuelve null si es inválido. */
+function sanitizarRedes(raw) {
+  if (!Array.isArray(raw)) return null;
+  const out = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') return null;
+    if (!REDES_VALIDAS.includes(item.red)) return null;
+    const tipos = Array.isArray(item.tipos)
+      ? item.tipos.map((t) => String(t).trim()).filter(Boolean)
+      : [];
+    if (tipos.length === 0) continue;
+    out.push({ red: item.red, tipos });
+  }
+  return out;
+}
+
 function json(payload, status = 200) {
   return new Response(JSON.stringify(payload), {
     status,
@@ -59,6 +77,12 @@ export async function PATCH({ params, request, locals }) {
 
   if (body.logo !== undefined) {
     payload.logo = body.logo || null;
+  }
+
+  if (body.redes !== undefined) {
+    const redes = sanitizarRedes(body.redes);
+    if (redes === null) return json({ error: 'redes inválidas (red o tipos).' }, 400);
+    payload.redes = redes;
   }
 
   if (Object.keys(payload).length === 0) {

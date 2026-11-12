@@ -19,6 +19,7 @@ import { esCliente } from '../../lib/flujo.js';
 export const prerender = false;
 
 const FORMATOS = new Set(['post', 'reel', 'carrusel', 'story']);
+const REDES = new Set(['instagram', 'linkedin', 'facebook']);
 const ESTADOS = new Set(['borrador', 'revision', 'en_diseno', 'revision_diseno', 'aprobado', 'publicado']);
 
 export async function POST({ request, locals }) {
@@ -46,6 +47,7 @@ export async function POST({ request, locals }) {
   // Directus la guarda en `timestamp without time zone`.
   const payload = {
     cliente_id: body.cliente_id,
+    red: body.red ?? null,
     tipo_contenido: body.tipo_contenido ?? null,
     formato: body.formato ?? 'post',
     copywriting: body.copywriting ?? null,
@@ -83,6 +85,7 @@ function validate(b) {
   if (!b.fecha_publicacion) return 'fecha_publicacion obligatoria.';
   if (!normalizarFechaPublicacion(b.fecha_publicacion)) return 'fecha_publicacion inválida.';
   if (b.formato && !FORMATOS.has(b.formato)) return `formato debe ser uno de: ${[...FORMATOS].join(', ')}.`;
+  if (b.red && !REDES.has(b.red)) return `red debe ser una de: ${[...REDES].join(', ')}.`;
   if (b.estado && !ESTADOS.has(b.estado)) return `estado debe ser uno de: ${[...ESTADOS].join(', ')}.`;
   return null;
 }

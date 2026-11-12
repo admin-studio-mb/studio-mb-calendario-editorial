@@ -23,6 +23,8 @@ import CommentThread from './CommentThread.jsx';
 import { removePublicacion, updatePublicacion, selectedPostIdStore } from '../stores/publicaciones.js';
 import { transicionesPermitidas, esCliente, ESTADO_LABEL } from '../lib/flujo.js';
 import { parseFechaPublicacion } from '../lib/fecha.js';
+import { redNombre } from '../lib/redes.js';
+import RedIcon from './RedIcon.jsx';
 
 /** Clases Tailwind por tono de botón (los define TRANSICIONES en flujo.js). */
 const TONO_CLASSES = {
@@ -241,6 +243,12 @@ function PostReadOnly({ post, clientes = [] }) {
         {post.formato && (
           <span className="px-2 py-0.5 rounded-full bg-ink-100 text-ink-600 text-xs">
             {post.formato}
+          </span>
+        )}
+        {post.red && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-ink-50 border border-ink-100 text-ink-700 text-xs">
+            <RedIcon red={post.red} className="w-3 h-3" conTitulo={false} />
+            {redNombre(post.red)}
           </span>
         )}
         {post.tipo_contenido && (

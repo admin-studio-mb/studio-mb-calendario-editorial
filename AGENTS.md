@@ -459,6 +459,39 @@ El rol `Editor` y su policy `editor_acceso` (12 permisos, sin gestión de
 clientes/usuarios) se crean con `python scripts/setup-editor-role.py`
 (idempotente).
 
+### 6.14 Notificaciones (campanita + email)
+
+Colección `notificaciones` (`scripts/setup-notificaciones.py`): `usuario`
+(FK users), `tipo`, `titulo`, `cuerpo`, `url`, `leida`, `email_enviado`,
+`fecha_creacion`, `publicacion_id`. Policies Cliente/Editor: read + update
+solo de las propias (`usuario = $CURRENT_USER`).
+
+- `PUBLIC_DIRECTUS_STATIC_TOKEN` es **obligatorio en runtime**: crear
+  notificaciones para otros y `/utils/cache/clear` exigen admin.
+- Eventos: comentarios (cliente↔equipo) y estados (`revision`→cliente,
+  `en_diseno`→equipo, `revision_diseno`→cliente, `aprobado`→equipo,
+  `publicado`→cliente).
+- Email: nodemailer con `SMTP_*`. Sin SMTP solo funciona la campanita.
+- Bulk update en Directus 12 exige body `{ data, query }` (no query string).
+- UI: campanita en el sidebar (poll 30 s + foco) y `/dashboard/pendientes`.
+- Verificación: `python scripts/verify-notificaciones.py` (8 checks).
+
+### 6.15 Redes sociales (Instagram / LinkedIn / Facebook)
+
+- `clientes.redes` (JSON): `[{ red: 'instagram', tipos: ['Post','Reel',…] }, …]`
+  — cada red tiene SUS tipos de post.
+- `publicaciones.red` (string): `instagram | linkedin | facebook`.
+- Fuente única de metadatos: `src/lib/redes.js` (nombre, color, tipos por
+  defecto). Al añadir una red nueva hay que tocar: `REDES`, los `choices` del
+  campo en Directus, `VALID_RED` de los endpoints y `REDES_VALIDAS` de
+  `/api/clientes`.
+- El formulario filtra los tipos según la red elegida; si un cliente no tiene
+  `redes`, se usa el campo legacy `tipos_contenido_disponibles`.
+- Calendario: filtro por red, icono en la pill y en el tooltip; el CSV añade
+  columna `Red`; FeedMockup respeta el filtro.
+- `scripts/setup-redes.py` (idempotente): campos + fields de permisos +
+  backfill (posts sin red → instagram; clientes sin redes → las tres).
+
 Scripts de referencia en `scripts/`: `setup-client-permissions.py`,
 `add-comentario-cliente-id.py`, `verify-client-permissions.py`,
 `verify-app-flow-client.py`. Ver `scripts/README.md`.
@@ -596,6 +629,7 @@ gh repo view admin-studio-mb/studio-mb-calendario-editorial
 - ✅ **Alta de clientes y usuarios desde la web** — `/dashboard/usuarios` (solo Admin) crea Cliente/Editor/Admin, asigna `cliente_id` y gestiona suspensión/borrado; `/dashboard/clientes` da de alta clientes (Admin). Ya no hace falta tocar la UI de Directus.
 - ✅ **Notificaciones** — colección `notificaciones` + campanita en el sidebar (badge, marcar leídas, poll 30 s) + email vía SMTP (nodemailer). Eventos: comentarios y cambios de estado. Verificado con `verify-notificaciones.py` (8 checks). Requiere `PUBLIC_DIRECTUS_STATIC_TOKEN` y, para email, `SMTP_*`.
 - ✅ **Página Pendientes** — `/dashboard/pendientes`: posts en `revision` (confirmar texto, con "Confirmar todos") y `revision_diseno` (aprobar diseño), con las acciones permitidas por rol.
+- ✅ **Redes sociales** — cada cliente configura sus redes (Instagram / LinkedIn / Facebook) y los tipos de post de cada una; cada publicación guarda su `red`. Filtro por red en el calendario, logo en la pill y en el tooltip, columna Red en el CSV. Modelo creado con `setup-redes.py`.
 
 ---
 
