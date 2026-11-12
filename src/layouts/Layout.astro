@@ -244,8 +244,11 @@ function initials(u) {
   [data-collapsed="true"] .sidebar-brand {
     justify-content: center;
   }
-  /* Cuando colapsa: theme button se centra solo en la barra de acciones. */
+  /* Cuando colapsa: los botones de acción (campanita + tema) se apilan
+     en vertical y centrados. */
   [data-collapsed="true"] .sidebar-actions {
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
   }
   [data-collapsed="true"] .sidebar-actions > div.flex-1 {
