@@ -7,6 +7,7 @@
 import { directusFetch } from '../../lib/directus-fetch.js';
 import { clearDirectusCache } from '../../lib/cache.js';
 import { esAdmin } from '../../lib/roles.js';
+import { normalizarHex } from '../../lib/marca.js';
 
 const REDES_VALIDAS = ['instagram', 'linkedin', 'facebook'];
 
@@ -70,6 +71,14 @@ export async function POST({ request, locals }) {
     tipos_contenido_disponibles: tipos,
   };
   if (body.logo) payload.logo = body.logo;
+
+  // Color de marca (marca blanca). Vacío = morado de Studio mb.
+  if (body.color_marca !== undefined) {
+    if (body.color_marca && !normalizarHex(body.color_marca)) {
+      return json({ error: 'El color de marca debe ser un hex (#4f46e5).' }, 400);
+    }
+    payload.color_marca = normalizarHex(body.color_marca);
+  }
 
   // Redes sociales: [{ red, tipos: [] }]. Se valida y sanea.
   if (body.redes !== undefined) {

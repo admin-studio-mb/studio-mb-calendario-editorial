@@ -13,6 +13,7 @@ import { directusFetch } from '../../../lib/directus-fetch.js';
 import { env } from '../../../lib/env.js';
 import { esCliente } from '../../../lib/flujo.js';
 import { parseMes, dentroDelRango, nombreArchivo, ESTADO_PDF } from '../../../lib/informe.js';
+import { normalizarHex } from '../../../lib/marca.js';
 import { redNombre } from '../../../lib/redes.js';
 
 export const prerender = false;
@@ -100,13 +101,14 @@ export async function GET({ request, locals }) {
     const c = await directusFetch({
       path: `/items/clientes/${clienteId}`,
       token,
-      search: { fields: 'id,nombre,logo' },
+      search: { fields: 'id,nombre,logo,color_marca' },
     });
     cliente = c.ok ? c.data : null;
   }
 
   const logoBuf = cliente ? await fetchAssetBuffer(token, cliente.logo, { width: 240, format: 'png' }) : null;
   const nombreCliente = cliente?.nombre ?? 'Studio mb';
+  const colorCliente = normalizarHex(cliente?.color_marca) ?? BRAND;
 
   // Imágenes de diseño final (secuencial para no saturar).
   const imagenes = new Map();
@@ -130,7 +132,7 @@ export async function GET({ request, locals }) {
 
   // ── Cabecera ────────────────────────────────────────────────────────────
   function cabeceraPrimera() {
-    doc.save().rect(0, 0, PAGE_W, 118).fill(BRAND).restore();
+    doc.save().rect(0, 0, PAGE_W, 118).fill(colorCliente).restore();
 
     doc.fillColor('#c7d2fe').font('Helvetica-Bold').fontSize(8)
       .text('CALENDARIO EDITORIAL', MARGIN, 26, { characterSpacing: 1.5 });
@@ -148,14 +150,14 @@ export async function GET({ request, locals }) {
         doc.image(logoBuf, bx + 6, 33, { fit: [box - 12, box - 12], align: 'center', valign: 'center' });
       } catch { /* logo no válido */ }
     } else {
-      doc.fillColor(BRAND).font('Helvetica-Bold').fontSize(20)
+      doc.fillColor(colorCliente).font('Helvetica-Bold').fontSize(20)
         .text('mb', bx, 48, { width: box, align: 'center' });
     }
   }
 
   function cabeceraSiguiente() {
     doc.save().rect(0, 0, PAGE_W, 54).fill('#f9fafb').restore();
-    doc.fillColor(BRAND).font('Helvetica-Bold').fontSize(11).text(nombreCliente, MARGIN, 20, { width: CONTENT_W - 150, ellipsis: true });
+    doc.fillColor(colorCliente).font('Helvetica-Bold').fontSize(11).text(nombreCliente, MARGIN, 20, { width: CONTENT_W - 150, ellipsis: true });
     doc.fillColor(MUTED).font('Helvetica').fontSize(9).text(mes.label, PAGE_W - MARGIN - 150, 22, { width: 150, align: 'right' });
     doc.save().moveTo(MARGIN, 54).lineTo(PAGE_W - MARGIN, 54).lineWidth(0.5).strokeColor(BORDER).stroke().restore();
   }

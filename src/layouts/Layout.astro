@@ -4,11 +4,38 @@
 // ============================================================================
 import '../styles/globals.css';
 import Notificaciones from '../components/Notificaciones.jsx';
+import { env } from '../lib/env.js';
+import { marcaVars, normalizarHex } from '../lib/marca.js';
 
 const { title = 'Studio mb · Calendario', user } = Astro.props;
 // El rol Cliente no gestiona clientes: ocultamos esa sección del sidebar.
 const esCliente = user?.role?.name === 'Cliente';
 const esAdmin = user?.role?.name === 'Administrator';
+
+// Marca blanca: un Cliente ve SU logo, nombre y color en lugar de Studio mb.
+let marca = null;
+const token = Astro.locals?.token ?? null;
+if (esCliente && token) {
+  try {
+    const res = await fetch(
+      `${env.DIRECTUS_INTERNAL_URL}/items/clientes?fields=id,nombre,logo,color_marca&limit=1`,
+      { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' },
+    );
+    if (res.ok) {
+      const data = (await res.json()).data?.[0] ?? null;
+      if (data) {
+        marca = {
+          nombre: data.nombre ?? 'Mi calendario',
+          logoId: typeof data.logo === 'object' ? data.logo?.id ?? null : data.logo ?? null,
+          color: normalizarHex(data.color_marca),
+        };
+      }
+    }
+  } catch { /* sin marca: se queda Studio mb */ }
+}
+
+const titulo = marca ? String(title).replaceAll('Studio mb', marca.nombre) : title;
+const colorMarca = marca?.color ?? '#4f46e5';
 
 function initials(u) {
   if (!u) return '?';
@@ -23,10 +50,10 @@ function initials(u) {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#4f46e5" />
-    <title>{title}</title>
+    <meta name="theme-color" content={colorMarca} />
+    <title>{titulo}</title>
   </head>
-  <body class="min-h-screen flex">
+  <body class="min-h-screen flex" style={marca?.color ? marcaVars(marca.color) : undefined}>
     {/* Overlay para móvil — cierra el drawer al pulsar fuera */}
     <div id="sidebar-overlay" class="md:hidden fixed inset-0 bg-black/50 z-30 opacity-0 pointer-events-none transition-opacity" aria-hidden="true"></div>
 
@@ -53,17 +80,31 @@ function initials(u) {
 
       <div class="px-4 pb-4 border-b border-ink-100">
         <a href="/dashboard" class="flex items-center gap-3 min-w-0 sidebar-brand">
-          <img
-            src="/img/logos/Logo-vector-Studio-mb-trans.svg"
-            alt="Studio mb"
-            class="w-9 h-9 shrink-0"
-          />
+          {marca ? (
+            marca.logoId ? (
+              <img
+                src={`/api/assets/${marca.logoId}?width=72&height=72&fit=contain`}
+                alt={marca.nombre}
+                class="w-9 h-9 shrink-0 object-contain rounded-lg bg-white"
+              />
+            ) : (
+              <div class="w-9 h-9 shrink-0 rounded-lg bg-brand-600 text-white flex items-center justify-center text-sm font-bold" aria-hidden="true">
+                {marca.nombre.slice(0, 1).toUpperCase()}
+              </div>
+            )
+          ) : (
+            <img
+              src="/img/logos/Logo-vector-Studio-mb-trans.svg"
+              alt="Studio mb"
+              class="w-9 h-9 shrink-0"
+            />
+          )}
           <div class="min-w-0 sidebar-text">
             <p class="text-sm font-semibold text-ink-900 leading-tight truncate" style="font-family: var(--font-display)">
-              Studio mb.
+              {marca ? marca.nombre : 'Studio mb.'}
             </p>
             <p class="text-[11px] uppercase tracking-wider text-ink-400 truncate">
-              Calendar
+              Calendario
             </p>
           </div>
         </a>
@@ -208,8 +249,16 @@ function initials(u) {
             </svg>
           </button>
           <div class="flex items-center gap-2">
-            <img src="/img/logos/Logo-vector-Studio-mb-trans.svg" alt="Studio mb" class="w-7 h-7"/>
-            <p class="font-semibold text-ink-900">Studio mb.</p>
+            {marca ? (
+              marca.logoId ? (
+                <img src={`/api/assets/${marca.logoId}?width=56&height=56&fit=contain`} alt={marca.nombre} class="w-7 h-7 object-contain rounded bg-white"/>
+              ) : (
+                <span class="w-7 h-7 rounded bg-brand-600 text-white text-[11px] font-bold flex items-center justify-center" aria-hidden="true">{marca.nombre.slice(0,1).toUpperCase()}</span>
+              )
+            ) : (
+              <img src="/img/logos/Logo-vector-Studio-mb-trans.svg" alt="Studio mb" class="w-7 h-7"/>
+            )}
+            <p class="font-semibold text-ink-900">{marca ? marca.nombre : 'Studio mb.'}</p>
           </div>
         </div>
         <button

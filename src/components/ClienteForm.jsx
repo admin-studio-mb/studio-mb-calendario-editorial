@@ -7,6 +7,7 @@
 
 import { useState, useRef } from 'react';
 import { REDES } from '../lib/redes.js';
+import { MARCA_DEFECTO, normalizarHex } from '../lib/marca.js';
 import RedIcon from './RedIcon.jsx';
 
 /**
@@ -43,6 +44,7 @@ export default function ClienteForm({
   const [logoId, setLogoId] = useState(initial.logo ?? null);
   const [logoPreview, setLogoPreview] = useState(null);
   const [logoFile, setLogoFile] = useState(null);
+  const [colorMarca, setColorMarca] = useState(normalizarHex(initial.color_marca) ?? MARCA_DEFECTO);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const fileRef = useRef(null);
@@ -115,6 +117,7 @@ export default function ClienteForm({
         tipos_contenido_disponibles: tiposUnion,
         redes: redesActivas.map((r) => ({ red: r.red, tipos: r.tipos })),
         logo: uploadedLogoId || null,
+        color_marca: colorMarca,
       };
 
       const url = isEdit
@@ -201,6 +204,44 @@ export default function ClienteForm({
           </div>
           <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
         </div>
+      </div>
+
+      {/* Color de marca */}
+      <div>
+        <span className="block text-xs font-semibold uppercase tracking-wider text-ink-500 mb-1.5">Color de marca</span>
+        <div className="flex items-center gap-3">
+          <input
+            type="color"
+            value={colorMarca}
+            onChange={(e) => setColorMarca(e.target.value)}
+            className="w-10 h-10 rounded-lg border border-ink-200 bg-white p-1 cursor-pointer"
+            aria-label="Color de marca"
+          />
+          <input
+            type="text"
+            value={colorMarca}
+            onChange={(e) => {
+              const v = e.target.value;
+              setColorMarca(v);
+            }}
+            onBlur={(e) => {
+              const hex = normalizarHex(e.target.value);
+              setColorMarca(hex ?? MARCA_DEFECTO);
+            }}
+            className="w-32 px-3 py-2 rounded-lg border border-ink-200 text-sm text-ink-800 font-mono focus:border-brand-500 focus:outline-none"
+            aria-label="Color en hexadecimal"
+          />
+          <button
+            type="button"
+            onClick={() => setColorMarca(MARCA_DEFECTO)}
+            className="text-xs font-medium text-ink-500 hover:text-ink-800"
+          >
+            Restablecer
+          </button>
+        </div>
+        <p className="mt-1.5 text-[11px] text-ink-400">
+          Se usa en la cabecera, los botones y el PDF de este cliente.
+        </p>
       </div>
 
       {/* Nombre */}

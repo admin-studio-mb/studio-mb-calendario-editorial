@@ -11,14 +11,23 @@
 
 import { env } from '../../../lib/env.js';
 
-export async function GET({ params, locals }) {
+export async function GET({ params, locals, request }) {
   const id = params?.id;
   if (!id) return new Response('Missing id', { status: 400 });
 
   const token = locals?.token ?? null;
   if (!token) return new Response('Unauthorized', { status: 401 });
 
-  const url = `${env.DIRECTUS_INTERNAL_URL}/assets/${id}`;
+  // Reenviamos los parámetros de transformación de Directus (miniatura, fit…).
+  const inUrl = new URL(request.url);
+  const qs = new URLSearchParams();
+  for (const k of ['width', 'height', 'fit', 'format', 'quality']) {
+    const v = inUrl.searchParams.get(k);
+    if (v) qs.set(k, v);
+  }
+  const query = qs.toString();
+
+  const url = `${env.DIRECTUS_INTERNAL_URL}/assets/${id}${query ? `?${query}` : ''}`;
   const r = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   });

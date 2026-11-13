@@ -13,6 +13,7 @@ import { env } from '../../../../lib/env.js';
 import { registrarActividad, etiquetaEstado } from '../../../../lib/actividad.js';
 import { notificarEstado } from '../../../../lib/notificaciones.js';
 import { destinoDeAccion, enlaceValido, accionExigeMotivo } from '../../../../lib/aprobacion.js';
+import { normalizarHex } from '../../../../lib/marca.js';
 
 export const prerender = false;
 
@@ -55,7 +56,7 @@ async function buscarPorToken(token) {
     token: tokenServidor(),
     search: {
       'filter[token_aprobacion][_eq]': token,
-      fields: 'id,cliente_id.nombre,tipo_contenido,formato,red,copywriting,hashtags,imagenes_fondo,fecha_publicacion,estado,motivo_rechazo,diseno_final,token_aprobacion,aprobacion_expira',
+      fields: 'id,cliente_id.nombre,cliente_id.logo,cliente_id.color_marca,tipo_contenido,formato,red,copywriting,hashtags,imagenes_fondo,fecha_publicacion,estado,motivo_rechazo,diseno_final,token_aprobacion,aprobacion_expira',
       limit: '1',
     },
   });
@@ -73,8 +74,17 @@ export async function GET({ params }) {
   const { post, error, status } = await buscarPorToken(token);
   if (error) return json({ error }, status);
 
+  const logoId = typeof post.cliente_id?.logo === 'object'
+    ? post.cliente_id.logo?.id
+    : post.cliente_id?.logo;
+
   return json({
     cliente: post.cliente_id?.nombre ?? '',
+    marca: {
+      nombre: post.cliente_id?.nombre ?? '',
+      logo: logoId ? `/api/publico/asset/${logoId}?width=96&height=96&fit=contain` : null,
+      color: normalizarHex(post.cliente_id?.color_marca),
+    },
     tipo: post.tipo_contenido ?? '',
     formato: post.formato ?? '',
     red: post.red ?? '',

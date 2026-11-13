@@ -39,6 +39,7 @@ python scripts/<script>.py
 | `setup-aprobacion.py` | Añade `publicaciones.token_aprobacion` / `aprobacion_expira` para los enlaces públicos de aprobación. | Sí |
 | `setup-responsable.py` | Añade `publicaciones.responsable_id` (FK a usuarios) y sus permisos (lectura cliente/editor; asignación solo equipo). | Sí |
 | `setup-efemerides.py` | Crea la colección `efemerides` y siembra 27 fechas (España, Cataluña, marketing); lectura para cliente/editor. | Sí |
+| `setup-marca.py` | Añade `clientes.color_marca` (hex) y lo da de lectura a cliente/editor para la marca blanca. | Sí |
 | `add-comentario-cliente-id.py` | Añade `comentarios.cliente_id` (desnormalizado), hace backfill y reconfigura los permisos de comentarios. | Sí |
 | `fix-client-permissions.py` | Corrige los permisos de comentarios (deep filter + `validation`). | Sí |
 | `create-e2e-user.py` | Crea un usuario admin temporal para el E2E. | Sí |

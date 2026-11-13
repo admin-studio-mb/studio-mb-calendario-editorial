@@ -8,6 +8,7 @@
 import { directusFetch } from '../../../lib/directus-fetch.js';
 import { clearDirectusCache } from '../../../lib/cache.js';
 import { esAdmin } from '../../../lib/roles.js';
+import { normalizarHex } from '../../../lib/marca.js';
 
 const REDES_VALIDAS = ['instagram', 'linkedin', 'facebook'];
 
@@ -77,6 +78,13 @@ export async function PATCH({ params, request, locals }) {
 
   if (body.logo !== undefined) {
     payload.logo = body.logo || null;
+  }
+
+  if (body.color_marca !== undefined) {
+    if (body.color_marca && !normalizarHex(body.color_marca)) {
+      return json({ error: 'El color de marca debe ser un hex (#4f46e5).' }, 400);
+    }
+    payload.color_marca = normalizarHex(body.color_marca);
   }
 
   if (body.redes !== undefined) {

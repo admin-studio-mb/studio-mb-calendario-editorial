@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { parseFechaPublicacion } from '../lib/fecha.js';
+import { escalaMarca } from '../lib/marca.js';
 import { redNombre } from '../lib/redes.js';
 import RedIcon from './RedIcon.jsx';
 import CopyButton from './CopyButton.jsx';
@@ -49,6 +50,16 @@ export default function AprobacionPublica({ token }) {
   }
 
   useEffect(() => { cargar(); }, [token]);
+
+  // Color de marca en toda la página pública.
+  useEffect(() => {
+    const color = post?.marca?.color;
+    if (!color) return;
+    const escala = escalaMarca(color);
+    for (const [tono, hex] of Object.entries(escala)) {
+      document.documentElement.style.setProperty(`--color-brand-${tono}`, hex);
+    }
+  }, [post]);
 
   async function enviar(accion, motivoTexto = null) {
     setEnviando(true);
@@ -94,7 +105,7 @@ export default function AprobacionPublica({ token }) {
         <p className="text-2xl">🔒</p>
         <p className="text-base font-semibold text-ink-900">No se puede abrir este enlace</p>
         <p className="text-sm text-ink-500">{error}</p>
-        <p className="text-xs text-ink-400">Pide al equipo de Studio mb un enlace nuevo.</p>
+        <p className="text-xs text-ink-400">Pide un enlace nuevo al equipo que gestiona tu calendario.</p>
       </div>
     );
   }
@@ -112,6 +123,27 @@ export default function AprobacionPublica({ token }) {
 
   return (
     <div className="space-y-4">
+      {post.marca?.nombre && (
+        <header className="flex items-center gap-3 pb-1">
+          {post.marca.logo ? (
+            <img
+              src={post.marca.logo}
+              alt={post.marca.nombre}
+              className="w-10 h-10 rounded-lg bg-white border border-ink-100 object-contain p-1"
+            />
+          ) : (
+            <span className="inline-flex w-10 h-10 items-center justify-center rounded-lg bg-brand-600 text-white font-bold">
+              {post.marca.nombre.slice(0, 1).toUpperCase()}
+            </span>
+          )}
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-ink-900 leading-tight truncate">{post.marca.nombre}</p>
+            <p className="text-[11px] uppercase tracking-wider text-ink-400 leading-tight">
+              Calendario editorial
+            </p>
+          </div>
+        </header>
+      )}
       {okMsg && (
         <div className="rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm p-4">
           {okMsg}
@@ -308,7 +340,7 @@ export default function AprobacionPublica({ token }) {
       </article>
 
       <p className="text-[11px] text-ink-400 text-center">
-        Enlace privado de Studio mb · no lo compartas fuera de tu equipo.
+        Enlace privado · no lo compartas fuera de tu equipo.
       </p>
     </div>
   );

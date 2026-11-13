@@ -687,6 +687,27 @@ Claves en `directus_users.preferencias` (además de `panelNueva`):
   embeben.
 - Lógica de rango/nombre de archivo en `src/lib/informe.js` (con tests).
 
+### 6.25 Marca blanca por cliente
+
+- `clientes.color_marca` (hex, opcional; vacío = morado de Studio mb). Se
+  edita en el formulario de cliente junto al logo (ya existente).
+- Cuando entra un usuario **Cliente**, `Layout.astro` lee su cliente (la
+  policy limita a uno) y sustituye la marca de Studio mb por la suya:
+  - Logo en el sidebar y en la cabecera móvil (si no hay logo, inicial del
+    nombre sobre el color de marca).
+  - Nombre del cliente como marca y `<title>` de la página.
+  - `--color-brand-*` recalculado desde su color (50..900) en el `<body>`,
+    así botones, chips, focos y enlaces toman su color.
+- `src/lib/marca.js`: `normalizarHex`, `escalaMarca`, `marcaVars`,
+  `textoSobre` (con tests).
+- El **PDF del mes** usa el color del cliente en la cabecera (y su logo).
+- El **enlace público** `/aprobar/:token` ya no muestra Studio mb: cabecera
+  con logo + nombre del cliente y color aplicado en caliente
+  (`AprobacionPublica`); el pie pasa a "Enlace privado".
+- El equipo (Admin/Editor) sigue viendo la marca de Studio mb.
+- `/api/assets/:id` ahora reenvía `width/height/fit/format/quality` a
+  Directus para poder pedir el logo ajustado (`fit=contain`).
+
 Scripts de referencia en `scripts/`: `setup-client-permissions.py`,
 `add-comentario-cliente-id.py`, `verify-client-permissions.py`,
 `verify-app-flow-client.py`. Ver `scripts/README.md`.
@@ -834,6 +855,7 @@ gh repo view admin-studio-mb/studio-mb-calendario-editorial
 - ✅ **Responsable y carga** — cada publicación tiene responsable (equipo); Pendientes filtra "Solo mis publicaciones" y `/dashboard/carga` muestra el reparto del mes por persona y cliente (barras por estado, sin asignar).
 - ✅ **Efemérides** — 27 fechas clave sembradas (España, Cataluña, marketing) que aparecen en el calendario cada año; `/dashboard/efemerides` (solo Admin) permite añadir, editar y borrar las propias.
 - ✅ **PDF del mes** — botón PDF en los filtros del calendario: A4 con logo y color del cliente, posts del mes con copy, hashtags, estado y diseño final (pdfkit, servidor).
+- ✅ **Marca blanca** — cada cliente tiene logo y color; al entrar como Cliente, el sidebar, la cabecera móvil, el título, los botones, el PDF y el enlace público usan su marca (no Studio mb).
 
 ---
 
