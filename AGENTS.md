@@ -514,6 +514,58 @@ solo de las propias (`usuario = $CURRENT_USER`).
 - La página de Configuración es visible para todos los roles; los toggles
   guardan al instante (optimista con rollback si el PATCH falla).
 
+### 6.17 Historial, motivo de rechazo, duplicar y copiar
+
+**Motivo de rechazo** (`publicaciones.motivo_rechazo`, text)
+- `revision_diseno → en_diseno` ("pedir cambios") exige motivo: el endpoint
+  devuelve 400 sin él (solo para el rol Cliente). El modal y Pendientes
+  muestran un panel con textarea (máx. 500) y el motivo vigente en una banda
+  ámbar.
+- Al pasar a `revision_diseno` el servidor limpia `motivo_rechazo` (el
+  historial conserva el anterior).
+- El cliente puede enviar `motivo_rechazo` junto a `estado`; cualquier otro
+  campo sigue prohibido para él.
+
+**Historial** (colección `actividad`, `scripts/setup-actividad.py`)
+- Campos: `publicacion_id`, `usuario` (SET NULL), `tipo`
+  (`creado|estado|edicion|duplicado|sistema`), `detalle`, `estado_anterior`,
+  `estado_nuevo`, `motivo`, `fecha_creacion`.
+- Lo escribe SIEMPRE el servidor con el token estático (`src/lib/actividad.js`);
+  los usuarios solo tienen `read` (cliente filtrado por
+  `publicacion_id.cliente_id`). La UI lo muestra en el modal encima de los
+  comentarios (`GET /api/actividad?publicacion_id=…`).
+- Se registra: alta, duplicado, cambio de estado (con motivo) y edición de
+  campos. El `DELETE /api/publicaciones/:id` **purga antes** el historial:
+  la FK de `actividad.publicacion_id` no quedó con CASCADE en la BBDD (el
+  `PATCH /relations` devuelve 200 pero no la aplica), así que sin eso
+  quedarían filas huérfanas.
+
+**Duplicar y copiar** (`src/lib/duplicar.js`, `src/lib/textos.js`)
+- "Duplicar" (equipo) crea un `borrador` con copy, hashtags, slides, red y
+  formato; +7 días por defecto y fecha editable; nunca hereda estado ni
+  `diseno_final`. El payload lleva `origen: 'duplicado'` para el historial.
+- Botones "Copiar" en copywriting y hashtags (formulario y vista cliente);
+  `hashtagsACadena()` normaliza `#`, quita duplicados y une con espacios.
+
+**⚠️ Campo `role` en las policies de `directus_users`**
+- Si `role` no está en los `fields` del permiso `read`, `/users/me` devuelve
+  solo `{id}` y `esCliente()` evalúa `false` → **todos los guards de servidor
+  se saltan** (un cliente podría crear/editar/borrar por API). Debe estar
+  `role` (y `preferencias`) en los read fields de `cliente_acceso`, y
+  `preferencias` en los de `editor_acceso` (`setup-preferencias.py` lo
+  garantiza). Tras tocar policies, `verify-role-guard.py` debe dar 7/7.
+
+### 6.18 Caché de Vite en desarrollo
+
+Ejecutar `astro build` con el dev server vivo reescribe `.astro` y
+`node_modules/.vite` y el navegador empieza a fallar con
+`NS_ERROR_CORRUPTED_CONTENT` en los deps prebundleados (date-fns, react,
+nanostores…). El calendario se queda sin pintar.
+
+**Fix**: parar el dev server, borrar `node_modules/.vite` y `.astro`,
+rearrancar `npx astro dev` y hacer Ctrl+Shift+R. Regla: si hay que compilar,
+parar antes el dev server.
+
 Scripts de referencia en `scripts/`: `setup-client-permissions.py`,
 `add-comentario-cliente-id.py`, `verify-client-permissions.py`,
 `verify-app-flow-client.py`. Ver `scripts/README.md`.
@@ -652,6 +704,9 @@ gh repo view admin-studio-mb/studio-mb-calendario-editorial
 - ✅ **Notificaciones** — colección `notificaciones` + campanita en el sidebar (badge, marcar leídas, poll 30 s) + email vía SMTP (nodemailer). Eventos: comentarios y cambios de estado. Verificado con `verify-notificaciones.py` (8 checks). Requiere `PUBLIC_DIRECTUS_STATIC_TOKEN` y, para email, `SMTP_*`.
 - ✅ **Página Pendientes** — `/dashboard/pendientes`: posts en `revision` (confirmar texto, con "Confirmar todos") y `revision_diseno` (aprobar diseño), con las acciones permitidas por rol.
 - ✅ **Redes sociales** — cada cliente configura sus redes (Instagram / LinkedIn / Facebook) y los tipos de post de cada una; cada publicación guarda su `red`. Filtro por red en el calendario, logo en la pill y en el tooltip, columna Red en el CSV. Modelo creado con `setup-redes.py`.
+- ✅ **Preferencias de UI por usuario** — pestaña **Configuración** con toggle para mostrar/ocultar el panel "Nueva publicación"; sin panel, el calendario ocupa todo el ancho y el botón "Añadir publicación" de los filtros abre el formulario en modal. Se guardan en `directus_users.preferencias`.
+- ✅ **Duplicar y copiar** — botón Duplicar (crea borrador +7 días con copy/hashtags/slides, sin diseño final) y botones Copiar de copywriting/hashtags en formulario y vista cliente.
+- ✅ **Historial y motivo de rechazo** — el cliente debe explicar por qué pide cambios (obligatorio, 400 sin motivo); banda con el motivo vigente; historial por publicación en el modal (creado / estado / edición / duplicado) con quién y cuándo.
 
 ---
 
