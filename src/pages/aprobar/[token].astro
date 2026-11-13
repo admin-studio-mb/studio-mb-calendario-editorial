@@ -1,0 +1,43 @@
+---
+// ============================================================================
+//  /aprobar/:token — aprobación pública SIN login.
+//  El token es la credencial; el middleware deja pasar esta ruta.
+// ============================================================================
+import AprobacionPublica from '../../components/AprobacionPublica.jsx';
+import '../../styles/globals.css';
+
+export const prerender = false;
+
+const { token } = Astro.params;
+---
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Aprobar publicación · Studio mb</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body class="min-h-screen bg-ink-50 antialiased">
+    <header class="bg-white border-b border-ink-100">
+      <div class="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
+        <span class="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white font-bold text-sm">
+          mb
+        </span>
+        <div>
+          <p class="text-sm font-bold text-ink-900 leading-tight">Studio mb</p>
+          <p class="text-[11px] text-ink-400 leading-tight">Revisión de publicaciones</p>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-4 py-6">
+      <AprobacionPublica client:load token={token} />
+    </main>
+
+    <footer class="max-w-3xl mx-auto px-4 pb-8 text-center text-[11px] text-ink-400">
+      © Studio mb · calendario editorial
+    </footer>
+  </body>
+</html>

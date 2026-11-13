@@ -58,6 +58,12 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
   // Historial de actividad de la publicación abierta.
   const [historial, setHistorial] = useState([]);
 
+  // Enlace público de aprobación (solo equipo).
+  const [enlacePanel, setEnlacePanel] = useState(false);
+  const [enlaceUrl, setEnlaceUrl] = useState('');
+  const [enlaceSaving, setEnlaceSaving] = useState(false);
+  const [enlaceError, setEnlaceError] = useState('');
+
   const cliente = esCliente(currentUser);
 
   useEffect(() => {
@@ -67,6 +73,8 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
       setDuplicando(false);
       setMotivoPanel(false);
       setMotivoError('');
+      setEnlacePanel(false);
+      setEnlaceError('');
       // Mantener selectedPostId sincronizado para que CommentThread sepa qué
       // publicación está abierta.
       selectedPostIdStore.set(p?.id ?? null);
@@ -96,6 +104,60 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
       return Array.isArray(data) ? data : [];
     } catch {
       return [];
+    }
+  }
+
+  // URL del enlace público (se calcula en cliente para no romper el SSR).
+  useEffect(() => {
+    if (post?.token_aprobacion) {
+      setEnlaceUrl(`${window.location.origin}/aprobar/${post.token_aprobacion}`);
+    } else {
+      setEnlaceUrl('');
+    }
+  }, [post?.id, post?.token_aprobacion]);
+
+  async function crearEnlace() {
+    if (!post?.id || enlaceSaving) return;
+    setEnlaceSaving(true);
+    setEnlaceError('');
+    try {
+      const res = await fetch(`/api/publicaciones/${post.id}/enlace`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
+      setEnlaceUrl(data.url);
+      const patch = {
+        id: post.id,
+        token_aprobacion: data.token,
+        aprobacion_expira: data.expira,
+      };
+      updatePublicacion(patch);
+      setPost((p) => (p ? { ...p, ...patch } : p));
+    } catch (err) {
+      setEnlaceError(err.message ?? 'No se pudo crear el enlace.');
+    } finally {
+      setEnlaceSaving(false);
+    }
+  }
+
+  async function revocarEnlace() {
+    if (!post?.id || enlaceSaving) return;
+    if (!confirm('¿Revocar el enlace? Quien lo tenga dejará de poder abrirlo.')) return;
+    setEnlaceSaving(true);
+    setEnlaceError('');
+    try {
+      const res = await fetch(`/api/publicaciones/${post.id}/enlace`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? `Error ${res.status}`);
+      }
+      const patch = { id: post.id, token_aprobacion: null, aprobacion_expira: null };
+      updatePublicacion(patch);
+      setPost((p) => (p ? { ...p, ...patch } : p));
+      setEnlaceUrl('');
+    } catch (err) {
+      setEnlaceError(err.message ?? 'No se pudo revocar el enlace.');
+    } finally {
+      setEnlaceSaving(false);
     }
   }
 
@@ -277,6 +339,23 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
             {!cliente && (
               <button
                 type="button"
+                onClick={() => {
+                  setEnlacePanel((v) => !v);
+                  setEnlaceError('');
+                  setDuplicando(false);
+                  setMotivoPanel(false);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-ink-600 hover:bg-ink-100 transition"
+                title="Enlace público para aprobar sin cuenta"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                Enlace
+              </button>
+            )}
+
+            {!cliente && (
+              <button
+                type="button"
                 onClick={abrirDuplicar}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-ink-600 hover:bg-ink-100 transition"
                 title="Duplicar esta publicación en otra fecha"
@@ -307,6 +386,58 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
             </button>
           </div>
         </header>
+
+        {/* Panel del enlace público de aprobación */}
+        {enlacePanel && (
+          <div className="px-5 py-4 bg-ink-50 border-b border-ink-100">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+              Enlace público de aprobación
+            </p>
+            {enlaceUrl ? (
+              <>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <input
+                    readOnly
+                    value={enlaceUrl}
+                    onFocus={(e) => e.currentTarget.select()}
+                    className="flex-1 min-w-[220px] px-3 py-1.5 rounded-lg border border-ink-200 bg-white text-xs text-ink-700"
+                  />
+                  <CopyButton text={enlaceUrl} label="Copiar" />
+                  <button
+                    type="button"
+                    onClick={revocarEnlace}
+                    disabled={enlaceSaving}
+                    className="px-2.5 py-1 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+                  >
+                    Revocar
+                  </button>
+                </div>
+                <p className="text-[11px] text-ink-400 mt-1.5">
+                  Quien tenga el enlace puede ver el post y aprobar o pedir cambios sin cuenta.
+                  {post.aprobacion_expira && (
+                    <> Caduca el {new Date(post.aprobacion_expira).toLocaleDateString('es-ES')}.</>
+                  )}
+                </p>
+              </>
+            ) : (
+              <div className="flex items-center gap-3 flex-wrap">
+                <p className="text-xs text-ink-600 flex-1 min-w-[220px]">
+                  Crea un enlace para que el cliente apruebe sin cuenta. Caduca a los 30 días
+                  y puedes revocarlo cuando quieras.
+                </p>
+                <button
+                  type="button"
+                  onClick={crearEnlace}
+                  disabled={enlaceSaving}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 text-white hover:bg-brand-700 transition disabled:opacity-50"
+                >
+                  {enlaceSaving ? 'Creando…' : 'Crear enlace'}
+                </button>
+              </div>
+            )}
+            {enlaceError && <p className="text-xs text-red-600 mt-2">{enlaceError}</p>}
+          </div>
+        )}
 
         {/* Panel de duplicado: fecha + confirmación */}
         {duplicando && (

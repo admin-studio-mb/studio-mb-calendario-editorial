@@ -613,6 +613,28 @@ Claves en `directus_users.preferencias` (además de `panelNueva`):
 - Programación (VPS): cron/n8n a las 9:00:
   `curl -fsS -X POST https://calendar.studiomb.es/api/notificaciones/digest -H "Authorization: Bearer $TOKEN"`
 
+### 6.21 Enlace público de aprobación (sin login)
+
+- Campos: `publicaciones.token_aprobacion` (string único, 32 hex) y
+  `aprobacion_expira` (string ISO UTC; se guarda como texto para evitar líos
+  de zona). `scripts/setup-aprobacion.py`.
+- El token **no** está en los fields legibles del rol Cliente (solo equipo).
+- Gestión: `POST/DELETE /api/publicaciones/:id/enlace` (equipo). Crea o
+  reutiliza el enlace; por defecto caduca a 30 días. Botón **Enlace** en el
+  modal para copiar/revocar.
+- Público (middleware deja pasar `/aprobar/` y `/api/publico/`):
+  - `GET /api/publico/aprobacion/:token` → datos saneados (sin ids internos).
+  - `POST /api/publico/aprobacion/:token` con `{accion: confirmar|aprobar|cambios,
+    motivo?}`. Valida estado + caducidad (410) y exige motivo en `cambios`.
+    Registra historial como "(enlace público)" y notifica al equipo como si
+    actuara el cliente.
+  - `GET /api/publico/asset/:id` → proxy de archivos con el token estático
+    (diseño final y slides). Solo acepta uuids; expone cualquier archivo cuyo
+    uuid se conozca (los enlaces se comparten, se acepta).
+- Página: `/aprobar/:token` (sin Layout ni sesión, `noindex`), mobile-first,
+  con copy, hashtags, slides, diseño final y botones de confirmar/aprobar/
+  pedir cambios.
+
 Scripts de referencia en `scripts/`: `setup-client-permissions.py`,
 `add-comentario-cliente-id.py`, `verify-client-permissions.py`,
 `verify-app-flow-client.py`. Ver `scripts/README.md`.
@@ -756,6 +778,7 @@ gh repo view admin-studio-mb/studio-mb-calendario-editorial
 - ✅ **Historial y motivo de rechazo** — el cliente debe explicar por qué pide cambios (obligatorio, 400 sin motivo); banda con el motivo vigente; historial por publicación en el modal (creado / estado / edición / duplicado) con quién y cuándo.
 - ✅ **Adjuntos en comentarios** — hasta 3 imágenes por comentario (6 MB), con vista previa antes de enviar y miniaturas en el hilo; se suben a Directus vía `/api/files`.
 - ✅ **Preferencias de notificación** — en Configuración: email al instante / resumen diario / nunca, y filtrar por tipo (comentarios, estados). `POST /api/notificaciones/digest` (Bearer del token estático) envía el resumen de las 9:00 para quien lo tenga activado.
+- ✅ **Enlace público de aprobación** — botón "Enlace" en el modal (equipo) genera una URL `/aprobar/:token` sin login, con caducidad de 30 días y revocable. El cliente ve copy, slides y diseño final, y puede confirmar, aprobar o pedir cambios con motivo.
 
 ---
 
