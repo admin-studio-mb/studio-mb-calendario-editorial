@@ -3,6 +3,8 @@ import { addPublicacion, updatePublicacion, removePublicacion } from '../stores/
 import DateField from './DateField.jsx';
 import TimePicker from './TimePicker.jsx';
 import { toISOlocal, parseFechaPublicacion } from '../lib/fecha.js';
+import { hashtagsACadena } from '../lib/textos.js';
+import CopyButton from './CopyButton.jsx';
 import { redesDeCliente, tiposDeRed, redNombre } from '../lib/redes.js';
 
 const FORMATOS = ['post', 'reel', 'carrusel', 'story'];
@@ -29,10 +31,13 @@ const LABEL_OVERRIDES = {
 //
 // Usa <div> en lugar de <label> porque el <label> que envuelve un input
 // re-asocia su target en cada render y eso interfiere con el foco.
-function Field({ label, hint, children }) {
+function Field({ label, hint, action, children }) {
   return (
     <div className="block">
-      <span className="block text-xs font-semibold uppercase tracking-wider text-ink-500 mb-1.5">{label}</span>
+      <span className="flex items-center justify-between gap-2 mb-1.5">
+        <span className="block text-xs font-semibold uppercase tracking-wider text-ink-500">{label}</span>
+        {action}
+      </span>
       {children}
       {hint && <span className="block text-[11px] text-ink-400 mt-1">{hint}</span>}
     </div>
@@ -469,7 +474,11 @@ export default function PostForm({
           </Field>
         </div>
 
-        <Field label="Copywriting" hint="Texto que se publica como descripción del post.">
+        <Field
+          label="Copywriting"
+          hint="Texto que se publica como descripción del post."
+          action={<CopyButton text={copywriting} label="Copiar" />}
+        >
           <textarea
             id="copy"
             rows={3}
@@ -480,7 +489,11 @@ export default function PostForm({
           />
         </Field>
 
-        <Field label="Hashtags" hint="Separados por comas. Ej: #branding, #estudio">
+        <Field
+          label="Hashtags"
+          hint="Separados por comas. Ej: #branding, #estudio"
+          action={<CopyButton text={hashtagsACadena(hashtags)} label="Copiar" />}
+        >
           <input
             id="hash"
             type="text"

@@ -20,10 +20,13 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import PostForm from './PostForm.jsx';
 import CommentThread from './CommentThread.jsx';
-import { removePublicacion, updatePublicacion, selectedPostIdStore } from '../stores/publicaciones.js';
+import CopyButton from './CopyButton.jsx';
+import { removePublicacion, updatePublicacion, addPublicacion, selectedPostIdStore } from '../stores/publicaciones.js';
 import { transicionesPermitidas, esCliente, ESTADO_LABEL } from '../lib/flujo.js';
 import { parseFechaPublicacion } from '../lib/fecha.js';
 import { redNombre } from '../lib/redes.js';
+import { hashtagsACadena } from '../lib/textos.js';
+import { fechaDuplicado, payloadDuplicado, DIAS_DUPLICADO } from '../lib/duplicar.js';
 import RedIcon from './RedIcon.jsx';
 
 /** Clases Tailwind por tono de botón (los define TRANSICIONES en flujo.js). */
@@ -39,6 +42,12 @@ const TONO_CLASSES = {
 export default function EditPostModal({ clientes = [], currentUser = null }) {
   const [post, setPost] = useState(null);
   const [quickSaving, setQuickSaving] = useState(false);
+
+  // Duplicar: panel con fecha y POST como borrador.
+  const [duplicando, setDuplicando] = useState(false);
+  const [dupFecha, setDupFecha] = useState('');
+  const [dupSaving, setDupSaving] = useState(false);
+  const [dupError, setDupError] = useState('');
 
   const cliente = esCliente(currentUser);
 
@@ -56,8 +65,54 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
 
   function close() {
     setPost(null);
+    setDuplicando(false);
+    setDupError('');
     // No limpiamos selectedPostId: al cerrar, queremos que CommentThread siga
     // mostrando el último post abierto (útil para mantener contexto).
+  }
+
+  /** Abre el panel de duplicado con la fecha propuesta (+7 días). */
+  function abrirDuplicar() {
+    const f = fechaDuplicado(post, DIAS_DUPLICADO);
+    // datetime-local usa "YYYY-MM-DDTHH:mm"
+    setDupFecha((f ?? '').slice(0, 16));
+    setDupError('');
+    setDuplicando(true);
+  }
+
+  /** Crea el duplicado como borrador (copy, hashtags y slides). */
+  async function crearDuplicado() {
+    if (!post?.id || dupSaving) return;
+    const payload = payloadDuplicado(post, dupFecha);
+    if (!payload) return;
+    if (!payload.fecha_publicacion) {
+      setDupError('Indica una fecha válida.');
+      return;
+    }
+
+    setDupSaving(true);
+    setDupError('');
+    try {
+      const res = await fetch('/api/publicaciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        let msg = `Error (${res.status})`;
+        try { msg = JSON.parse(text).error ?? msg; } catch { /* noop */ }
+        throw new Error(msg);
+      }
+      const saved = await res.json();
+      addPublicacion(saved);
+      setDuplicando(false);
+      close();
+    } catch (err) {
+      setDupError(err.message ?? 'No se pudo duplicar.');
+    } finally {
+      setDupSaving(false);
+    }
   }
 
   async function quickChangeEstado(nuevoEstado) {
@@ -159,6 +214,18 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
             {!cliente && (
               <button
                 type="button"
+                onClick={abrirDuplicar}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-ink-600 hover:bg-ink-100 transition"
+                title="Duplicar esta publicación en otra fecha"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Duplicar
+              </button>
+            )}
+
+            {!cliente && (
+              <button
+                type="button"
                 onClick={handleDelete}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition"
                 title="Eliminar publicación"
@@ -177,6 +244,49 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
             </button>
           </div>
         </header>
+
+        {/* Panel de duplicado: fecha + confirmación */}
+        {duplicando && (
+          <div className="px-5 py-4 bg-brand-50/60 border-b border-brand-100 flex flex-wrap items-end gap-3">
+            <div>
+              <label htmlFor="dup-fecha" className="block text-[11px] font-semibold uppercase tracking-wider text-ink-500 mb-1">
+                Fecha del duplicado
+              </label>
+              <input
+                id="dup-fecha"
+                type="datetime-local"
+                value={dupFecha}
+                onChange={(e) => setDupFecha(e.target.value)}
+                className="px-3 py-1.5 rounded-lg border border-ink-200 bg-white text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+              />
+            </div>
+            <p className="text-xs text-ink-600 flex-1 min-w-[220px] leading-relaxed">
+              Se creará un <b>borrador</b> con el mismo copy, hashtags y slides.
+              El diseño final no se copia.
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={crearDuplicado}
+                disabled={dupSaving}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 text-white hover:bg-brand-700 transition disabled:opacity-50"
+              >
+                {dupSaving ? 'Creando…' : 'Crear borrador'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDuplicando(false)}
+                disabled={dupSaving}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium text-ink-600 hover:bg-white transition disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+            </div>
+            {dupError && (
+              <p className="w-full text-xs text-red-600">{dupError}</p>
+            )}
+          </div>
+        )}
 
         {/* Contenido en 2 columnas: detalle/formulario a la izquierda, comentarios a la derecha */}
         <div className="grid grid-cols-1 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-ink-100">
@@ -268,9 +378,12 @@ function PostReadOnly({ post, clientes = [] }) {
       </div>
 
       <div>
-        <p className="text-[11px] uppercase tracking-wider text-ink-400 font-semibold mb-1">
-          Descripción del post (copy)
-        </p>
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <p className="text-[11px] uppercase tracking-wider text-ink-400 font-semibold">
+            Descripción del post (copy)
+          </p>
+          <CopyButton text={post.copywriting ?? ''} label="Copiar" />
+        </div>
         <p className="text-sm text-ink-700 whitespace-pre-line leading-relaxed">
           {post.copywriting || '—'}
         </p>
@@ -278,7 +391,10 @@ function PostReadOnly({ post, clientes = [] }) {
 
       {Array.isArray(post.hashtags) && post.hashtags.length > 0 && (
         <div>
-          <p className="text-[11px] uppercase tracking-wider text-ink-400 font-semibold mb-1">Hashtags</p>
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <p className="text-[11px] uppercase tracking-wider text-ink-400 font-semibold">Hashtags</p>
+            <CopyButton text={hashtagsACadena(post.hashtags)} label="Copiar" />
+          </div>
           <p className="text-sm text-brand-600 leading-relaxed">
             {post.hashtags.map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' ')}
           </p>
