@@ -568,6 +568,23 @@ nanostores…). El calendario se queda sin pintar.
 rearrancar `npx astro dev` y hacer Ctrl+Shift+R. Regla: si hay que compilar,
 parar antes el dev server.
 
+### 6.19 Adjuntos en comentarios
+
+- Campo `comentarios.adjuntos` (JSON): `[{ id, filename, type }]` con el uuid
+  de un archivo de Directus. Máximo 3 imágenes por comentario, 6 MB cada una
+  (`src/lib/adjuntos.js`).
+- Subida: `/api/files` (multipart `file`) con el JWT del usuario. Para eso
+  `cliente_acceso` y `editor_acceso` necesitan `directus_files create`
+  (`scripts/setup-adjuntos.py`). El coste es que un cliente con su JWT puede
+  subir archivos directamente a Directus; se acepta (solo lectura del resto).
+- El comentario puede ir **solo con imágenes**: `texto` se guarda como cadena
+  vacía porque la columna es NOT NULL en Directus (no `null`).
+- UI (`CommentThread`): clip → selección múltiple con vista previa y botón de
+  quitar; al enviar se suben primero las imágenes y luego se crea el
+  comentario. En el hilo se muestran miniaturas (`/api/assets/:id?width=…`)
+  que abren el original en otra pestaña.
+- Borrar un comentario no borra sus archivos (quedan en Directus).
+
 Scripts de referencia en `scripts/`: `setup-client-permissions.py`,
 `add-comentario-cliente-id.py`, `verify-client-permissions.py`,
 `verify-app-flow-client.py`. Ver `scripts/README.md`.
@@ -709,6 +726,7 @@ gh repo view admin-studio-mb/studio-mb-calendario-editorial
 - ✅ **Preferencias de UI por usuario** — pestaña **Configuración** con toggle para mostrar/ocultar el panel "Nueva publicación"; sin panel, el calendario ocupa todo el ancho y el botón "Añadir publicación" de los filtros abre el formulario en modal. Se guardan en `directus_users.preferencias`.
 - ✅ **Duplicar y copiar** — botón Duplicar (crea borrador +7 días con copy/hashtags/slides, sin diseño final) y botones Copiar de copywriting/hashtags en formulario y vista cliente.
 - ✅ **Historial y motivo de rechazo** — el cliente debe explicar por qué pide cambios (obligatorio, 400 sin motivo); banda con el motivo vigente; historial por publicación en el modal (creado / estado / edición / duplicado) con quién y cuándo.
+- ✅ **Adjuntos en comentarios** — hasta 3 imágenes por comentario (6 MB), con vista previa antes de enviar y miniaturas en el hilo; se suben a Directus vía `/api/files`.
 
 ---
 

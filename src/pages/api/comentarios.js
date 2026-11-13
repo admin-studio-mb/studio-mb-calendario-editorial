@@ -7,6 +7,7 @@
 import { directusFetch } from '../../lib/directus-fetch.js';
 import { clearDirectusCache } from '../../lib/cache.js';
 import { notificarComentario } from '../../lib/notificaciones.js';
+import { normalizarAdjuntos } from '../../lib/adjuntos.js';
 
 export const prerender = false;
 
@@ -32,7 +33,7 @@ export async function GET({ url, locals }) {
       filter,
       sort: 'fecha_creacion',
       limit: 200,
-      fields: 'id,publicacion_id,cliente_id,texto,fecha_creacion,usuario_id.id,usuario_id.first_name,usuario_id.last_name,usuario_id.email',
+      fields: 'id,publicacion_id,cliente_id,texto,adjuntos,fecha_creacion,usuario_id.id,usuario_id.first_name,usuario_id.last_name,usuario_id.email',
     },
   });
 
@@ -57,8 +58,10 @@ export async function POST({ request, locals }) {
 
   const publicacionId = body?.publicacion_id;
   const texto = String(body?.texto ?? '').trim();
+  const adjuntos = normalizarAdjuntos(body?.adjuntos);
   if (!publicacionId) return json({ error: 'publicacion_id obligatorio.' }, 400);
-  if (!texto) return json({ error: 'texto obligatorio.' }, 400);
+  // Se permite comentar solo con imágenes (sin texto).
+  if (!texto && adjuntos.length === 0) return json({ error: 'El comentario está vacío.' }, 400);
 
   // El user id del JWT se inyecta desde locals.user (lo rellena el middleware).
   const userId = locals.user?.id ?? null;
@@ -89,7 +92,8 @@ export async function POST({ request, locals }) {
       publicacion_id: publicacionId,
       cliente_id: clienteId,
       usuario_id: userId,
-      texto,
+      texto: texto || '',
+      adjuntos,
     },
   });
 
@@ -106,7 +110,7 @@ export async function POST({ request, locals }) {
   await notificarComentario({
     autor: locals.user,
     publicacion: pub.data,
-    texto,
+    texto: texto || '(imagen adjunta)',
   });
 
   return json(r.data, 201);

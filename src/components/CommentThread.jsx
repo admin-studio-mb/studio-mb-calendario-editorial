@@ -4,6 +4,9 @@ import { formatDistanceToNow, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { selectedPostIdStore, publicacionesStore } from '../stores/publicaciones.js';
 import { initials } from '../lib/initials.js';
+import {
+  MAX_ADJUNTOS, MAX_BYTES_ADJUNTO, TIPOS_ADJUNTO, urlAdjunto, urlAdjuntoOriginal,
+} from '../lib/adjuntos.js';
 
 /**
  * CommentThread — hilo de comentarios atado al post seleccionado.
@@ -22,10 +25,12 @@ export default function CommentThread({ currentUser }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [texto, setTexto] = useState('');
+  const [adjuntos, setAdjuntos] = useState([]); // [{ key, file, preview }]
   const [enviando, setEnviando] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState('');
   const [error, setError] = useState('');
+  const fileInputRef = useRef(null);
 
   // Refrescar lista cuando cambia el post seleccionado.
   useEffect(() => {
@@ -58,34 +63,108 @@ export default function CommentThread({ currentUser }) {
     setEditingId(null);
     setEditText('');
     setError('');
+    setAdjuntos((prev) => {
+      prev.forEach((a) => URL.revokeObjectURL(a.preview));
+      return [];
+    });
   }, [post?.id]);
+
+  // ── Adjuntos ────────────────────────────────────────────────────────────
+  function addFiles(list) {
+    const arr = Array.from(list ?? []);
+    const nuevos = [];
+    setError('');
+
+    for (const f of arr) {
+      if (!String(f.type ?? '').startsWith('image/')) {
+        setError(`"${f.name}" no es una imagen.`);
+        continue;
+      }
+      if (f.size > MAX_BYTES_ADJUNTO) {
+        setError(`"${f.name}" supera los 6 MB.`);
+        continue;
+      }
+      if (adjuntos.length + nuevos.length >= MAX_ADJUNTOS) {
+        setError(`Máximo ${MAX_ADJUNTOS} imágenes por comentario.`);
+        break;
+      }
+      nuevos.push({
+        key: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        file: f,
+        preview: URL.createObjectURL(f),
+      });
+    }
+
+    if (nuevos.length) setAdjuntos((a) => [...a, ...nuevos]);
+  }
+
+  function removeAdjunto(key) {
+    setAdjuntos((arr) => {
+      const target = arr.find((a) => a.key === key);
+      if (target) URL.revokeObjectURL(target.preview);
+      return arr.filter((a) => a.key !== key);
+    });
+  }
+
+  /** Sube las imágenes pendientes a Directus y devuelve los adjuntos. */
+  async function subirAdjuntos() {
+    const subidos = [];
+    for (const a of adjuntos) {
+      const fd = new FormData();
+      fd.append('file', a.file, a.file.name);
+      const res = await fetch('/api/files', { method: 'POST', body: fd });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`No se pudo subir "${a.file.name}" (${res.status}) ${text}`.trim());
+      }
+      const data = await res.json();
+      subidos.push({
+        id: data.id,
+        filename: data.filename_download ?? a.file.name,
+        type: a.file.type,
+      });
+    }
+    return subidos;
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
     const t = texto.trim();
-    if (!t || !post?.id) return;
+    const hayAdjuntos = adjuntos.length > 0;
+    if ((!t && !hayAdjuntos) || !post?.id) return;
     setEnviando(true);
     setError('');
-    // Optimista
-    const tmpId = `tmp-${Date.now()}`;
-    const optimistic = {
-      id: tmpId,
-      texto: t,
-      fecha_creacion: new Date().toISOString(),
-      usuario_id: currentUser ?? null,
-      _pending: true,
-    };
-    setItems((arr) => [...arr, optimistic]);
-    setTexto('');
     try {
+      // 1) Subir imágenes (si hay) y preparar los adjuntos definitivos.
+      const subidos = hayAdjuntos ? await subirAdjuntos() : [];
+
+      // 2) Optimista, ya con los adjuntos subidos.
+      const tmpId = `tmp-${Date.now()}`;
+      const optimistic = {
+        id: tmpId,
+        texto: t || null,
+        adjuntos: subidos,
+        fecha_creacion: new Date().toISOString(),
+        usuario_id: currentUser ?? null,
+        _pending: true,
+      };
+      setItems((arr) => [...arr, optimistic]);
+      setTexto('');
+      setAdjuntos((prev) => {
+        prev.forEach((a) => URL.revokeObjectURL(a.preview));
+        return [];
+      });
+
       const res = await fetch('/api/comentarios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ publicacion_id: post.id, texto: t }),
+        body: JSON.stringify({ publicacion_id: post.id, texto: t, adjuntos: subidos }),
       });
       if (!res.ok) {
         const text = await res.text().catch(() => '');
-        throw new Error(`Comentar falló (${res.status}): ${text || res.statusText}`);
+        let msg = `Comentar falló (${res.status})`;
+        try { msg = JSON.parse(text).error ?? msg; } catch { /* noop */ }
+        throw new Error(msg);
       }
       const created = await res.json().catch(() => null);
       setItems((arr) =>
@@ -103,7 +182,7 @@ export default function CommentThread({ currentUser }) {
         ),
       );
     } catch (err) {
-      setItems((arr) => arr.filter((c) => c.id !== tmpId));
+      setItems((arr) => arr.filter((c) => !c._pending));
       setTexto(t); // devolvemos el texto al input
       setError(err.message ?? 'Error enviando comentario.');
     } finally {
@@ -293,9 +372,32 @@ export default function CommentThread({ currentUser }) {
                   </div>
                 ) : (
                   <>
-                    <p className="mt-0.5 text-sm text-ink-700 whitespace-pre-line leading-relaxed">
-                      {c.texto}
-                    </p>
+                    {c.texto && (
+                      <p className="mt-0.5 text-sm text-ink-700 whitespace-pre-line leading-relaxed">
+                        {c.texto}
+                      </p>
+                    )}
+                    {Array.isArray(c.adjuntos) && c.adjuntos.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {c.adjuntos.map((a) => (
+                          <a
+                            key={a.id}
+                            href={urlAdjuntoOriginal(a.id)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={a.filename ?? 'Abrir imagen'}
+                            className="block"
+                          >
+                            <img
+                              src={urlAdjunto(a.id, 360, 360)}
+                              alt={a.filename ?? 'Adjunto'}
+                              loading="lazy"
+                              className="h-20 w-20 rounded-lg border border-ink-200 object-cover bg-ink-100 hover:opacity-90 transition"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    )}
                     {isMine(c) && (
                       <div className="mt-1.5 flex items-center gap-3 text-[11px]">
                         <button
@@ -327,29 +429,74 @@ export default function CommentThread({ currentUser }) {
         )}
       </ul>
 
-      <form onSubmit={handleSubmit} className="flex items-center gap-2 px-5 py-3 border-t border-ink-100 bg-ink-50/50">
-        <div className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-white text-[11px] font-semibold flex items-center justify-center">
-          {initials(currentUser ?? null)}
+      <form onSubmit={handleSubmit} className="px-5 py-3 border-t border-ink-100 bg-ink-50/50">
+        {adjuntos.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-2 pl-10">
+            {adjuntos.map((a) => (
+              <div key={a.key} className="relative">
+                <img
+                  src={a.preview}
+                  alt={a.file.name}
+                  className="h-16 w-16 rounded-lg object-cover border border-ink-200 bg-white"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeAdjunto(a.key)}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-ink-900 text-white text-xs leading-none flex items-center justify-center hover:bg-red-600 transition"
+                  title="Quitar imagen"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-white text-[11px] font-semibold flex items-center justify-center">
+            {initials(currentUser ?? null)}
+          </div>
+          <input
+            type="text"
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            placeholder={`Comentar en "${post.tipo_contenido ?? 'esta publicación'}"…`}
+            className="flex-1 px-3 py-2 rounded-lg border border-ink-200 bg-white text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-100 focus:outline-none transition"
+          />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={TIPOS_ADJUNTO}
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              addFiles(e.target.files);
+              e.target.value = '';
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={enviando || adjuntos.length >= MAX_ADJUNTOS}
+            title={adjuntos.length >= MAX_ADJUNTOS ? `Máximo ${MAX_ADJUNTOS} imágenes` : 'Adjuntar imagen'}
+            className="p-2 rounded-lg text-ink-500 hover:text-brand-600 hover:bg-white border border-transparent hover:border-ink-200 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+            </svg>
+          </button>
+          <button
+            type="submit"
+            disabled={enviando || (!texto.trim() && adjuntos.length === 0)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          >
+            {enviando ? '…' : (
+              <>
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                Enviar
+              </>
+            )}
+          </button>
         </div>
-        <input
-          type="text"
-          value={texto}
-          onChange={(e) => setTexto(e.target.value)}
-          placeholder={`Comentar en "${post.tipo_contenido ?? 'esta publicación'}"…`}
-          className="flex-1 px-3 py-2 rounded-lg border border-ink-200 bg-white text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-100 focus:outline-none transition"
-        />
-        <button
-          type="submit"
-          disabled={enviando || !texto.trim()}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-        >
-          {enviando ? '…' : (
-            <>
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-              Enviar
-            </>
-          )}
-        </button>
       </form>
     </section>
   );

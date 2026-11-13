@@ -35,6 +35,7 @@ python scripts/<script>.py
 | `setup-redes.py` | Añade `publicaciones.red` y `clientes.redes`, amplía los fields de los permisos y hace backfill (posts → instagram; clientes → 3 redes con tipos). | Sí |
 | `setup-preferencias.py` | Añade `directus_users.preferencias` (JSON) y los permisos para que cada usuario guarde sus preferencias de UI. | Sí |
 | `setup-actividad.py` | Crea la colección `actividad` (historial), añade `publicaciones.motivo_rechazo` y sus permisos de lectura/edición. | Sí |
+| `setup-adjuntos.py` | Añade `comentarios.adjuntos` (JSON) y da permiso de subida (`directus_files create`) a Cliente y Editor. | Sí |
 | `add-comentario-cliente-id.py` | Añade `comentarios.cliente_id` (desnormalizado), hace backfill y reconfigura los permisos de comentarios. | Sí |
 | `fix-client-permissions.py` | Corrige los permisos de comentarios (deep filter + `validation`). | Sí |
 | `create-e2e-user.py` | Crea un usuario admin temporal para el E2E. | Sí |
