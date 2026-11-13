@@ -94,7 +94,7 @@ export default defineConfig({
       // intenten empaquetar dentro del bundle SSR de Astro. nodemailer usa
       // requires dinámicos: también va externalizado.
       noExternal: [],
-      external: ['@directus/sdk', 'date-fns', 'nodemailer'],
+      external: ['@directus/sdk', 'date-fns', 'nodemailer', 'pdfkit'],
     },
   },
 });

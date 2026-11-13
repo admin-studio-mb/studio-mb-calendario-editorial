@@ -667,6 +667,26 @@ Claves en `directus_users.preferencias` (además de `panelNueva`):
   con un punto de color según el ámbito (`src/lib/efemerides.js`).
 - Colores: España rojo, Cataluña ámbar, marketing morado, propia verde.
 
+### 6.24 PDF mensual por cliente
+
+- `GET /api/pdf/mes?mes=YYYY-MM&cliente=<id>` genera un A4 con la marca del
+  cliente: cabecera con color de marca y logo, y cada publicación del mes
+  (fecha grande, tipo, formato/red, chip de estado, copy y hashtags) con la
+  foto del **diseño final** a la derecha. Pagina solo cuando hace falta.
+- El equipo puede pedir un cliente o todos; si llama un **Cliente**, el
+  servidor ignora el parámetro y usa SU `cliente_id` (lo busca con el token
+  estático).
+- Botón **PDF** en la barra de filtros del calendario: usa el mes del cursor
+  y el filtro de cliente activo.
+- Implementado con **pdfkit** (JS puro). Está en `vite.ssr.external` de
+  `astro.config.mjs`: en el Docker de runtime se reinstalan las deps de
+  producción, así que `pdfkit` está disponible sin empaquetarlo.
+- Imágenes: se piden a Directus como JPG redimensionado
+  (`/assets/:id?width=520&format=jpg`); si un diseño no se puede leer, se
+  pinta un hueco "Sin diseño final". Los slides con URL externa no se
+  embeben.
+- Lógica de rango/nombre de archivo en `src/lib/informe.js` (con tests).
+
 Scripts de referencia en `scripts/`: `setup-client-permissions.py`,
 `add-comentario-cliente-id.py`, `verify-client-permissions.py`,
 `verify-app-flow-client.py`. Ver `scripts/README.md`.
@@ -813,6 +833,7 @@ gh repo view admin-studio-mb/studio-mb-calendario-editorial
 - ✅ **Enlace público de aprobación** — botón "Enlace" en el modal (equipo) genera una URL `/aprobar/:token` sin login, con caducidad de 30 días y revocable. El cliente ve copy, slides y diseño final, y puede confirmar, aprobar o pedir cambios con motivo.
 - ✅ **Responsable y carga** — cada publicación tiene responsable (equipo); Pendientes filtra "Solo mis publicaciones" y `/dashboard/carga` muestra el reparto del mes por persona y cliente (barras por estado, sin asignar).
 - ✅ **Efemérides** — 27 fechas clave sembradas (España, Cataluña, marketing) que aparecen en el calendario cada año; `/dashboard/efemerides` (solo Admin) permite añadir, editar y borrar las propias.
+- ✅ **PDF del mes** — botón PDF en los filtros del calendario: A4 con logo y color del cliente, posts del mes con copy, hashtags, estado y diseño final (pdfkit, servidor).
 
 ---
 

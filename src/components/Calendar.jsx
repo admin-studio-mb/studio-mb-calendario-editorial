@@ -402,6 +402,25 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], mos
               CSV
             </button>
 
+            {/* PDF del mes (con logo del cliente) */}
+            <button
+              type="button"
+              onClick={() => {
+                const yyyy = cursor.getFullYear();
+                const mm = String(cursor.getMonth() + 1).padStart(2, '0');
+                const cliente = filtros.clienteId ? `&cliente=${encodeURIComponent(filtros.clienteId)}` : '';
+                window.open(`/api/pdf/mes?mes=${yyyy}-${mm}${cliente}`, '_blank');
+              }}
+              title="Descargar el mes en PDF"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-ink-700 hover:bg-ink-100 border border-ink-100 transition"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+              </svg>
+              PDF
+            </button>
+
             {/* Añadir publicación (cuando el panel lateral está oculto) */}
             {mostrarBotonNueva && (
               <>
