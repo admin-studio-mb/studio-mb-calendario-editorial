@@ -1,5 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_ADJUNTOS, normalizarAdjuntos, urlAdjunto, urlAdjuntoOriginal } from './adjuntos.js';
+import {
+  MAX_ADJUNTOS, UMBRAL_COMPRESION, debeComprimir, normalizarAdjuntos,
+  urlAdjunto, urlAdjuntoOriginal,
+} from './adjuntos.js';
+
+describe('debeComprimir', () => {
+  it('comprime imágenes grandes que no son GIF', () => {
+    expect(debeComprimir({ type: 'image/jpeg', size: UMBRAL_COMPRESION + 1 })).toBe(true);
+    expect(debeComprimir({ type: 'image/png', size: 3 * 1024 * 1024 })).toBe(true);
+  });
+
+  it('no comprime archivos pequeños ni GIF', () => {
+    expect(debeComprimir({ type: 'image/jpeg', size: 1000 })).toBe(false);
+    expect(debeComprimir({ type: 'image/gif', size: 5 * 1024 * 1024 })).toBe(false);
+    expect(debeComprimir(null)).toBe(false);
+  });
+});
 
 describe('normalizarAdjuntos', () => {
   it('acepta una lista válida y recorta filename/type', () => {

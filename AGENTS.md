@@ -573,6 +573,11 @@ parar antes el dev server.
 - Campo `comentarios.adjuntos` (JSON): `[{ id, filename, type }]` con el uuid
   de un archivo de Directus. Máximo 3 imágenes por comentario, 6 MB cada una
   (`src/lib/adjuntos.js`).
+- **Compresión en el navegador**: antes de subir, toda imagen > 400 KB se
+  redimensiona a un máximo de 2000 px de lado y se recomprime a WebP (calidad
+  0.9) con canvas. Los GIF no se tocan (perderían la animación). Si el
+  reencodeo no mejora el tamaño o falla, se sube el original. El límite de
+  entrada es 15 MB; el resultado debe quedar ≤ 6 MB.
 - Subida: `/api/files` (multipart `file`) con el JWT del usuario. Para eso
   `cliente_acceso` y `editor_acceso` necesitan `directus_files create`
   (`scripts/setup-adjuntos.py`). El coste es que un cliente con su JWT puede

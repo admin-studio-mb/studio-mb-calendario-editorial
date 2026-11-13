@@ -5,7 +5,8 @@ import { es } from 'date-fns/locale';
 import { selectedPostIdStore, publicacionesStore } from '../stores/publicaciones.js';
 import { initials } from '../lib/initials.js';
 import {
-  MAX_ADJUNTOS, MAX_BYTES_ADJUNTO, TIPOS_ADJUNTO, urlAdjunto, urlAdjuntoOriginal,
+  MAX_ADJUNTOS, MAX_BYTES_ADJUNTO, MAX_BYTES_ENTRADA,
+  TIPOS_ADJUNTO, urlAdjunto, urlAdjuntoOriginal, comprimirImagen,
 } from '../lib/adjuntos.js';
 
 /**
@@ -70,7 +71,7 @@ export default function CommentThread({ currentUser }) {
   }, [post?.id]);
 
   // ── Adjuntos ────────────────────────────────────────────────────────────
-  function addFiles(list) {
+  async function addFiles(list) {
     const arr = Array.from(list ?? []);
     const nuevos = [];
     setError('');
@@ -80,18 +81,25 @@ export default function CommentThread({ currentUser }) {
         setError(`"${f.name}" no es una imagen.`);
         continue;
       }
-      if (f.size > MAX_BYTES_ADJUNTO) {
-        setError(`"${f.name}" supera los 6 MB.`);
+      if (f.size > MAX_BYTES_ENTRADA) {
+        setError(`"${f.name}" supera los 15 MB.`);
         continue;
       }
       if (adjuntos.length + nuevos.length >= MAX_ADJUNTOS) {
         setError(`Máximo ${MAX_ADJUNTOS} imágenes por comentario.`);
         break;
       }
+      // Redimensiona/comprime antes de subir (salvo GIF y archivos pequeños).
+      const optimizada = await comprimirImagen(f);
+      if (optimizada.size > MAX_BYTES_ADJUNTO) {
+        setError(`"${f.name}" sigue superando los 6 MB tras optimizarla.`);
+        continue;
+      }
       nuevos.push({
         key: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        file: f,
-        preview: URL.createObjectURL(f),
+        file: optimizada,
+        original: f,
+        preview: URL.createObjectURL(optimizada),
       });
     }
 
@@ -439,6 +447,12 @@ export default function CommentThread({ currentUser }) {
                   alt={a.file.name}
                   className="h-16 w-16 rounded-lg object-cover border border-ink-200 bg-white"
                 />
+                <span className="absolute bottom-0 left-0 right-0 rounded-b-lg bg-ink-900/70 text-white text-[9px] text-center py-0.5 tabular-nums">
+                  {Math.max(1, Math.round(a.file.size / 1024))} KB
+                  {a.original && a.original.size > a.file.size && (
+                    <span className="text-emerald-300"> · -{Math.round((1 - a.file.size / a.original.size) * 100)}%</span>
+                  )}
+                </span>
                 <button
                   type="button"
                   onClick={() => removeAdjunto(a.key)}
