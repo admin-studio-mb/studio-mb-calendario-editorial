@@ -10,7 +10,12 @@ import { env } from './lib/env.js';
 import { getCurrentUser } from './lib/auth.js';
 
 // Rutas que NO requieren autenticación.
-const PUBLIC_PATHS = new Set(['/login', '/api/auth/login']);
+// El digest se autentica por su cuenta (Bearer con el token estático).
+const PUBLIC_PATHS = new Set([
+  '/login',
+  '/api/auth/login',
+  '/api/notificaciones/digest',
+]);
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { url, cookies, redirect } = context;

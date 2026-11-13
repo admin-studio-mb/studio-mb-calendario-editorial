@@ -28,6 +28,7 @@ import { env } from './env.js';
 import { sendEmail, smtpConfigurado } from './email.js';
 import { esCliente } from './roles.js';
 import { parseFechaPublicacion } from './fecha.js';
+import { normalizarPrefs } from './prefs.js';
 
 const APP_URL = (process.env.PUBLIC_APP_URL || 'https://calendar.studiomb.es').replace(/\/$/, '');
 
@@ -43,7 +44,7 @@ async function usuariosEquipo() {
     search: {
       'filter[status][_eq]': 'active',
       'filter[role][name][_in]': 'Administrator,Editor',
-      fields: 'id,email,first_name',
+      fields: 'id,email,first_name,last_name,preferencias',
       limit: '-1',
     },
   });
@@ -60,7 +61,7 @@ async function usuariosDeCliente(clienteId) {
       'filter[status][_eq]': 'active',
       'filter[role][name][_eq]': 'Cliente',
       'filter[cliente_id][_eq]': clienteId,
-      fields: 'id,email,first_name',
+      fields: 'id,email,first_name,last_name,preferencias',
       limit: '-1',
     },
   });
@@ -90,7 +91,16 @@ function etiquetaPublicacion(p) {
  * @param {object} opts { usuarios, tipo, titulo, cuerpo, url, publicacionId }
  */
 async function crearPara({ usuarios, tipo, titulo, cuerpo, url, publicacionId = null }) {
-  const recipients = (usuarios ?? []).filter((u) => u?.id);
+  const conPrefs = (usuarios ?? [])
+    .filter((u) => u?.id)
+    .map((u) => ({ ...u, prefs: normalizarPrefs(u.preferencias) }));
+
+  // Preferencia "Avisarme de": si el usuario no quiere este tipo, no se le
+  // crea ni la campanita ni el email.
+  const recipients = (tipo === 'comentario' || tipo === 'estado')
+    ? conPrefs.filter((u) => u.prefs.notifTipos.includes(tipo))
+    : conPrefs;
+
   if (recipients.length === 0) return;
   if (!token()) {
     console.warn('[notificaciones] sin PUBLIC_DIRECTUS_STATIC_TOKEN: se omiten');
@@ -105,7 +115,9 @@ async function crearPara({ usuarios, tipo, titulo, cuerpo, url, publicacionId = 
     url: url ?? null,
     publicacion_id: publicacionId,
     leida: false,
-    email_enviado: false,
+    // 'nunca' → la fila nace como "email ya enviado" para que el digest no
+    // la recoja nunca. Con 'diario' queda false y la envía el resumen.
+    email_enviado: u.prefs.notifEmail === 'nunca',
   }));
 
   const r = await directusFetch({
@@ -133,6 +145,8 @@ async function crearPara({ usuarios, tipo, titulo, cuerpo, url, publicacionId = 
 
   for (const u of recipients) {
     if (!u.email) continue;
+    // 'nunca' → sin email; 'diario' → lo manda el resumen de las 9:00.
+    if (u.prefs.notifEmail !== 'instante') continue;
     const res = await sendEmail({
       to: u.email,
       subject: `[Studio mb] ${titulo}`,

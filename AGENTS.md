@@ -590,6 +590,29 @@ parar antes el dev server.
   que abren el original en otra pestaña.
 - Borrar un comentario no borra sus archivos (quedan en Directus).
 
+### 6.20 Preferencias de notificación y digest diario
+
+Claves en `directus_users.preferencias` (además de `panelNueva`):
+
+| Clave | Valores | Efecto |
+|---|---|---|
+| `notifEmail` | `instante` / `diario` / `nunca` | Cuándo se manda email (la campanita no cambia) |
+| `notifTipos` | array de `comentario`, `estado` | De qué se avisa (campanita y email) |
+
+- `normalizarPrefs()` aplica defaults y valida tipos; `parchearPrefs()` valida
+  el PATCH (`/api/preferencias` devuelve 400 si llega un valor inválido).
+- En `crearPara()`: si el usuario no tiene el tipo activado **no se crea ni la
+  notificación**; si `notifEmail = 'nunca'` la fila nace con
+  `email_enviado = true` (para que el digest no la recoja nunca); si es
+  `diario`, queda `false` y la envía el resumen.
+- **Digest**: `POST /api/notificaciones/digest` con
+  `Authorization: Bearer $PUBLIC_DIRECTUS_STATIC_TOKEN` (ruta pública para el
+  middleware; el endpoint se autentica solo). Agrupa por usuario con
+  `notifEmail=diario` las notificaciones `leida=false` y `email_enviado=false`,
+  manda un único email y las marca. Sin SMTP devuelve 503.
+- Programación (VPS): cron/n8n a las 9:00:
+  `curl -fsS -X POST https://calendar.studiomb.es/api/notificaciones/digest -H "Authorization: Bearer $TOKEN"`
+
 Scripts de referencia en `scripts/`: `setup-client-permissions.py`,
 `add-comentario-cliente-id.py`, `verify-client-permissions.py`,
 `verify-app-flow-client.py`. Ver `scripts/README.md`.
@@ -732,6 +755,7 @@ gh repo view admin-studio-mb/studio-mb-calendario-editorial
 - ✅ **Duplicar y copiar** — botón Duplicar (crea borrador +7 días con copy/hashtags/slides, sin diseño final) y botones Copiar de copywriting/hashtags en formulario y vista cliente.
 - ✅ **Historial y motivo de rechazo** — el cliente debe explicar por qué pide cambios (obligatorio, 400 sin motivo); banda con el motivo vigente; historial por publicación en el modal (creado / estado / edición / duplicado) con quién y cuándo.
 - ✅ **Adjuntos en comentarios** — hasta 3 imágenes por comentario (6 MB), con vista previa antes de enviar y miniaturas en el hilo; se suben a Directus vía `/api/files`.
+- ✅ **Preferencias de notificación** — en Configuración: email al instante / resumen diario / nunca, y filtrar por tipo (comentarios, estados). `POST /api/notificaciones/digest` (Bearer del token estático) envía el resumen de las 9:00 para quien lo tenga activado.
 
 ---
 

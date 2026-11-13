@@ -10,7 +10,7 @@
 
 import { directusFetch } from '../../lib/directus-fetch.js';
 import { clearDirectusCache } from '../../lib/cache.js';
-import { normalizarPrefs, PREFS_VALIDAS } from '../../lib/prefs.js';
+import { normalizarPrefs, parchearPrefs } from '../../lib/prefs.js';
 
 function json(payload, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -36,12 +36,10 @@ export async function PATCH({ request, locals }) {
     return json({ error: 'Body JSON inválido.' }, 400);
   }
 
-  const patch = {};
-  for (const key of PREFS_VALIDAS) {
-    if (typeof body?.[key] === 'boolean') patch[key] = body[key];
-  }
+  const { patch, error } = parchearPrefs(body);
+  if (error) return json({ error }, 400);
   if (Object.keys(patch).length === 0) {
-    return json({ error: `Nada que actualizar. Claves: ${PREFS_VALIDAS.join(', ')}` }, 400);
+    return json({ error: 'Nada que actualizar.' }, 400);
   }
 
   const merged = { ...normalizarPrefs(user.preferencias), ...patch };
