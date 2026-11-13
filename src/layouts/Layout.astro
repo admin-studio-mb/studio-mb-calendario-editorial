@@ -115,6 +115,14 @@ function initials(u) {
             <span class="sidebar-text">Usuarios</span>
           </a>
         )}
+        {esAdmin && (
+          <a href="/dashboard/efemerides" class="nav-item group">
+            <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01z" />
+            </svg>
+            <span class="sidebar-text">Efemérides</span>
+          </a>
+        )}
         <a href="/dashboard/configuracion" class="nav-item group">
           <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3" />

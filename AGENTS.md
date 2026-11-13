@@ -651,6 +651,22 @@ Claves en `directus_users.preferencias` (además de `panelNueva`):
 - Al borrar un usuario con publicaciones asignadas, la FK los deja en
   "Sin asignar" (SET NULL).
 
+### 6.23 Efemérides y fechas clave
+
+- Colección `efemerides`: `dia` (1-31), `mes` (1-12), `nombre`, `ambito`
+  (`espana|cataluna|marketing|propia`), `notas`. Se repiten **cada año**
+  (no hay año). `scripts/setup-efemerides.py` siembra 27 fechas fijas de
+  España, Cataluña y marketing (las variables tipo Semana Santa o Black
+  Friday quedan fuera a propósito).
+- Lectura para `cliente_acceso` y `editor_acceso`; crear/editar/borrar solo
+  Administrator (`/dashboard/efemerides`).
+- API: `GET /api/efemerides?mes=1..12`; `POST /api/efemerides` y
+  `PATCH/DELETE /api/efemerides/:id` (admin). `validarEfemeride()` valida
+  rango y ámbito.
+- Calendario: al cambiar de mes carga las efemérides y pinta hasta 2 por día
+  con un punto de color según el ámbito (`src/lib/efemerides.js`).
+- Colores: España rojo, Cataluña ámbar, marketing morado, propia verde.
+
 Scripts de referencia en `scripts/`: `setup-client-permissions.py`,
 `add-comentario-cliente-id.py`, `verify-client-permissions.py`,
 `verify-app-flow-client.py`. Ver `scripts/README.md`.
@@ -796,6 +812,7 @@ gh repo view admin-studio-mb/studio-mb-calendario-editorial
 - ✅ **Preferencias de notificación** — en Configuración: email al instante / resumen diario / nunca, y filtrar por tipo (comentarios, estados). `POST /api/notificaciones/digest` (Bearer del token estático) envía el resumen de las 9:00 para quien lo tenga activado.
 - ✅ **Enlace público de aprobación** — botón "Enlace" en el modal (equipo) genera una URL `/aprobar/:token` sin login, con caducidad de 30 días y revocable. El cliente ve copy, slides y diseño final, y puede confirmar, aprobar o pedir cambios con motivo.
 - ✅ **Responsable y carga** — cada publicación tiene responsable (equipo); Pendientes filtra "Solo mis publicaciones" y `/dashboard/carga` muestra el reparto del mes por persona y cliente (barras por estado, sin asignar).
+- ✅ **Efemérides** — 27 fechas clave sembradas (España, Cataluña, marketing) que aparecen en el calendario cada año; `/dashboard/efemerides` (solo Admin) permite añadir, editar y borrar las propias.
 
 ---
 

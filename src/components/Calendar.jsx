@@ -8,6 +8,7 @@ import { es } from 'date-fns/locale';
 import { publicacionesStore, cursorStore, filtrosStore, selectedPostIdStore, hydratePublicaciones, updatePublicacion } from '../stores/publicaciones.js';
 import { REDES } from '../lib/redes.js';
 import { parseFechaPublicacion, toISOlocal } from '../lib/fecha.js';
+import { efemeridesDelMes, agruparPorDia, colorDeAmbito } from '../lib/efemerides.js';
 import WeekView from './WeekView.jsx';
 import ListView from './ListView.jsx';
 import DayView from './DayView.jsx';
@@ -22,11 +23,29 @@ import { publicacionesToCsv, downloadCsv } from '../lib/csv.js';
  *   - clientes: array de clientes para el filtro y el tooltip.
  */
 export default function Calendar({ initialPublicaciones = [], clientes = [], mostrarBotonNueva = false, onNuevaPublicacion }) {
+  // Efemérides del mes visible (fechas clave).
+  const [efemeridesMes, setEfemeridesMes] = useState([]);
   useEffect(() => {
     if (initialPublicaciones.length && publicacionesStore.get().length === 0) {
       hydratePublicaciones(initialPublicaciones);
     }
   }, [initialPublicaciones]);
+
+  // Cargar efemérides al cambiar de mes.
+  const mesVisible = cursor.getMonth() + 1;
+  useEffect(() => {
+    let cancel = false;
+    fetch(`/api/efemerides?mes=${mesVisible}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => { if (!cancel) setEfemeridesMes(Array.isArray(data) ? data : []); })
+      .catch(() => {});
+    return () => { cancel = true; };
+  }, [mesVisible, cursor.getFullYear()]);
+
+  const efemeridesPorDia = useMemo(
+    () => agruparPorDia(efemeridesDelMes(efemeridesMes, mesVisible)),
+    [efemeridesMes, mesVisible],
+  );
 
   const publicaciones = useStore(publicacionesStore);
   // `mounted` evita el hydration mismatch del botón CSV: en SSR y en el
@@ -501,6 +520,14 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], mos
                       </button>
                     )}
                   </div>
+
+                  {/* Efemérides / fechas clave del día */}
+                  {!muted && (efemeridesPorDia.get(day.getDate()) ?? []).slice(0, 2).map((e) => (
+                    <div key={e.id} className="flex items-center gap-1 mb-0.5 min-w-0" title={e.nombre}>
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${colorDeAmbito(e.ambito)}`} />
+                      <span className="text-[9px] leading-tight text-ink-500 truncate">{e.nombre}</span>
+                    </div>
+                  ))}
 
                   <div className="space-y-1">
                     {posts.map((p) => (

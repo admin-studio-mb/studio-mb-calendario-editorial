@@ -1,0 +1,33 @@
+---
+// ============================================================================
+//  /dashboard/efemerides — gestión de fechas clave (solo Administrator).
+// ============================================================================
+import Layout from '../../../layouts/Layout.astro';
+import EfemeridesView from '../../../components/EfemeridesView.jsx';
+import { env } from '../../../lib/env.js';
+import { esAdmin } from '../../../lib/roles.js';
+
+export const prerender = false;
+
+const { user, token } = Astro.locals;
+if (!esAdmin(user)) {
+  return Astro.redirect('/dashboard');
+}
+
+const res = await fetch(
+  `${env.DIRECTUS_INTERNAL_URL}/items/efemerides?limit=-1&fields=id,dia,mes,nombre,ambito,notas&sort=mes,dia`,
+  { headers: token ? { Authorization: `Bearer ${token}` } : {}, cache: 'no-store' },
+);
+
+const items = res.ok ? (await res.json()).data ?? [] : [];
+---
+<Layout title="Efemérides · Studio mb" user={user}>
+  <header class="mb-8">
+    <h1 class="text-2xl md:text-3xl font-bold text-ink-900 tracking-tight">Efemérides</h1>
+    <p class="mt-1 text-sm text-ink-500">
+      Fechas clave que aparecen en el calendario todos los años. Añade las vuestras (sectoriales, de cliente…).
+    </p>
+  </header>
+
+  <EfemeridesView client:load initialItems={items} />
+</Layout>
