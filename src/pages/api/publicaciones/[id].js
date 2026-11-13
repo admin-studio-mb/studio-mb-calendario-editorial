@@ -76,8 +76,10 @@ export async function PATCH({ params, request, locals }) {
       );
     }
 
-    // "Pedir cambios" (revision_diseno → en_diseno) exige motivo.
-    const pideCambios = estadoActual === 'revision_diseno' && body.estado === 'en_diseno';
+    // "Pedir cambios" exige motivo: rechazo de texto (revision → borrador) o
+    // de diseño (revision_diseno → en_diseno).
+    const pideCambios = (estadoActual === 'revision' && body.estado === 'borrador')
+      || (estadoActual === 'revision_diseno' && body.estado === 'en_diseno');
     if (pideCambios) {
       const motivo = typeof body.motivo_rechazo === 'string' ? body.motivo_rechazo.trim() : '';
       if (!motivo) {
@@ -139,9 +141,9 @@ export async function PATCH({ params, request, locals }) {
     payload.fecha_publicacion = norm;
   }
 
-  // Limpieza: al enviar un diseño nuevo a revisión, el motivo anterior ya no
+  // Limpieza: al volver a revisión (texto o diseño), el motivo anterior ya no
   // aplica (el historial conserva el que hubo).
-  if (body.estado === 'revision_diseno') {
+  if (body.estado === 'revision' || body.estado === 'revision_diseno') {
     payload.motivo_rechazo = null;
   }
 

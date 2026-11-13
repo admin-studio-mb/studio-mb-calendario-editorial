@@ -17,7 +17,7 @@ describe('flujo editorial', () => {
 
   it('cada estado tiene sus transiciones y publicado es terminal', () => {
     expect(TRANSICIONES.borrador.map((t) => t.to)).toEqual(['revision']);
-    expect(TRANSICIONES.revision.map((t) => t.to)).toEqual(['en_diseno']);
+    expect(TRANSICIONES.revision.map((t) => t.to)).toEqual(['en_diseno', 'borrador']);
     expect(TRANSICIONES.en_diseno.map((t) => t.to)).toEqual(['revision_diseno']);
     expect(TRANSICIONES.revision_diseno.map((t) => t.to)).toEqual(['aprobado', 'en_diseno']);
     expect(TRANSICIONES.aprobado.map((t) => t.to)).toEqual(['publicado']);
@@ -39,7 +39,7 @@ describe('flujo editorial', () => {
 
   it('el cliente solo ve confirmaciones', () => {
     expect(transicionesPermitidas('borrador', cliente)).toEqual([]);
-    expect(transicionesPermitidas('revision', cliente).map((t) => t.to)).toEqual(['en_diseno']);
+    expect(transicionesPermitidas('revision', cliente).map((t) => t.to)).toEqual(['en_diseno', 'borrador']);
     expect(transicionesPermitidas('en_diseno', cliente)).toEqual([]);
     expect(transicionesPermitidas('revision_diseno', cliente).map((t) => t.to)).toEqual(['aprobado', 'en_diseno']);
     expect(transicionesPermitidas('aprobado', cliente)).toEqual([]);
@@ -55,6 +55,7 @@ describe('flujo editorial', () => {
     expect(transicionPermitida('publicado', 'borrador', admin)).toBe(false);
     // Cliente: solo confirmar texto / aprobar diseño / pedir cambios.
     expect(transicionPermitida('revision', 'en_diseno', cliente)).toBe(true);
+    expect(transicionPermitida('revision', 'borrador', cliente)).toBe(true);
     expect(transicionPermitida('revision_diseno', 'aprobado', cliente)).toBe(true);
     expect(transicionPermitida('revision_diseno', 'en_diseno', cliente)).toBe(true);
     expect(transicionPermitida('borrador', 'revision', cliente)).toBe(false);

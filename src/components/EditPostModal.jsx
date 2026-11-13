@@ -51,6 +51,7 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
 
   // Rechazo: el cliente debe explicar por qué pide cambios.
   const [motivoPanel, setMotivoPanel] = useState(false);
+  const [motivoTo, setMotivoTo] = useState('en_diseno');
   const [motivo, setMotivo] = useState('');
   const [motivoError, setMotivoError] = useState('');
 
@@ -194,9 +195,12 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
     }
   }
 
-  /** Click en una acción del flujo: intercepta "pedir cambios" del cliente. */
+  /** Click en una acción del flujo: intercepta los rechazos del cliente. */
   function onAccion(accion) {
-    if (cliente && post?.estado === 'revision_diseno' && accion.to === 'en_diseno') {
+    const esRechazo = (post?.estado === 'revision_diseno' && accion.to === 'en_diseno')
+      || (post?.estado === 'revision' && accion.to === 'borrador');
+    if (cliente && esRechazo) {
+      setMotivoTo(accion.to);
       setMotivo('');
       setMotivoError('');
       setMotivoPanel(true);
@@ -377,7 +381,7 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => quickChangeEstado('en_diseno', motivo.trim())}
+                  onClick={() => quickChangeEstado(motivoTo, motivo.trim())}
                   disabled={quickSaving || motivo.trim().length === 0}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-white hover:bg-amber-600 transition disabled:opacity-50"
                 >

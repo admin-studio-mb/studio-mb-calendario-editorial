@@ -50,8 +50,9 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
-  // Pedir cambios exige motivo: guardamos el post al que se lo estamos pidiendo.
+  // Pedir cambios exige motivo: guardamos el post y el estado destino.
   const [motivoPara, setMotivoPara] = useState(null);
+  const [motivoTo, setMotivoTo] = useState('en_diseno');
   const [motivo, setMotivo] = useState('');
   const [motivoErr, setMotivoErr] = useState('');
 
@@ -157,10 +158,13 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
             type="button"
             disabled={busy === post.id}
             onClick={() => {
-              // "Pedir cambios" (revision_diseno → en_diseno) exige motivo.
-              if (post.estado === 'revision_diseno' && a.to === 'en_diseno') {
+              // Pedir cambios (texto o diseño) exige motivo.
+              const esRechazo = (post.estado === 'revision_diseno' && a.to === 'en_diseno')
+                || (post.estado === 'revision' && a.to === 'borrador');
+              if (esRechazo) {
                 setMotivo('');
                 setMotivoErr('');
+                setMotivoTo(a.to);
                 setMotivoPara(post);
                 return;
               }
@@ -304,7 +308,7 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
                   </button>
                   <button
                     type="button"
-                    onClick={() => cambiarEstado(post, 'en_diseno', motivo.trim())}
+                    onClick={() => cambiarEstado(post, motivoTo, motivo.trim())}
                     disabled={busy === post.id || motivo.trim().length === 0}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-white hover:bg-amber-600 transition disabled:opacity-50"
                   >

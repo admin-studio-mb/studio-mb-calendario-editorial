@@ -13,6 +13,7 @@
 //        revision_diseno   → cliente (diseño listo para aprobar)
 //        aprobado          → equipo (el cliente aprobó)
 //        publicado         → cliente (publicado)
+//        borrador          → equipo (solo si el cliente pide cambios de texto)
 //
 //  La escritura usa PUBLIC_DIRECTUS_STATIC_TOKEN (admin) porque hay que crear
 //  notificaciones PARA OTROS usuarios: las policies de Cliente/Editor solo
@@ -218,6 +219,12 @@ export async function notificarEstado({ actor, publicacion, anterior, nuevo }) {
         usuarios = await usuariosDeCliente(publicacion.cliente_id);
         titulo = 'Nuevo post para revisar';
         url = '/dashboard/pendientes';
+        break;
+      case 'borrador':
+        // Solo cuando el cliente rechaza el texto (revision → borrador).
+        if (anterior !== 'revision' || !esCliente(actor)) return;
+        usuarios = await usuariosEquipo();
+        titulo = 'El cliente pidió cambios en el texto';
         break;
       case 'en_diseno':
         usuarios = await usuariosEquipo();

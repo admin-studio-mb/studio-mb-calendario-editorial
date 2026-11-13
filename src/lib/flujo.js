@@ -40,6 +40,7 @@ export const TRANSICIONES = {
   ],
   revision: [
     { to: 'en_diseno', label: '✓ Confirmar texto → Pasar a diseño', tono: 'purple' },
+    { to: 'borrador', label: 'Pedir cambios de texto', tono: 'amber' },
   ],
   en_diseno: [
     { to: 'revision_diseno', label: 'Enviar diseño a revisión →', tono: 'pink' },
@@ -57,6 +58,7 @@ export const TRANSICIONES = {
 /** Transiciones que puede ejecutar el rol Cliente: solo confirmaciones. */
 const TRANSICIONES_CLIENTE = new Set([
   'revision>en_diseno',
+  'revision>borrador',
   'revision_diseno>aprobado',
   'revision_diseno>en_diseno',
 ]);

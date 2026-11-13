@@ -422,7 +422,7 @@ se lee de `/users/me?fields=...,role.id,role.name` en `getCurrentUser()`
 |---|---|
 | `Administrator` | Todo: contenido, **gestión de clientes** y **gestión de usuarios** (`/dashboard/usuarios`). |
 | `Editor` | Contenido de TODOS los clientes: crear/editar/borrar publicaciones, diseños y comentarios. **No** gestiona clientes ni usuarios. |
-| `Cliente` | Ver su calendario/mockup, comentar y **confirmar**: `revision→en_diseno`, `revision_diseno→aprobado`, `revision_diseno→en_diseno`. |
+| `Cliente` | Ver su calendario/mockup, comentar y **confirmar o pedir cambios**: `revision→en_diseno` (confirmar texto), `revision→borrador` (pedir cambios de texto), `revision_diseno→aprobado` (aprobar), `revision_diseno→en_diseno` (pedir cambios de diseño). Los dos "pedir cambios" exigen motivo. |
 
 **Alta de usuarios desde la web** (`/dashboard/usuarios`, solo Administrator):
 crear Cliente (con cliente asignado obligatorio), Editor o Administrador;
@@ -517,14 +517,16 @@ solo de las propias (`usuario = $CURRENT_USER`).
 ### 6.17 Historial, motivo de rechazo, duplicar y copiar
 
 **Motivo de rechazo** (`publicaciones.motivo_rechazo`, text)
-- `revision_diseno → en_diseno` ("pedir cambios") exige motivo: el endpoint
-  devuelve 400 sin él (solo para el rol Cliente). El modal y Pendientes
-  muestran un panel con textarea (máx. 500) y el motivo vigente en una banda
-  ámbar.
-- Al pasar a `revision_diseno` el servidor limpia `motivo_rechazo` (el
-  historial conserva el anterior).
+- Hay DOS rechazos, ambos del rol Cliente y ambos con motivo obligatorio
+  (400 sin él): texto `revision → borrador` y diseño
+  `revision_diseno → en_diseno`. En el modal y en Pendientes el botón abre un
+  panel con textarea (máx. 500) y el motivo vigente queda en una banda ámbar.
+- Al volver a `revision` o `revision_diseno` el servidor limpia
+  `motivo_rechazo` (el historial conserva el anterior).
 - El cliente puede enviar `motivo_rechazo` junto a `estado`; cualquier otro
   campo sigue prohibido para él.
+- `revision → borrador` del cliente notifica al equipo ("El cliente pidió
+  cambios en el texto").
 
 **Historial** (colección `actividad`, `scripts/setup-actividad.py`)
 - Campos: `publicacion_id`, `usuario` (SET NULL), `tipo`
