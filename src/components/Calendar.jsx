@@ -32,21 +32,6 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], mos
   }, [initialPublicaciones]);
 
   // Cargar efemérides al cambiar de mes.
-  const mesVisible = cursor.getMonth() + 1;
-  useEffect(() => {
-    let cancel = false;
-    fetch(`/api/efemerides?mes=${mesVisible}`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => { if (!cancel) setEfemeridesMes(Array.isArray(data) ? data : []); })
-      .catch(() => {});
-    return () => { cancel = true; };
-  }, [mesVisible, cursor.getFullYear()]);
-
-  const efemeridesPorDia = useMemo(
-    () => agruparPorDia(efemeridesDelMes(efemeridesMes, mesVisible)),
-    [efemeridesMes, mesVisible],
-  );
-
   const publicaciones = useStore(publicacionesStore);
   // `mounted` evita el hydration mismatch del botón CSV: en SSR y en el
   // primer render del cliente usamos `initialPublicaciones` (idénticos);
@@ -61,6 +46,24 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], mos
     return 'month';
   });
   const cursor = useStore(cursorStore);
+  const mesVisible = cursor.getMonth() + 1;
+  const anioVisible = cursor.getFullYear();
+
+  // Efemérides del mes visible: se recargan al navegar de mes.
+  useEffect(() => {
+    let cancel = false;
+    fetch(`/api/efemerides?mes=${mesVisible}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => { if (!cancel) setEfemeridesMes(Array.isArray(data) ? data : []); })
+      .catch(() => {});
+    return () => { cancel = true; };
+  }, [mesVisible, anioVisible]);
+
+  const efemeridesPorDia = useMemo(
+    () => agruparPorDia(efemeridesDelMes(efemeridesMes, mesVisible)),
+    [efemeridesMes, mesVisible],
+  );
+
   const filtros = useStore(filtrosStore);
   const selectedPostId = useStore(selectedPostIdStore);
   const setSelectedPostId = (id) => selectedPostIdStore.set(id);
