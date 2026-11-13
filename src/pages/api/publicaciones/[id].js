@@ -113,11 +113,16 @@ export async function PATCH({ params, request, locals }) {
       && typeof body.motivo_rechazo !== 'string') {
     return json({ error: 'motivo_rechazo inválido.' }, 400);
   }
+  if (body.responsable_id !== undefined && body.responsable_id !== null
+      && typeof body.responsable_id !== 'string') {
+    return json({ error: 'responsable_id inválido.' }, 400);
+  }
 
   // Solo permitimos editar estos campos. Ignoramos silenciosamente el resto.
   const allowed = [
     'cliente_id',
     'red',
+    'responsable_id',
     'tipo_contenido',
     'formato',
     'copywriting',

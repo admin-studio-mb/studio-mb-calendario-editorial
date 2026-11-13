@@ -50,6 +50,8 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
+  // Filtro "solo mis publicaciones" (responsable = usuario actual).
+  const [soloMios, setSoloMios] = useState(false);
   // Pedir cambios exige motivo: guardamos el post y el estado destino.
   const [motivoPara, setMotivoPara] = useState(null);
   const [motivoTo, setMotivoTo] = useState('en_diseno');
@@ -79,8 +81,10 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
     return m;
   }, [clientes]);
 
-  const porTexto = posts.filter((p) => p.estado === 'revision');
-  const porDiseno = posts.filter((p) => p.estado === 'revision_diseno');
+  const esMia = (p) => Boolean(currentUser?.id) && p.responsable_id === currentUser.id;
+
+  const porTexto = posts.filter((p) => p.estado === 'revision' && (!soloMios || esMia(p)));
+  const porDiseno = posts.filter((p) => p.estado === 'revision_diseno' && (!soloMios || esMia(p)));
 
   async function cambiarEstado(post, nuevo, motivoTexto = null) {
     setBusy(post.id);
@@ -207,6 +211,11 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
             )}
             {post.tipo_contenido && (
               <span className="text-xs text-ink-500">{post.tipo_contenido}</span>
+            )}
+            {esMia(post) && (
+              <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-semibold uppercase tracking-wider">
+                Tuya
+              </span>
             )}
           </div>
 
@@ -347,6 +356,17 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
       {aviso && (
         <div className="rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm p-3">{aviso}</div>
       )}
+
+      <label className="inline-flex items-center gap-2 text-sm text-ink-600 select-none">
+        <input
+          type="checkbox"
+          checked={soloMios}
+          onChange={(e) => setSoloMios(e.target.checked)}
+          className="w-4 h-4 rounded border-ink-300 text-brand-600 focus:ring-brand-500/40"
+        />
+        Solo mis publicaciones
+        {soloMios && <span className="text-xs text-ink-400">(responsable: tú)</span>}
+      </label>
 
       <section>
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">

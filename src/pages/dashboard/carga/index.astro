@@ -1,0 +1,50 @@
+---
+// ============================================================================
+//  /dashboard/carga — carga de trabajo del mes (solo equipo).
+// ============================================================================
+import Layout from '../../../layouts/Layout.astro';
+import CargaView from '../../../components/CargaView.jsx';
+import { env } from '../../../lib/env.js';
+import { esCliente } from '../../../lib/roles.js';
+
+export const prerender = false;
+
+const { user, token } = Astro.locals;
+if (esCliente(user)) {
+  return Astro.redirect('/dashboard');
+}
+
+const baseHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+const baseUrl = env.DIRECTUS_INTERNAL_URL;
+
+async function fetchCollection(path) {
+  const res = await fetch(`${baseUrl}/items/${path}?limit=-1`, {
+    headers: baseHeaders,
+    cache: 'no-store',
+  });
+  if (!res.ok) return [];
+  const json = await res.json();
+  return json.data ?? [];
+}
+
+const [publicaciones, clientes, equipoRaw] = await Promise.all([
+  fetchCollection('publicaciones'),
+  fetchCollection('clientes'),
+  fetch(
+    `${baseUrl}/users?fields=id,first_name,last_name,email&limit=-1&filter[status][_eq]=active&filter[role][name][_in]=Administrator,Editor&sort=first_name`,
+    { headers: baseHeaders, cache: 'no-store' },
+  ).then((r) => (r.ok ? r.json() : { data: [] })),
+]);
+
+const equipo = equipoRaw.data ?? [];
+---
+<Layout title="Carga del mes · Studio mb" user={user}>
+  <header class="mb-8">
+    <h1 class="text-2xl md:text-3xl font-bold text-ink-900 tracking-tight">Carga del mes</h1>
+    <p class="mt-1 text-sm text-ink-500">
+      Reparto de publicaciones por persona y cliente. Así se ve de un vistazo quién va cargado.
+    </p>
+  </header>
+
+  <CargaView client:load initialPublicaciones={publicaciones} clientes={clientes} equipo={equipo} />
+</Layout>

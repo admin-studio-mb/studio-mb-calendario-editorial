@@ -49,6 +49,7 @@ export async function POST({ request, locals }) {
   const payload = {
     cliente_id: body.cliente_id,
     red: body.red ?? null,
+    responsable_id: body.responsable_id ?? null,
     tipo_contenido: body.tipo_contenido ?? null,
     formato: body.formato ?? 'post',
     copywriting: body.copywriting ?? null,
@@ -95,6 +96,8 @@ function validate(b) {
   if (!normalizarFechaPublicacion(b.fecha_publicacion)) return 'fecha_publicacion inválida.';
   if (b.formato && !FORMATOS.has(b.formato)) return `formato debe ser uno de: ${[...FORMATOS].join(', ')}.`;
   if (b.red && !REDES.has(b.red)) return `red debe ser una de: ${[...REDES].join(', ')}.`;
+  if (b.responsable_id !== undefined && b.responsable_id !== null
+      && typeof b.responsable_id !== 'string') return 'responsable_id inválido.';
   if (b.estado && !ESTADOS.has(b.estado)) return `estado debe ser uno de: ${[...ESTADOS].join(', ')}.`;
   return null;
 }

@@ -169,7 +169,20 @@ export default function PostForm({
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
 
+  // Responsable (equipo). El listado se carga del endpoint /api/equipo.
+  const [responsableId, setResponsableId] = useState(initial.responsable_id ?? '');
+  const [equipo, setEquipo] = useState([]);
+
   const isEdit = Boolean(initial.id);
+
+  useEffect(() => {
+    let cancel = false;
+    fetch('/api/equipo')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => { if (!cancel) setEquipo(Array.isArray(data) ? data : []); })
+      .catch(() => {});
+    return () => { cancel = true; };
+  }, []);
 
   // Etiqueta grande con la fecha/hora final (para que no haya dudas).
   const fechaHoraLabel = (() => {
@@ -275,6 +288,7 @@ export default function PostForm({
     const payload = {
       cliente_id: clienteId,
       red: red || null,
+      responsable_id: responsableId || null,
       tipo_contenido: tipo,
       formato,
       copywriting,
@@ -472,6 +486,21 @@ export default function PostForm({
           <Field label="Formato">
             <select id="formato" value={formato} onChange={(e) => setFormato(e.target.value)} className={inputBase}>
               {FORMATOS.map((f) => <option key={f} value={f}>{titleCase(f)}</option>)}
+            </select>
+          </Field>
+
+          <Field label="Responsable" hint="Quién lleva esta publicación.">
+            <select
+              id="responsable"
+              value={responsableId ?? ''}
+              onChange={(e) => setResponsableId(e.target.value)}
+              className={inputBase}
+            >
+              <option value="">— Sin asignar —</option>
+              {equipo.map((u) => {
+                const nombre = [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email;
+                return <option key={u.id} value={u.id}>{nombre}</option>;
+              })}
             </select>
           </Field>
 

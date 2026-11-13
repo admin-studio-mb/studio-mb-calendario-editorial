@@ -635,6 +635,22 @@ Claves en `directus_users.preferencias` (además de `panelNueva`):
   con copy, hashtags, slides, diseño final y botones de confirmar/aprobar/
   pedir cambios.
 
+### 6.22 Responsable y carga del mes
+
+- Campo `publicaciones.responsable_id` (uuid FK → `directus_users`,
+  `SET NULL`; `scripts/setup-responsable.py`). El equipo lo asigna en el
+  formulario de publicación; el Cliente solo lo ve.
+- `GET /api/equipo` (equipo; 403 para Cliente) → usuarios activos
+  Administrator/Editor para el desplegable de responsable.
+- **Pendientes**: casilla "Solo mis publicaciones" (filtra por
+  `responsable_id = currentUser`) y chip "Tuya" en las tarjetas propias.
+- **Carga** (`/dashboard/carga`, solo equipo): barras apiladas por persona con
+  el desglose de estados del mes, fila "Sin asignar" y tabla por cliente con
+  los posts sin responsable. La lógica pura está en `src/lib/carga.js` (con
+  tests) para poder reutilizarla.
+- Al borrar un usuario con publicaciones asignadas, la FK los deja en
+  "Sin asignar" (SET NULL).
+
 Scripts de referencia en `scripts/`: `setup-client-permissions.py`,
 `add-comentario-cliente-id.py`, `verify-client-permissions.py`,
 `verify-app-flow-client.py`. Ver `scripts/README.md`.
@@ -779,6 +795,7 @@ gh repo view admin-studio-mb/studio-mb-calendario-editorial
 - ✅ **Adjuntos en comentarios** — hasta 3 imágenes por comentario (6 MB), con vista previa antes de enviar y miniaturas en el hilo; se suben a Directus vía `/api/files`.
 - ✅ **Preferencias de notificación** — en Configuración: email al instante / resumen diario / nunca, y filtrar por tipo (comentarios, estados). `POST /api/notificaciones/digest` (Bearer del token estático) envía el resumen de las 9:00 para quien lo tenga activado.
 - ✅ **Enlace público de aprobación** — botón "Enlace" en el modal (equipo) genera una URL `/aprobar/:token` sin login, con caducidad de 30 días y revocable. El cliente ve copy, slides y diseño final, y puede confirmar, aprobar o pedir cambios con motivo.
+- ✅ **Responsable y carga** — cada publicación tiene responsable (equipo); Pendientes filtra "Solo mis publicaciones" y `/dashboard/carga` muestra el reparto del mes por persona y cliente (barras por estado, sin asignar).
 
 ---
 
