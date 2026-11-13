@@ -116,6 +116,35 @@ else:
     print(f"  POST editor_acceso update → {st}" + ("" if st in (200, 201) else f" {json.dumps(body)[:200]}"))
 
 print()
+print("== Fields de lectura de directus_users ==")
+# Sin `role` en los fields, /users/me no devuelve el rol y esCliente() falla
+# (los guards del servidor se saltarían). `preferencias` debe ser legible para
+# que el middleware y la página de Configuración las carguen.
+READ_EXTRA = {
+    "cliente_acceso": ["role", "preferencias"],
+    "editor_acceso": ["preferencias"],
+}
+for pname, extra in READ_EXTRA.items():
+    pid = policies.get(pname)
+    if not pid:
+        continue
+    row = next((p for p in allp if p.get("policy") == pid
+                and p.get("collection") == "directus_users" and p.get("action") == "read"), None)
+    if not row:
+        print(f"  {pname} read: no existe (se salta)")
+        continue
+    fields = row.get("fields") or []
+    if "*" in fields:
+        print(f"  {pname} read: comodín, ok")
+        continue
+    faltan = [f for f in extra if f not in fields]
+    if not faltan:
+        print(f"  {pname} read: ok")
+        continue
+    st, body = api(f"/permissions/{row['id']}", "PATCH", {"fields": fields + faltan})
+    print(f"  {pname} read += {faltan} → {st}")
+
+print()
 print("== Verificación ==")
 st, f = api("/fields/directus_users/preferencias")
 print("  campo existe:", st == 200)

@@ -15,6 +15,7 @@ import { directusFetch } from '../../lib/directus-fetch.js';
 import { clearDirectusCache } from '../../lib/cache.js';
 import { normalizarFechaPublicacion } from '../../lib/fecha.js';
 import { esCliente } from '../../lib/flujo.js';
+import { registrarActividad } from '../../lib/actividad.js';
 
 export const prerender = false;
 
@@ -75,6 +76,14 @@ export async function POST({ request, locals }) {
   // vea la nueva publicación. Sin esto, Directus sirve la lista cacheada
   // (Redis) y la publicación no aparece hasta que expira.
   await clearDirectusCache(token);
+
+  // Historial: alta normal o duplicado (origen lo manda el botón Duplicar).
+  await registrarActividad({
+    publicacion_id: r.data.id,
+    tipo: body.origen === 'duplicado' ? 'duplicado' : 'creado',
+    detalle: body.origen === 'duplicado' ? 'Publicación duplicada' : 'Publicación creada',
+    usuario: locals.user,
+  });
 
   return json(r.data, 201);
 }

@@ -57,5 +57,7 @@ export function payloadDuplicado(post, fechaISO) {
       ? post.imagenes_fondo.map((s) => (s && typeof s === 'object' ? { ...s } : s))
       : [],
     fecha_publicacion: normalizarFechaPublicacion(fechaISO),
+    // Marca para que el servidor registre "duplicado" en el historial.
+    origen: 'duplicado',
   };
 }

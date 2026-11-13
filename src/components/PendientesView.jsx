@@ -50,6 +50,10 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
+  // Pedir cambios exige motivo: guardamos el post al que se lo estamos pidiendo.
+  const [motivoPara, setMotivoPara] = useState(null);
+  const [motivo, setMotivo] = useState('');
+  const [motivoErr, setMotivoErr] = useState('');
 
   // Si el usuario confirma/aprueba desde el modal (que actualiza el store),
   // quitamos de la lista los posts que ya no están pendientes. Para eso el
@@ -77,14 +81,16 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
   const porTexto = posts.filter((p) => p.estado === 'revision');
   const porDiseno = posts.filter((p) => p.estado === 'revision_diseno');
 
-  async function cambiarEstado(post, nuevo) {
+  async function cambiarEstado(post, nuevo, motivoTexto = null) {
     setBusy(post.id);
     setError('');
     try {
+      const body = { estado: nuevo };
+      if (motivoTexto !== null) body.motivo_rechazo = motivoTexto;
       const res = await fetch(`/api/publicaciones/${post.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ estado: nuevo }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const text = await res.text().catch(() => '');
@@ -93,10 +99,17 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
         throw new Error(msg);
       }
       setPosts((arr) => arr.filter((p) => p.id !== post.id));
+      setMotivoPara(null);
+      setMotivo('');
+      setMotivoErr('');
       setAviso(`✓ ${post.tipo_contenido || 'Publicación'} del ${fechaLabel(post)} actualizada.`);
       setTimeout(() => setAviso(''), 3000);
     } catch (err) {
-      setError(err.message ?? 'No se pudo actualizar.');
+      if (motivoTexto !== null) {
+        setMotivoErr(err.message ?? 'No se pudo pedir cambios.');
+      } else {
+        setError(err.message ?? 'No se pudo actualizar.');
+      }
     } finally {
       setBusy(null);
     }
@@ -143,7 +156,16 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
             key={a.to}
             type="button"
             disabled={busy === post.id}
-            onClick={() => cambiarEstado(post, a.to)}
+            onClick={() => {
+              // "Pedir cambios" (revision_diseno → en_diseno) exige motivo.
+              if (post.estado === 'revision_diseno' && a.to === 'en_diseno') {
+                setMotivo('');
+                setMotivoErr('');
+                setMotivoPara(post);
+                return;
+              }
+              cambiarEstado(post, a.to);
+            }}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition disabled:opacity-50 ${TONO_CLASSES[a.tono] ?? 'bg-ink-50 text-ink-700 hover:bg-ink-100 border-ink-200'}`}
           >
             {a.label}
@@ -250,6 +272,46 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
                 alt="Diseño final"
                 className="w-28 aspect-[3/4] object-cover rounded-md border border-ink-200 bg-ink-100"
               />
+            </div>
+          )}
+
+          {/* Panel para pedir cambios con motivo */}
+          {motivoPara?.id === post.id && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+              <label htmlFor={`motivo-${post.id}`} className="block text-[11px] font-semibold uppercase tracking-wider text-amber-800">
+                ¿Qué hay que cambiar?
+              </label>
+              <textarea
+                id={`motivo-${post.id}`}
+                rows={3}
+                maxLength={500}
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                placeholder="Ej: el logo está muy pequeño y el texto del slide 2 no se lee bien."
+                className="w-full px-3 py-2 rounded-lg border border-amber-200 bg-white text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+              />
+              {motivoErr && <p className="text-xs text-red-600">{motivoErr}</p>}
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] text-amber-700">{motivo.trim().length}/500</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setMotivoPara(null); setMotivo(''); setMotivoErr(''); }}
+                    disabled={busy === post.id}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-ink-600 hover:bg-white transition disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => cambiarEstado(post, 'en_diseno', motivo.trim())}
+                    disabled={busy === post.id || motivo.trim().length === 0}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-white hover:bg-amber-600 transition disabled:opacity-50"
+                  >
+                    {busy === post.id ? 'Enviando…' : 'Pedir cambios'}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

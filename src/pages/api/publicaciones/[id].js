@@ -10,6 +10,8 @@ import { clearDirectusCache } from '../../../lib/cache.js';
 import { normalizarFechaPublicacion } from '../../../lib/fecha.js';
 import { esCliente, transicionPermitida } from '../../../lib/flujo.js';
 import { notificarEstado } from '../../../lib/notificaciones.js';
+import { registrarActividad, borrarActividadDe } from '../../../lib/actividad.js';
+import { etiquetaEstado } from '../../../lib/actividad.js';
 
 const REQUIRED_STRING_FIELDS = ['cliente_id', 'formato', 'estado'];
 const VALID_FORMATO = ['post', 'reel', 'carrusel', 'story'];
@@ -59,7 +61,8 @@ export async function PATCH({ params, request, locals }) {
 
   if (esCliente(user)) {
     const campos = Object.keys(body).filter((k) => body[k] !== undefined);
-    if (campos.some((k) => k !== 'estado')) {
+    // Solo `estado` y, al pedir cambios, `motivo_rechazo`.
+    if (campos.some((k) => k !== 'estado' && k !== 'motivo_rechazo')) {
       return json({ error: 'Los clientes solo pueden confirmar la publicación.' }, 403);
     }
     if (!body.estado) {
@@ -71,6 +74,21 @@ export async function PATCH({ params, request, locals }) {
         { error: `Transición no permitida: ${estadoActual} → ${body.estado}` },
         403,
       );
+    }
+
+    // "Pedir cambios" (revision_diseno → en_diseno) exige motivo.
+    const pideCambios = estadoActual === 'revision_diseno' && body.estado === 'en_diseno';
+    if (pideCambios) {
+      const motivo = typeof body.motivo_rechazo === 'string' ? body.motivo_rechazo.trim() : '';
+      if (!motivo) {
+        return json({ error: 'Indica el motivo por el que pides cambios.' }, 400);
+      }
+      if (motivo.length > 500) {
+        return json({ error: 'El motivo no puede superar 500 caracteres.' }, 400);
+      }
+      body.motivo_rechazo = motivo;
+    } else if (body.motivo_rechazo !== undefined) {
+      return json({ error: 'El motivo solo se envía al pedir cambios.' }, 400);
     }
   }
 
@@ -89,6 +107,10 @@ export async function PATCH({ params, request, locals }) {
   if (body.estado !== undefined && !VALID_ESTADO.includes(body.estado)) {
     return json({ error: `Estado inválido. Valores permitidos: ${VALID_ESTADO.join(', ')}` }, 400);
   }
+  if (body.motivo_rechazo !== undefined && body.motivo_rechazo !== null
+      && typeof body.motivo_rechazo !== 'string') {
+    return json({ error: 'motivo_rechazo inválido.' }, 400);
+  }
 
   // Solo permitimos editar estos campos. Ignoramos silenciosamente el resto.
   const allowed = [
@@ -103,6 +125,7 @@ export async function PATCH({ params, request, locals }) {
     'fecha_publicacion',
     'estado',
     'diseno_final',
+    'motivo_rechazo',
   ];
   const payload = {};
   for (const k of allowed) {
@@ -114,6 +137,12 @@ export async function PATCH({ params, request, locals }) {
     const norm = normalizarFechaPublicacion(payload.fecha_publicacion);
     if (!norm) return json({ error: 'fecha_publicacion inválida.' }, 400);
     payload.fecha_publicacion = norm;
+  }
+
+  // Limpieza: al enviar un diseño nuevo a revisión, el motivo anterior ya no
+  // aplica (el historial conserva el que hubo).
+  if (body.estado === 'revision_diseno') {
+    payload.motivo_rechazo = null;
   }
 
   const r = await directusFetch({
@@ -141,6 +170,29 @@ export async function PATCH({ params, request, locals }) {
     });
   }
 
+  // Historial: cambio de estado o edición de campos (best-effort).
+  if (body.estado !== undefined && prev && prev.estado !== body.estado) {
+    await registrarActividad({
+      publicacion_id: id,
+      tipo: 'estado',
+      detalle: `${etiquetaEstado(prev.estado)} → ${etiquetaEstado(body.estado)}`,
+      estado_anterior: prev.estado,
+      estado_nuevo: body.estado,
+      motivo: payload.motivo_rechazo ?? null,
+      usuario: user,
+    });
+  } else {
+    const campos = Object.keys(payload).filter((k) => payload[k] !== undefined && k !== 'motivo_rechazo');
+    if (campos.length > 0) {
+      await registrarActividad({
+        publicacion_id: id,
+        tipo: 'edicion',
+        detalle: `Editado: ${campos.join(', ')}`,
+        usuario: user,
+      });
+    }
+  }
+
   return json(r.data);
 }
 
@@ -155,6 +207,9 @@ export async function DELETE({ params, locals }) {
 
   const id = params?.id;
   if (!id) return json({ error: 'Falta el id de la publicación.' }, 400);
+
+  // Historial primero: la FK quedó en SET NULL y quedarían filas huérfanas.
+  await borrarActividadDe(id);
 
   const r = await directusFetch({
     path: `/items/publicaciones/${id}`,

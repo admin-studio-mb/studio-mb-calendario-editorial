@@ -49,12 +49,23 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
   const [dupSaving, setDupSaving] = useState(false);
   const [dupError, setDupError] = useState('');
 
+  // Rechazo: el cliente debe explicar por qué pide cambios.
+  const [motivoPanel, setMotivoPanel] = useState(false);
+  const [motivo, setMotivo] = useState('');
+  const [motivoError, setMotivoError] = useState('');
+
+  // Historial de actividad de la publicación abierta.
+  const [historial, setHistorial] = useState([]);
+
   const cliente = esCliente(currentUser);
 
   useEffect(() => {
     function onEdit(ev) {
       const p = ev.detail ?? null;
       setPost(p);
+      setDuplicando(false);
+      setMotivoPanel(false);
+      setMotivoError('');
       // Mantener selectedPostId sincronizado para que CommentThread sepa qué
       // publicación está abierta.
       selectedPostIdStore.set(p?.id ?? null);
@@ -62,6 +73,30 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
     window.addEventListener('studio-mb:edit-post', onEdit);
     return () => window.removeEventListener('studio-mb:edit-post', onEdit);
   }, []);
+
+  // Cargar historial al abrir una publicación.
+  useEffect(() => {
+    if (!post?.id) {
+      setHistorial([]);
+      return undefined;
+    }
+    let cancelado = false;
+    cargarHistorial(post.id).then((lista) => {
+      if (!cancelado) setHistorial(lista);
+    });
+    return () => { cancelado = true; };
+  }, [post?.id]);
+
+  async function cargarHistorial(publicacionId) {
+    try {
+      const res = await fetch(`/api/actividad?publicacion_id=${encodeURIComponent(publicacionId)}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
+  }
 
   function close() {
     setPost(null);
@@ -115,21 +150,25 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
     }
   }
 
-  async function quickChangeEstado(nuevoEstado) {
+  async function quickChangeEstado(nuevoEstado, motivoTexto = null) {
     if (!post?.id || post.estado === nuevoEstado) return;
     setQuickSaving(true);
     const prev = post.estado;
     setPost((p) => (p ? { ...p, estado: nuevoEstado } : p));
     updatePublicacion({ id: post.id, estado: nuevoEstado, _pending: true });
     try {
+      const body = { estado: nuevoEstado };
+      if (motivoTexto !== null) body.motivo_rechazo = motivoTexto;
       const res = await fetch(`/api/publicaciones/${post.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ estado: nuevoEstado }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const text = await res.text().catch(() => '');
-        throw new Error(`Error (${res.status}): ${text || res.statusText}`);
+        let msg = `Error (${res.status})`;
+        try { msg = JSON.parse(text).error ?? msg; } catch { /* noop */ }
+        throw new Error(msg);
       }
       const saved = await res.json().catch(() => null);
       if (saved && saved.id) {
@@ -138,13 +177,33 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
       } else {
         updatePublicacion({ id: post.id, estado: nuevoEstado, _pending: false });
       }
+      setMotivoPanel(false);
+      setMotivo('');
+      setMotivoError('');
+      cargarHistorial(post.id).then(setHistorial);
     } catch (err) {
       setPost((p) => (p ? { ...p, estado: prev } : p));
       updatePublicacion({ id: post.id, estado: prev, _pending: false });
-      alert(err.message ?? 'Error cambiando estado.');
+      if (motivoTexto !== null) {
+        setMotivoError(err.message ?? 'Error pidiendo cambios.');
+      } else {
+        alert(err.message ?? 'Error cambiando estado.');
+      }
     } finally {
       setQuickSaving(false);
     }
+  }
+
+  /** Click en una acción del flujo: intercepta "pedir cambios" del cliente. */
+  function onAccion(accion) {
+    if (cliente && post?.estado === 'revision_diseno' && accion.to === 'en_diseno') {
+      setMotivo('');
+      setMotivoError('');
+      setMotivoPanel(true);
+      setDuplicando(false);
+      return;
+    }
+    quickChangeEstado(accion.to);
   }
 
   async function handleDelete() {
@@ -204,7 +263,7 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
                 key={accion.to}
                 type="button"
                 disabled={quickSaving}
-                onClick={() => quickChangeEstado(accion.to)}
+                onClick={() => onAccion(accion)}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition disabled:opacity-50 ${TONO_CLASSES[accion.tono] ?? 'bg-ink-50 text-ink-700 hover:bg-ink-100 border-ink-200'}`}
               >
                 {accion.label}
@@ -288,6 +347,55 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
           </div>
         )}
 
+        {/* Panel de rechazo: el cliente explica qué hay que cambiar */}
+        {motivoPanel && (
+          <div className="px-5 py-4 bg-amber-50 border-b border-amber-100">
+            <label htmlFor="motivo-rechazo" className="block text-[11px] font-semibold uppercase tracking-wider text-amber-800 mb-1">
+              ¿Qué hay que cambiar?
+            </label>
+            <textarea
+              id="motivo-rechazo"
+              rows={3}
+              maxLength={500}
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+              placeholder="Ej: el logo está muy pequeño y el texto del slide 2 no se lee bien."
+              className="w-full px-3 py-2 rounded-lg border border-amber-200 bg-white text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+            />
+            <div className="flex items-center justify-between gap-2 mt-2">
+              <span className="text-[11px] text-amber-700">
+                {motivo.trim().length}/500 · se avisará al equipo con este motivo
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setMotivoPanel(false); setMotivoError(''); }}
+                  disabled={quickSaving}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium text-ink-600 hover:bg-white transition disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => quickChangeEstado('en_diseno', motivo.trim())}
+                  disabled={quickSaving || motivo.trim().length === 0}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-white hover:bg-amber-600 transition disabled:opacity-50"
+                >
+                  {quickSaving ? 'Enviando…' : 'Pedir cambios'}
+                </button>
+              </div>
+            </div>
+            {motivoError && <p className="mt-1 text-xs text-red-600">{motivoError}</p>}
+          </div>
+        )}
+
+        {/* Motivo vigente del último rechazo */}
+        {post.motivo_rechazo && (
+          <div className="px-5 py-3 bg-amber-50/70 border-b border-amber-100 text-sm text-amber-900">
+            <span className="font-semibold">Cambios pedidos:</span> {post.motivo_rechazo}
+          </div>
+        )}
+
         {/* Contenido en 2 columnas: detalle/formulario a la izquierda, comentarios a la derecha */}
         <div className="grid grid-cols-1 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-ink-100">
           <div className="lg:col-span-3">
@@ -304,6 +412,7 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
             )}
           </div>
           <div className="lg:col-span-2 p-4 bg-ink-50/30">
+            <Historial items={historial} />
             <CommentThread
               currentUser={currentUser}
             />
@@ -458,6 +567,74 @@ function PostReadOnly({ post, clientes = [] }) {
       <p className="text-xs text-ink-400 pt-1">
         ¿Quieres cambios? Deja un comentario en el hilo de la derecha.
       </p>
+    </div>
+  );
+}
+
+const TIPO_LABEL = {
+  creado: 'Creada',
+  duplicado: 'Duplicada',
+  edicion: 'Edición',
+  estado: 'Cambio de estado',
+  sistema: 'Sistema',
+};
+
+function nombreDe(usuario) {
+  if (!usuario) return 'Sistema';
+  const nombre = [usuario.first_name, usuario.last_name].filter(Boolean).join(' ').trim();
+  return nombre || usuario.email || 'Sistema';
+}
+
+function fechaEvento(valor) {
+  if (!valor) return '';
+  const d = new Date(valor);
+  if (Number.isNaN(d.getTime())) return '';
+  return format(d, "d MMM · HH:mm", { locale: es });
+}
+
+/**
+ * Historial de la publicación: altas, cambios de estado y ediciones.
+ * Se muestra encima del hilo de comentarios (3 eventos, ampliable).
+ */
+function Historial({ items = [] }) {
+  const [todo, setTodo] = useState(false);
+  if (!Array.isArray(items) || items.length === 0) return null;
+
+  const visibles = todo ? items : items.slice(0, 3);
+
+  return (
+    <div className="mb-5">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <h4 className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+          Historial
+        </h4>
+        {items.length > 3 && (
+          <button
+            type="button"
+            onClick={() => setTodo((v) => !v)}
+            className="text-[11px] font-medium text-brand-600 hover:underline"
+          >
+            {todo ? 'Ver menos' : `Ver todo (${items.length})`}
+          </button>
+        )}
+      </div>
+      <ul className="space-y-2.5">
+        {visibles.map((h) => (
+          <li key={h.id} className="text-xs leading-relaxed">
+            <span className="text-ink-400">{fechaEvento(h.fecha_creacion)}</span>
+            <span className="text-ink-300"> · </span>
+            <span className="font-medium text-ink-700">{nombreDe(h.usuario)}</span>
+            <span className="block text-ink-500">
+              {h.detalle ?? TIPO_LABEL[h.tipo] ?? 'Evento'}
+            </span>
+            {h.motivo && (
+              <span className="mt-1 block rounded border border-amber-100 bg-amber-50 px-2 py-1 text-amber-800">
+                “{h.motivo}”
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -61,4 +61,8 @@ describe('payloadDuplicado', () => {
   it('devuelve null sin post', () => {
     expect(payloadDuplicado(null, '2026-03-20T10:00:00')).toBeNull();
   });
+
+  it('marca el origen como duplicado', () => {
+    expect(payloadDuplicado(POST, '2026-03-20T10:00:00').origen).toBe('duplicado');
+  });
 });
