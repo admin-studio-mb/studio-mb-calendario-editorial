@@ -480,8 +480,8 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], mos
                     <span className={[
                       'font-bold tabular-nums',
                       isToday
-                        ? 'text-base text-brand-700'
-                        : muted ? 'text-sm text-ink-300' : 'text-sm text-ink-800',
+                        ? 'text-lg text-brand-700'
+                        : muted ? 'text-base text-ink-300' : 'text-base text-ink-900',
                     ].join(' ')}>
                       {format(day, 'd')}
                     </span>
