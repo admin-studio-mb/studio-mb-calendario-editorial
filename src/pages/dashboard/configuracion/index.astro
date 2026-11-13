@@ -5,11 +5,13 @@
 import Layout from '../../../layouts/Layout.astro';
 import ConfiguracionView from '../../../components/ConfiguracionView.jsx';
 import { normalizarPrefs } from '../../../lib/prefs.js';
+import { esCliente } from '../../../lib/roles.js';
 
 export const prerender = false;
 
 const { user } = Astro.locals;
 const prefs = normalizarPrefs(user?.preferencias);
+const puedeCrear = !esCliente(user);
 ---
 <Layout title="Configuración · Studio mb" user={user}>
   <header class="mb-8">
@@ -19,5 +21,5 @@ const prefs = normalizarPrefs(user?.preferencias);
     </p>
   </header>
 
-  <ConfiguracionView client:load initialPrefs={prefs} />
+  <ConfiguracionView client:load initialPrefs={prefs} puedeCrear={puedeCrear} />
 </Layout>

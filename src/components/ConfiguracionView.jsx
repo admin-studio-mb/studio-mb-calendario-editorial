@@ -13,14 +13,18 @@ const OPCIONES = [
     titulo: 'Mostrar el panel «Nueva publicación»',
     descripcion:
       'Si lo desactivas, el calendario ocupa todo el ancho y el formulario se abre con el botón «Añadir publicación» de la barra de filtros.',
+    // El rol Cliente nunca ve ese panel: la opción solo aplica al equipo.
+    soloEquipo: true,
   },
 ];
 
-export default function ConfiguracionView({ initialPrefs = {} }) {
+export default function ConfiguracionView({ initialPrefs = {}, puedeCrear = true }) {
   const [prefs, setPrefs] = useState(initialPrefs);
   const [saving, setSaving] = useState(null);
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
+
+  const opciones = OPCIONES.filter((op) => !op.soloEquipo || puedeCrear);
 
   async function cambiar(key, valor) {
     const prev = prefs[key];
@@ -58,7 +62,14 @@ export default function ConfiguracionView({ initialPrefs = {} }) {
         <div className="rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm p-3">{ok}</div>
       )}
 
-      {OPCIONES.map((op) => {
+      {opciones.length === 0 ? (
+        <div className="card p-5">
+          <p className="text-sm text-ink-500">
+            No hay opciones de configuración disponibles para tu perfil todavía.
+          </p>
+        </div>
+      ) : (
+        opciones.map((op) => {
         const activo = prefs[op.key] !== false;
         return (
           <div key={op.key} className="card p-5 flex items-start justify-between gap-4">
@@ -81,7 +92,8 @@ export default function ConfiguracionView({ initialPrefs = {} }) {
             </button>
           </div>
         );
-      })}
+        })
+      )}
 
       <p className="text-[11px] text-ink-400">
         Estas preferencias se guardan en tu cuenta y solo te afectan a ti.
