@@ -181,7 +181,7 @@ export default function DayView({
                       </span>
                     )}
                     {hora && (
-                      <span className="shrink-0 text-xs font-medium text-ink-600 tabular-nums">
+                      <span className="shrink-0 text-sm font-bold text-ink-800 tabular-nums">
                         {hora}
                       </span>
                     )}

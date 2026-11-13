@@ -99,7 +99,7 @@ export default function WeekView({
             {format(cursor, 'LLLL', { locale: es })}
           </h2>
           <span className="text-sm text-ink-400">{format(cursor, 'yyyy')}</span>
-          <span className="text-xs text-ink-400 ml-2">Semana {weekRange}</span>
+          <span className="text-sm font-semibold text-ink-600 ml-2">Semana {weekRange}</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -153,15 +153,18 @@ export default function WeekView({
               ].join(' ')}
             >
               {/* Cabecera del día */}
-              <div className="flex items-baseline justify-between mb-2">
+              <div className="flex items-start justify-between mb-2">
                 <span className={[
-                  'text-sm font-semibold capitalize',
+                  'text-sm font-semibold capitalize leading-tight',
                   isToday ? 'text-brand-700' : 'text-ink-700',
                 ].join(' ')}>
                   {format(day, 'EEE', { locale: es })}
+                  <span className="block text-[10px] font-medium uppercase tracking-wider text-ink-400">
+                    {format(day, 'MMM', { locale: es })}
+                  </span>
                 </span>
                 <span className={[
-                  'text-lg font-bold tabular-nums',
+                  'text-xl font-bold tabular-nums leading-none',
                   isToday ? 'text-brand-700' : 'text-ink-900',
                 ].join(' ')}>
                   {format(day, 'd')}

@@ -246,11 +246,13 @@ function ListItem({ post, clienteNombre, isSelected, isDragging, onClick, onDrag
             </span>
           )}
         </div>
-        <p className="text-xs text-ink-500 truncate">
+        <p className="text-xs text-ink-500 truncate flex items-center gap-1.5">
           {clienteNombre && <span>{clienteNombre}</span>}
-          {clienteNombre && post.fecha_publicacion && <span> · </span>}
+          {clienteNombre && post.fecha_publicacion && <span className="text-ink-300">·</span>}
           {post.fecha_publicacion && (
-            <span>{format(parseFechaPublicacion(post.fecha_publicacion), 'HH:mm')}</span>
+            <span className="text-sm font-bold text-ink-800 tabular-nums">
+              {format(parseFechaPublicacion(post.fecha_publicacion), 'HH:mm')}
+            </span>
           )}
         </p>
       </div>
@@ -330,6 +332,10 @@ function FloatingTooltip({ post, clienteNombre, anchorRect }) {
           {titleCaseEstado(post.estado)}
         </span>
       </div>
+      <p className="inline-flex items-center gap-1.5 text-sm font-bold text-ink-900 tabular-nums mb-1">
+        <svg className="w-4 h-4 text-brand-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        {fecha}
+      </p>
       <div className="flex items-center gap-3 text-[11px] text-ink-500 flex-wrap">
         {clienteNombre && (
           <span className="inline-flex items-center gap-1">
@@ -337,10 +343,6 @@ function FloatingTooltip({ post, clienteNombre, anchorRect }) {
             {clienteNombre}
           </span>
         )}
-        <span className="inline-flex items-center gap-1">
-          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-          {fecha}
-        </span>
       </div>
       {snippet && (
         <p className="mt-2 text-xs text-ink-700 leading-relaxed whitespace-pre-line" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>

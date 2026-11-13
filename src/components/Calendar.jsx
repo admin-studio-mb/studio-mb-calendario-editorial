@@ -478,8 +478,10 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], mos
                 >
                   <div className="flex items-center justify-between mb-1.5">
                     <span className={[
-                      'text-xs font-semibold',
-                      isToday ? 'text-brand-700' : muted ? 'text-ink-300' : 'text-ink-700',
+                      'font-bold tabular-nums',
+                      isToday
+                        ? 'text-base text-brand-700'
+                        : muted ? 'text-sm text-ink-300' : 'text-sm text-ink-800',
                     ].join(' ')}>
                       {format(day, 'd')}
                     </span>

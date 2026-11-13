@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { addPublicacion, updatePublicacion, removePublicacion } from '../stores/publicaciones.js';
 import DateField from './DateField.jsx';
 import TimePicker from './TimePicker.jsx';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { toISOlocal, parseFechaPublicacion } from '../lib/fecha.js';
 import { hashtagsACadena } from '../lib/textos.js';
 import CopyButton from './CopyButton.jsx';
@@ -168,6 +170,18 @@ export default function PostForm({
   const [info, setInfo] = useState('');
 
   const isEdit = Boolean(initial.id);
+
+  // Etiqueta grande con la fecha/hora final (para que no haya dudas).
+  const fechaHoraLabel = (() => {
+    if (!fecha) return 'Sin fecha';
+    const d = fecha instanceof Date ? new Date(fecha) : new Date(fecha);
+    if (Number.isNaN(d.getTime())) return 'Sin fecha';
+    if (hora && /^\d{1,2}:\d{2}$/.test(hora)) {
+      const [hh, mm] = hora.split(':').map(Number);
+      d.setHours(hh, mm, 0, 0);
+    }
+    return format(d, "EEEE d 'de' MMMM 'de' yyyy · HH:mm", { locale: es });
+  })();
 
   const cliente = useMemo(
     () => clientes.find((c) => c.id === clienteId) ?? null,
@@ -472,6 +486,14 @@ export default function PostForm({
           <Field label="Hora de publicación">
             <TimePicker value={hora} onChange={setHora} minuteStep={5} />
           </Field>
+        </div>
+
+        <div className="flex items-center gap-2.5 rounded-xl border border-brand-100 bg-brand-50/60 px-3 py-2.5">
+          <svg className="w-5 h-5 text-brand-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-brand-700">Se publica</p>
+            <p className="text-base font-bold text-ink-900 capitalize tabular-nums">{fechaHoraLabel}</p>
+          </div>
         </div>
 
         <Field

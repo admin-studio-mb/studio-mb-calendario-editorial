@@ -171,6 +171,10 @@ function PostTooltip({ post, anchorRect, clienteNombre }) {
           {titleCase(post.estado)}
         </span>
       </div>
+      <p className="inline-flex items-center gap-1.5 text-sm font-bold text-ink-900 tabular-nums mb-1">
+        <svg className="w-4 h-4 text-brand-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        {fecha}
+      </p>
       <div className="flex items-center gap-3 text-[11px] text-ink-500 flex-wrap">
         {clienteNombre && (
           <span className="inline-flex items-center gap-1">
@@ -178,10 +182,6 @@ function PostTooltip({ post, anchorRect, clienteNombre }) {
             {clienteNombre}
           </span>
         )}
-        <span className="inline-flex items-center gap-1">
-          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-          {fecha}
-        </span>
         {post.red && (
           <span className="inline-flex items-center gap-1">
             <RedIcon red={post.red} className="w-3 h-3" conTitulo={false} />
