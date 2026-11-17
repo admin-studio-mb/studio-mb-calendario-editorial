@@ -61,6 +61,26 @@ El contenedor Directus se llama `studio-mb-directus` y debe estar en las
 `nginx-proxy-manager_default`) para que vea la BBDD/Redis y para que NPM lo
 resuelva por nombre de contenedor.
 
+### 3.4 Publicar una versión nueva (frontend)
+
+```bash
+cd /opt/studio-mb-apps/studio-mb-calendario-editorial
+bash deploy.sh
+```
+
+El script hace `git pull --ff-only`, rebuild del contenedor
+(`docker compose up -d --build`), muestra `docker compose ps` y espera a que
+`https://calendar.studiomb.es/login` devuelva 200. Si hay cambios locales en
+el servidor, se para antes de tocar nada.
+
+En Windows, `deploy.bat` (raíz del repo) hace ese mismo SSH y lanza el
+script; pide contraseña si no hay clave. La primera vez hay que hacer
+`git pull` a mano para que `deploy.sh` exista en el servidor.
+
+`infra/frontend` necesita su `.env` (no versionado) con
+`SESSION_COOKIE_SECRET`, `PUBLIC_DIRECTUS_STATIC_TOKEN` y SMTP si se quieren
+emails.
+
 ---
 
 ## 4. Stack técnico

@@ -120,6 +120,8 @@ Detalle completo en [`AGENTS.md` §9](./AGENTS.md).
 
 ## Despliegue
 
+**Primera instalación** (solo una vez):
+
 ```bash
 # VPS
 cd /opt/studio-mb-apps
@@ -131,6 +133,27 @@ cp .env.example .env
 
 docker compose up -d
 ```
+
+**Publicar una versión nueva** (frontend):
+
+```bash
+cd /opt/studio-mb-apps/studio-mb-calendario-editorial
+bash deploy.sh
+```
+
+`deploy.sh` hace `git pull --ff-only`, reconstruye el contenedor con
+`docker compose up -d --build` y comprueba que
+`https://calendar.studiomb.es/login` responde 200. Aborta si hay cambios
+locales sin commitear en el servidor.
+
+Desde Windows se puede lanzar con doble clic en `deploy.bat` (hace SSH al
+VPS y ejecuta `deploy.sh`; pide la contraseña si no hay clave SSH). La
+primera vez hay que entrar a mano y hacer `git pull` para que el propio
+`deploy.sh` llegue al servidor.
+
+La carpeta `infra/frontend` necesita su `.env` con
+`SESSION_COOKIE_SECRET`, `PUBLIC_DIRECTUS_STATIC_TOKEN` y las variables
+SMTP (ver `infra/frontend/.env.example`).
 
 Verificación rápida:
 
