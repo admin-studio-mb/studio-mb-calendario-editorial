@@ -9,6 +9,8 @@ import Layout from '../../../layouts/Layout.astro';
 import PendientesView from '../../../components/PendientesView.jsx';
 import EditPostModal from '../../../components/EditPostModal.jsx';
 import { directusFetch } from '../../../lib/directus-fetch.js';
+import { esEquipo } from '../../../lib/roles.js';
+import { clienteActivoDe } from '../../../lib/alcance.js';
 
 export const prerender = false;
 
@@ -36,8 +38,15 @@ const [rPosts, rClientes] = await Promise.all([
 if (!rPosts.ok) console.error('[dashboard/pendientes] publicaciones →', rPosts.status);
 if (!rClientes.ok) console.error('[dashboard/pendientes] clientes →', rClientes.status);
 
-const publicaciones = rPosts.ok && Array.isArray(rPosts.data) ? rPosts.data : [];
 const clientes = rClientes.ok && Array.isArray(rClientes.data) ? rClientes.data : [];
+
+// Cliente activo del equipo: pendientes solo de ese cliente.
+const cookieCliente = esEquipo(user) ? clienteActivoDe(Astro.cookies) : null;
+const clienteActivo = cookieCliente && clientes.some((c) => c.id === cookieCliente)
+  ? cookieCliente
+  : null;
+const publicaciones = (rPosts.ok && Array.isArray(rPosts.data) ? rPosts.data : [])
+  .filter((p) => !clienteActivo || p.cliente_id === clienteActivo);
 ---
 <Layout title="Pendientes · Studio mb" user={user}>
   <header class="mb-8">

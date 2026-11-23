@@ -6,7 +6,7 @@
 import Layout from '../../../layouts/Layout.astro';
 import ClientesView from '../../../components/ClientesView.jsx';
 import { env } from '../../../lib/env.js';
-import { esAdmin } from '../../../lib/roles.js';
+import { esAdmin, esEditor } from '../../../lib/roles.js';
 
 export const prerender = false;
 
@@ -53,5 +53,6 @@ const clientes = clientesRaw.map((c) => ({
     client:load
     initialClientes={clientes}
     canManage={esAdmin(user)}
+    canEdit={esAdmin(user) || esEditor(user)}
   />
 </Layout>

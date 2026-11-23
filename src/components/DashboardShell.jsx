@@ -20,6 +20,7 @@ export default function DashboardShell({
   initialFeed = [],
   mostrarPanel = true,
   puedeCrear = true,
+  clienteActivo = null,
 }) {
   const panelFijo = puedeCrear && mostrarPanel !== false;
   const [modalNueva, setModalNueva] = useState(false);
@@ -39,6 +40,7 @@ export default function DashboardShell({
             clientes={clientes}
             mostrarBotonNueva={puedeCrear && !panelFijo}
             onNuevaPublicacion={() => setModalNueva(true)}
+            clienteActivo={clienteActivo}
           />
           <div className="hidden lg:block">
             <FeedMockup posts={initialFeed} />

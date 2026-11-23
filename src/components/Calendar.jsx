@@ -22,7 +22,7 @@ import { publicacionesToCsv, downloadCsv } from '../lib/csv.js';
  *   - initialPublicaciones: array inicial hidratado por el SSR.
  *   - clientes: array de clientes para el filtro y el tooltip.
  */
-export default function Calendar({ initialPublicaciones = [], clientes = [], mostrarBotonNueva = false, onNuevaPublicacion }) {
+export default function Calendar({ initialPublicaciones = [], clientes = [], mostrarBotonNueva = false, onNuevaPublicacion, clienteActivo = null }) {
   // Efemérides del mes visible (fechas clave).
   const [efemeridesMes, setEfemeridesMes] = useState([]);
   useEffect(() => {
@@ -64,6 +64,14 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], mos
     [efemeridesMes, mesVisible],
   );
 
+  // Alcance global: el cliente elegido en el sidebar manda también aquí.
+  useEffect(() => {
+    if (!clienteActivo) return;
+    if (filtrosStore.get().clienteId !== clienteActivo) {
+      filtrosStore.set({ ...filtrosStore.get(), clienteId: clienteActivo });
+    }
+  }, [clienteActivo]);
+
   const filtros = useStore(filtrosStore);
   const selectedPostId = useStore(selectedPostIdStore);
   const setSelectedPostId = (id) => selectedPostIdStore.set(id);
@@ -72,19 +80,13 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], mos
     const next = typeof updater === 'function' ? updater(current) : updater;
     cursorStore.set(next);
   };
-  const [clienteFiltro, setClienteFiltroState] = useState(null);
-  function setClienteFiltro(val) {
-    setClienteFiltroState(val);
-    filtrosStore.set({ ...filtrosStore.get(), clienteId: val || '' });
-  }
   // selectedPostId ahora vive en selectedPostIdStore (ver imports).
 
   function setFiltros(patch) {
     filtrosStore.set({ ...filtrosStore.get(), ...patch });
   }
   function clearFiltros() {
-    setClienteFiltroState(null);
-    filtrosStore.set({ texto: '', estado: '', formato: '', clienteId: '', red: '' });
+    filtrosStore.set({ texto: '', estado: '', formato: '', red: '', clienteId: clienteActivo || '' });
   }
   const [draggingId, setDraggingId] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
@@ -97,7 +99,7 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], mos
   const publicacionesFiltradas = useMemo(() => {
     const t = (filtros.texto || '').trim().toLowerCase();
     return publicaciones.filter((p) => {
-      if (clienteFiltro && p.cliente_id !== clienteFiltro) return false;
+      if (filtros.clienteId && p.cliente_id !== filtros.clienteId) return false;
       if (filtros.estado && p.estado !== filtros.estado) return false;
       if (filtros.formato && p.formato !== filtros.formato) return false;
       if (filtros.red && p.red !== filtros.red) return false;
@@ -115,7 +117,7 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], mos
       }
       return true;
     });
-  }, [publicaciones, clienteFiltro, filtros]);
+  }, [publicaciones, filtros]);
 
   // Días del mes (vista mes).
   const days = useMemo(() => {
@@ -353,29 +355,13 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], mos
               <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-ink-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
             </div>
 
-            {/* Filtro cliente */}
-            {clientes.length > 0 && (
-              <div className="relative">
-                <select
-                  value={clienteFiltro ?? ''}
-                  onChange={(e) => setClienteFiltro(e.target.value || null)}
-                  className="appearance-none pl-3 pr-8 py-1.5 rounded-lg text-xs font-medium bg-ink-50 hover:bg-ink-100 border border-ink-100 text-ink-700 focus:outline-none focus:ring-2 focus:ring-brand-100 cursor-pointer transition"
-                  aria-label="Filtrar por cliente"
-                >
-                  <option value="">Todos los clientes</option>
-                  {clientes.map((c) => (
-                    <option key={c.id} value={c.id}>{c.nombre}</option>
-                  ))}
-                </select>
-                <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-ink-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
-              </div>
-            )}
+            {/* El cliente se elige en el selector del sidebar (cliente activo). */}
 
             {/* Botón limpiar filtros cuando hay alguno activo */}
-            {(filtros.texto || filtros.estado || filtros.formato || filtros.red || clienteFiltro) && (
+            {(filtros.texto || filtros.estado || filtros.formato || filtros.red) && (
               <button
                 type="button"
-                onClick={() => { clearFiltros(); setClienteFiltro(null); }}
+                onClick={clearFiltros}
                 className="px-2 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition"
               >
                 Limpiar

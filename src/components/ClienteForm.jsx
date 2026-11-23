@@ -34,6 +34,7 @@ function redesIniciales(initial) {
 
 export default function ClienteForm({
   initial = {},
+  puedeRenombrar = true,
   onCancel,
   onSubmitted,
 }) {
@@ -113,12 +114,13 @@ export default function ClienteForm({
       }
 
       const payload = {
-        nombre: nombre.trim(),
         tipos_contenido_disponibles: tiposUnion,
         redes: redesActivas.map((r) => ({ red: r.red, tipos: r.tipos })),
         logo: uploadedLogoId || null,
         color_marca: colorMarca,
       };
+      // El nombre solo lo manda quien puede cambiarlo (Admin).
+      if (puedeRenombrar) payload.nombre = nombre.trim();
 
       const url = isEdit
         ? `/api/clientes/${initial.id}`
@@ -253,9 +255,15 @@ export default function ClienteForm({
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
           placeholder="Nombre del cliente"
-          className={inputBase}
+          className={`${inputBase} ${puedeRenombrar ? '' : 'bg-ink-50 text-ink-500 cursor-not-allowed'}`}
+          disabled={!puedeRenombrar}
           required
         />
+        {!puedeRenombrar && (
+          <p className="mt-1.5 text-[11px] text-ink-400">
+            El nombre solo lo puede cambiar un administrador.
+          </p>
+        )}
       </div>
 
       {/* Redes sociales y tipos de post por red */}

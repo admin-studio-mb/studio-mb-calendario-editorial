@@ -728,6 +728,32 @@ Claves en `directus_users.preferencias` (además de `panelNueva`):
 - `/api/assets/:id` ahora reenvía `width/height/fit/format/quality` a
   Directus para poder pedir el logo ajustado (`fit=contain`).
 
+### 6.26 Cliente activo y edición de clientes por editores
+
+- **Cliente activo**: cookie `studio_mb_cliente` (uuid) con el cliente que el
+  equipo está mirando. `dashboard/index` y `dashboard/pendientes` filtran las
+  publicaciones en el servidor con esa cookie, así no se mezclan clientes al
+  navegar. Sin cookie = todos.
+- El selector vive en el sidebar (`ClienteSwitcher`, encima de "Calendario"),
+  solo para Admin/Editor; muestra logo, nombre y la opción "Todos los
+  clientes". Al elegir guarda la cookie y recarga. Se oculta con el sidebar
+  colapsado.
+- La cookie se valida contra la lista de clientes: un id borrado o inventado
+  se ignora. El rol Cliente no la usa (Directus ya limita sus datos).
+- El filtro de cliente del calendario se retiró: ahora el alcance se cambia
+  solo desde el sidebar; "Limpiar" resetea texto/estado/formato/red pero
+  conserva el cliente activo.
+- **Editores**: `PATCH /api/clientes/:id` permite Admin y Editor; el Editor
+  solo puede tocar logo, tipos de post, redes y color de marca. El nombre
+  sigue siendo exclusivo del Admin (también a nivel de permiso de Directus
+  con `setup-editor-clientes.py`). Crear y borrar clientes sigue siendo solo
+  Admin.
+- `ClienteForm` recibe `puedeRenombrar`: con el rol Editor el campo nombre
+  sale deshabilitado y no se envía en el PATCH.
+- Sin permiso de lectura en `directus_roles`, `/users/me` devuelve `role`
+  como id y `esEditor()`/`esCliente()` fallan en silencio. `setup-lectura-roles.py`
+  concede `read` (id, name) a las policies de cliente y editor.
+
 Scripts de referencia en `scripts/`: `setup-client-permissions.py`,
 `add-comentario-cliente-id.py`, `verify-client-permissions.py`,
 `verify-app-flow-client.py`. Ver `scripts/README.md`.
