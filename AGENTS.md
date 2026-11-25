@@ -786,6 +786,23 @@ Claves en `directus_users.preferencias` (además de `panelNueva`):
 - El PDF del mes usa la portada; si en el futuro se quieren todas las
   slides habría que maquetar varias páginas por post.
 
+### 6.28 Foto de perfil de los usuarios
+
+- Directus ya tiene `directus_users.avatar`; `setup-avatares-usuarios.py`
+  añade el campo a la lectura y a la actualización de cliente/editor (la
+  actualización sigue limitada a `id = $CURRENT_USER`).
+- `getCurrentUser` pide `avatar`, y `Layout` lo pinta en el bloque de usuario
+  del sidebar (`/api/assets/:id?width=72&height=72&fit=cover`); si no hay,
+  iniciales como antes.
+- `ConfiguracionView` tiene la sección **Perfil**: subir/cambiar/quitar foto
+  (máx. 6 MB, solo imagen). Sube con `/api/files` y guarda con
+  `PATCH /api/perfil`; después recarga para que el sidebar SSR muestre la
+  nueva imagen.
+- `PATCH /api/perfil` solo acepta `avatar` (uuid o null) y escribe en
+  `/users/me` con el token del usuario.
+- `CommentThread` y `/api/comentarios` incluyen `usuario_id.avatar`, así los
+  avatares también salen junto a los comentarios.
+
 Scripts de referencia en `scripts/`: `setup-client-permissions.py`,
 `add-comentario-cliente-id.py`, `verify-client-permissions.py`,
 `verify-app-flow-client.py`. Ver `scripts/README.md`.

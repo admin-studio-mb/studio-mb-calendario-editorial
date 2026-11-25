@@ -43,6 +43,7 @@ python scripts/<script>.py
 | `setup-editor-clientes.py` | Da al rol Editor permiso de `update` en `clientes` limitado a logo, tipos, redes y color (nunca el nombre). | Sí |
 | `setup-lectura-roles.py` | Da lectura de `directus_roles` (id, nombre) a cliente/editor: sin ella `/users/me` devuelve el rol como id y `esEditor()` falla. | Sí |
 | `setup-diseno-slides.py` | Añade `publicaciones.diseno_slides` (JSON) para carruseles y sus permisos (lectura cliente/editor; escritura editor). | Sí |
+| `setup-avatares-usuarios.py` | Añade `avatar` a la lectura y actualización de `directus_users` para cliente/editor (cada uno solo el suyo). | Sí |
 | `add-comentario-cliente-id.py` | Añade `comentarios.cliente_id` (desnormalizado), hace backfill y reconfigura los permisos de comentarios. | Sí |
 | `fix-client-permissions.py` | Corrige los permisos de comentarios (deep filter + `validation`). | Sí |
 | `create-e2e-user.py` | Crea un usuario admin temporal para el E2E. | Sí |

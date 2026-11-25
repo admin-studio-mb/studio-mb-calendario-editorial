@@ -21,5 +21,11 @@ const puedeCrear = !esCliente(user);
     </p>
   </header>
 
-  <ConfiguracionView client:load initialPrefs={prefs} puedeCrear={puedeCrear} />
+  <ConfiguracionView
+    client:load
+    initialPrefs={prefs}
+    puedeCrear={puedeCrear}
+    initialAvatar={user?.avatar ?? null}
+    nombreUsuario={[user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.email || ''}
+  />
 </Layout>

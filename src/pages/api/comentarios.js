@@ -33,7 +33,7 @@ export async function GET({ url, locals }) {
       filter,
       sort: 'fecha_creacion',
       limit: 200,
-      fields: 'id,publicacion_id,cliente_id,texto,adjuntos,fecha_creacion,usuario_id.id,usuario_id.first_name,usuario_id.last_name,usuario_id.email',
+      fields: 'id,publicacion_id,cliente_id,texto,adjuntos,fecha_creacion,usuario_id.id,usuario_id.first_name,usuario_id.last_name,usuario_id.email,usuario_id.avatar',
     },
   });
 

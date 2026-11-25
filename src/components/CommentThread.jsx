@@ -335,8 +335,14 @@ export default function CommentThread({ currentUser }) {
               'px-5 py-3.5 flex gap-3 transition',
               c._pending ? 'opacity-60' : 'hover:bg-ink-50/50',
             ].join(' ')}>
-              <div className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-white text-[11px] font-semibold flex items-center justify-center">
-                {initials(user)}
+              <div className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-white text-[11px] font-semibold flex items-center justify-center overflow-hidden">
+                {user?.avatar ? (
+                  <img
+                    src={`/api/assets/${user.avatar}?width=64&height=64&fit=cover`}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                ) : initials(user)}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline justify-between gap-2">
@@ -466,8 +472,14 @@ export default function CommentThread({ currentUser }) {
           </div>
         )}
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-white text-[11px] font-semibold flex items-center justify-center">
-            {initials(currentUser ?? null)}
+          <div className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-white text-[11px] font-semibold flex items-center justify-center overflow-hidden">
+            {currentUser?.avatar ? (
+              <img
+                src={`/api/assets/${currentUser.avatar}?width=64&height=64&fit=cover`}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            ) : initials(currentUser ?? null)}
           </div>
           <input
             type="text"
