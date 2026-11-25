@@ -11,7 +11,7 @@ function resolverImagen(valor) {
   const id = typeof valor === 'object' ? valor?.id : valor;
   const s = String(id ?? '').trim();
   if (!s) return null;
-  if (/^https?:\/\//i.test(s)) return s;
+  if (/^https?:\/\//i.test(s) || s.startsWith('/')) return s;
   return `/api/assets/${s}`;
 }
 
