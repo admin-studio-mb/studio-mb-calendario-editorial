@@ -102,6 +102,7 @@ export const TRANSICIONES = {
       tono: 'indigo',
       requiereConjunta: true,
     },
+    { to: 'borrador', label: 'Volver a borrador', tono: 'amber' },
   ],
   revision_conjunta: [
     { to: 'aprobado', label: '✓ Aprobar texto y diseño', tono: 'emerald' },
@@ -111,11 +112,15 @@ export const TRANSICIONES = {
   revision_diseno: [
     { to: 'aprobado', label: '✓ Aprobar publicación final', tono: 'emerald' },
     { to: 'en_diseno', label: 'Pedir cambios de diseño', tono: 'amber' },
+    { to: 'borrador', label: 'Volver a borrador', tono: 'amber' },
   ],
   aprobado: [
     { to: 'publicado', label: '✓ Marcar como publicado', tono: 'teal' },
+    { to: 'borrador', label: 'Volver a borrador', tono: 'amber' },
   ],
-  publicado: [],
+  publicado: [
+    { to: 'borrador', label: 'Volver a borrador', tono: 'amber' },
+  ],
 };
 
 /** Transiciones que puede ejecutar el rol Cliente: solo confirmaciones. */
@@ -141,7 +146,18 @@ export function transicionesPermitidas(estado, user, publicacion = null) {
   if (publicacion) {
     todas = todas.filter((t) => !t.requiereConjunta || puedeRevisionConjunta(publicacion));
   }
-  if (!esCliente(user)) return todas;
+  if (!esCliente(user)) {
+    // Para el equipo, "borrador" es volver atrás, no un rechazo del cliente.
+    return todas.map((t) => {
+      if (estado === 'revision_conjunta' && t.to === 'borrador') {
+        return { ...t, label: 'Volver a borrador' };
+      }
+      if (estado === 'revision_conjunta' && t.to === 'en_diseno') {
+        return { ...t, label: 'Enviar a diseño' };
+      }
+      return t;
+    });
+  }
   return todas.filter((t) => TRANSICIONES_CLIENTE.has(`${estado}>${t.to}`));
 }
 

@@ -20,14 +20,14 @@ describe('flujo editorial', () => {
     ]);
   });
 
-  it('cada estado tiene sus transiciones y publicado es terminal', () => {
+  it('cada estado tiene sus transiciones y publicado permite volver a borrador', () => {
     expect(TRANSICIONES.borrador.map((t) => t.to)).toEqual(['revision', 'revision_conjunta']);
     expect(TRANSICIONES.revision.map((t) => t.to)).toEqual(['en_diseno', 'revision_conjunta', 'borrador']);
-    expect(TRANSICIONES.en_diseno.map((t) => t.to)).toEqual(['revision_diseno', 'revision_conjunta']);
-    expect(TRANSICIONES.revision_diseno.map((t) => t.to)).toEqual(['aprobado', 'en_diseno']);
+    expect(TRANSICIONES.en_diseno.map((t) => t.to)).toEqual(['revision_diseno', 'revision_conjunta', 'borrador']);
+    expect(TRANSICIONES.revision_diseno.map((t) => t.to)).toEqual(['aprobado', 'en_diseno', 'borrador']);
     expect(TRANSICIONES.revision_conjunta.map((t) => t.to)).toEqual(['aprobado', 'borrador', 'en_diseno']);
-    expect(TRANSICIONES.aprobado.map((t) => t.to)).toEqual(['publicado']);
-    expect(TRANSICIONES.publicado).toEqual([]);
+    expect(TRANSICIONES.aprobado.map((t) => t.to)).toEqual(['publicado', 'borrador']);
+    expect(TRANSICIONES.publicado.map((t) => t.to)).toEqual(['borrador']);
   });
 
   it('esCliente detecta el rol por nombre', () => {
@@ -38,9 +38,9 @@ describe('flujo editorial', () => {
   });
 
   it('el equipo ve todas las transiciones', () => {
-    expect(transicionesPermitidas('revision_diseno', admin).map((t) => t.to)).toEqual(['aprobado', 'en_diseno']);
+    expect(transicionesPermitidas('revision_diseno', admin).map((t) => t.to)).toEqual(['aprobado', 'en_diseno', 'borrador']);
     expect(transicionesPermitidas('revision_conjunta', admin).map((t) => t.to)).toEqual(['aprobado', 'borrador', 'en_diseno']);
-    expect(transicionesPermitidas('aprobado', admin).map((t) => t.to)).toEqual(['publicado']);
+    expect(transicionesPermitidas('aprobado', admin).map((t) => t.to)).toEqual(['publicado', 'borrador']);
     expect(transicionesPermitidas('borrador', admin).map((t) => t.to)).toEqual(['revision', 'revision_conjunta']);
   });
 
@@ -80,7 +80,8 @@ describe('flujo editorial', () => {
     expect(transicionPermitida('aprobado', 'publicado', admin)).toBe(true);
     // Transición inexistente: nadie.
     expect(transicionPermitida('borrador', 'publicado', admin)).toBe(false);
-    expect(transicionPermitida('publicado', 'borrador', admin)).toBe(false);
+    expect(transicionPermitida('publicado', 'borrador', admin)).toBe(true);
+    expect(transicionPermitida('publicado', 'borrador', cliente)).toBe(false);
     // Cliente: solo confirmar texto / aprobar diseño / pedir cambios.
     expect(transicionPermitida('revision', 'en_diseno', cliente)).toBe(true);
     expect(transicionPermitida('revision', 'borrador', cliente)).toBe(true);

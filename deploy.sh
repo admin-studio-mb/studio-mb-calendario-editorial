@@ -15,6 +15,24 @@ cd "$REPO"
 
 echo "== Repositorio: $REPO"
 
+# El compose vive en infra/frontend y, por defecto, Docker Compose leería
+# infra/frontend/.env. El .env real del proyecto está en la raíz; lo pasamos
+# explícitamente para que el contenedor reciba el token estático y el SMTP.
+ENV_FILE="$REPO/.env"
+if [ ! -f "$ENV_FILE" ] && [ -f "$REPO/infra/frontend/.env" ]; then
+  ENV_FILE="$REPO/infra/frontend/.env"
+fi
+if [ ! -f "$ENV_FILE" ]; then
+  echo "ERROR: no existe $REPO/.env (ni infra/frontend/.env)."
+  exit 1
+fi
+
+for clave in PUBLIC_DIRECTUS_STATIC_TOKEN SMTP_HOST SMTP_USER SMTP_PASS; do
+  if ! grep -Eq "^${clave}=.+" "$ENV_FILE"; then
+    echo "AVISO: ${clave} está vacío en ${ENV_FILE}."
+  fi
+done
+
 if [ -n "$(git status --porcelain)" ]; then
   echo "ERROR: hay cambios locales sin commitear en el servidor."
   echo "Revísalos con: git status"
@@ -27,10 +45,10 @@ git pull --ff-only
 
 echo "== Reconstruyendo el contenedor"
 cd infra/frontend
-docker compose up -d --build
+docker compose --env-file "$ENV_FILE" up -d --build
 
 echo "== Estado del contenedor"
-docker compose ps
+docker compose --env-file "$ENV_FILE" ps
 
 echo "== Comprobando la web"
 CODE="000"

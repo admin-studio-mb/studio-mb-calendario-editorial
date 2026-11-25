@@ -131,6 +131,44 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
     }
   }
 
+  async function revocarEnlacePost(post) {
+    if (enlaceBusy) return;
+    if (!confirm(`¿Revocar el enlace de “${post.tipo_contenido || 'esta publicación'}”? Dejará de funcionar para el cliente.`)) return;
+    setEnlaceBusy(post.id);
+    setError('');
+    try {
+      const res = await fetch(`/api/publicaciones/${post.id}/enlace`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? `No se pudo revocar (${res.status}).`);
+      }
+      flashAviso('✓ Enlace revocado.');
+    } catch (err) {
+      setError(err.message ?? 'No se pudo revocar el enlace.');
+    } finally {
+      setEnlaceBusy(null);
+    }
+  }
+
+  async function revocarEnlacesPendientes() {
+    if (loteBusy || pendientes.length === 0) return;
+    if (!confirm(`¿Revocar los enlaces de los ${pendientes.length} pendientes? También dejarán de funcionar sus enlaces individuales.`)) return;
+    setLoteBusy(true);
+    setError('');
+    try {
+      let revocados = 0;
+      for (const post of pendientes) {
+        const res = await fetch(`/api/publicaciones/${post.id}/enlace`, { method: 'DELETE' });
+        if (res.ok) revocados += 1;
+      }
+      flashAviso(`✓ ${revocados} ${revocados === 1 ? 'enlace revocado' : 'enlaces revocados'}.`);
+    } catch (err) {
+      setError(err.message ?? 'No se pudieron revocar los enlaces.');
+    } finally {
+      setLoteBusy(false);
+    }
+  }
+
   async function crearEnlacePendientes() {
     if (loteBusy || pendientes.length === 0) return;
     setLoteBusy(true);
@@ -422,15 +460,25 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
               Ver completo
             </button>
             {esEquipoUsuario && (
-              <button
-                type="button"
-                onClick={() => crearEnlacePost(post)}
-                disabled={enlaceBusy === post.id}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-brand-700 hover:bg-brand-50 border border-brand-200 transition disabled:opacity-50"
-              >
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                {enlaceBusy === post.id ? 'Creando…' : 'Enlace'}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => crearEnlacePost(post)}
+                  disabled={enlaceBusy === post.id}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-brand-700 hover:bg-brand-50 border border-brand-200 transition disabled:opacity-50"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                  {enlaceBusy === post.id ? 'Creando…' : 'Enlace'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => revocarEnlacePost(post)}
+                  disabled={enlaceBusy === post.id}
+                  className="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 border border-red-200 transition disabled:opacity-50"
+                >
+                  Revocar
+                </button>
+              </>
             )}
             <Acciones post={post} />
           </div>
@@ -456,14 +504,24 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
               Incluye los {pendientes.length} {pendientes.length === 1 ? 'pendiente' : 'pendientes'} de esta vista en una sola página.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={crearEnlacePendientes}
-            disabled={loteBusy || pendientes.length === 0}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-brand-600 text-white hover:bg-brand-700 transition disabled:opacity-50"
-          >
-            {loteBusy ? 'Creando…' : `Copiar enlace de pendientes (${pendientes.length})`}
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={crearEnlacePendientes}
+              disabled={loteBusy || pendientes.length === 0}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-brand-600 text-white hover:bg-brand-700 transition disabled:opacity-50"
+            >
+              {loteBusy ? 'Creando…' : `Copiar enlace de pendientes (${pendientes.length})`}
+            </button>
+            <button
+              type="button"
+              onClick={revocarEnlacesPendientes}
+              disabled={loteBusy || pendientes.length === 0}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-white text-red-700 hover:bg-red-50 border border-red-200 transition disabled:opacity-50"
+            >
+              Revocar enlaces
+            </button>
+          </div>
         </div>
       )}
 
