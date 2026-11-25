@@ -1,8 +1,9 @@
 // ============================================================================
 //  GET /api/pdf/mes?mes=YYYY-MM&cliente=<id>
 // ----------------------------------------------------------------------------
-//  Genera un PDF A4 con la marca del cliente: cabecera, logo y todas las
-//  publicaciones del mes (con diseño final si existe).
+//  Genera un PDF A4 con la marca del cliente:
+//    · portada con mes, cliente, resumen y mosaico de diseños
+//    · fichas de publicación (3 por página), con copy y hashtags completos
 //
 //  - Equipo: puede pedir un cliente concreto o todos.
 //  - Cliente: se fuerza SU cliente (ignora el parámetro).
@@ -13,19 +14,25 @@ import { directusFetch } from '../../../lib/directus-fetch.js';
 import { env } from '../../../lib/env.js';
 import { esCliente } from '../../../lib/flujo.js';
 import { parseMes, dentroDelRango, nombreArchivo, ESTADO_PDF } from '../../../lib/informe.js';
-import { normalizarHex } from '../../../lib/marca.js';
+import { normalizarHex, mezclar } from '../../../lib/marca.js';
 import { redNombre } from '../../../lib/redes.js';
 
 export const prerender = false;
 
 const BRAND = '#4f46e5';
-const INK = '#111827';
-const MUTED = '#6b7280';
-const BORDER = '#e5e7eb';
+const INK = '#171717';
+const MUTED = '#6f6863';
+const BORDER = '#e7e5e4';
+const PAPER = '#fbfaf8';
 const PAGE_W = 595.28;
 const PAGE_H = 841.89;
-const MARGIN = 40;
+const MARGIN = 44;
 const CONTENT_W = PAGE_W - MARGIN * 2;
+
+const CARD_TOP = 120;
+const CARD_H = 198;
+const CARD_GAP = 14;
+const CARD_BOTTOM = PAGE_H - 72;
 
 const ESTADO_COLOR = {
   borrador: '#fef3c7',
@@ -36,12 +43,12 @@ const ESTADO_COLOR = {
   publicado: '#ccfbf1',
 };
 
-async function fetchAssetBuffer(token, valor, { width = 520, format = 'jpg' } = {}) {
+async function fetchAssetBuffer(token, valor, { width = 700, format = 'jpg' } = {}) {
   const id = typeof valor === 'object' ? valor?.id : valor;
   if (!id || /^https?:\/\//i.test(String(id))) return null;
   try {
     const res = await fetch(
-      `${env.DIRECTUS_INTERNAL_URL}/assets/${id}?width=${width}&format=${format}&quality=82`,
+      `${env.DIRECTUS_INTERNAL_URL}/assets/${id}?width=${width}&format=${format}&quality=84`,
       { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' },
     );
     if (!res.ok) return null;
@@ -51,13 +58,41 @@ async function fetchAssetBuffer(token, valor, { width = 520, format = 'jpg' } = 
   }
 }
 
+function idDe(valor) {
+  return typeof valor === 'object' ? valor?.id : valor;
+}
+
+function slidesDe(p) {
+  let slides = p?.diseno_slides;
+  if (typeof slides === 'string') {
+    try { slides = JSON.parse(slides); } catch { slides = []; }
+  }
+  return Array.isArray(slides) ? slides : [];
+}
+
+/** Portada del post: diseño final o primera slide del carrusel. */
+function portadaDe(p) {
+  return idDe(p.diseno_final) || idDe(slidesDe(p)[0]) || null;
+}
+
 function fechaCorta(valor) {
   const d = String(valor ?? '');
   return { dia: d.slice(8, 10) || '—', mes: d.slice(5, 7) || '' };
 }
 
-function azulClaro(doc, x, y, w, h) {
-  doc.save().roundedRect(x, y, w, h, 4).fill('#f9fafb').restore();
+function iniciales(nombre) {
+  return String(nombre ?? '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join('')
+    .toUpperCase() || '·';
+}
+
+function mesCorto(mm) {
+  const nombres = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+  return nombres[Number(mm) - 1] ?? '';
 }
 
 export async function GET({ request, locals }) {
@@ -85,7 +120,7 @@ export async function GET({ request, locals }) {
     path: '/items/publicaciones',
     token,
     search: {
-      fields: 'id,cliente_id,tipo_contenido,formato,red,fecha_publicacion,copywriting,hashtags,estado,diseno_final',
+      fields: 'id,cliente_id,tipo_contenido,formato,red,fecha_publicacion,copywriting,hashtags,estado,diseno_final,diseno_slides',
       limit: '-1',
     },
   });
@@ -110,18 +145,23 @@ export async function GET({ request, locals }) {
   const nombreCliente = cliente?.nombre ?? 'Studio mb';
   const colorCliente = normalizarHex(cliente?.color_marca) ?? BRAND;
 
-  // Imágenes de diseño final (secuencial para no saturar).
+  // Portadas (diseño final o primera slide del carrusel).
   const imagenes = new Map();
   for (const p of posts) {
-    if (p.diseno_final) {
-      const buf = await fetchAssetBuffer(token, p.diseno_final, { width: 520, format: 'jpg' });
+    const id = portadaDe(p);
+    if (id) {
+      const buf = await fetchAssetBuffer(token, id, { width: 700, format: 'jpg' });
       if (buf) imagenes.set(p.id, buf);
     }
   }
 
+  const redes = new Set(posts.map((p) => p.red).filter(Boolean));
+  const conDiseno = posts.filter((p) => Boolean(portadaDe(p))).length;
+
   const doc = new PDFDocument({
     size: 'A4',
     margin: MARGIN,
+    bufferPages: true,
     autoFirstPage: true,
     info: { Title: `Calendario editorial · ${nombreCliente} · ${mes.label}`, Author: 'Studio mb' },
   });
@@ -130,134 +170,255 @@ export async function GET({ request, locals }) {
   doc.on('data', (c) => chunks.push(c));
   const terminado = new Promise((resolve) => doc.on('end', () => resolve(Buffer.concat(chunks))));
 
-  // ── Cabecera ────────────────────────────────────────────────────────────
-  function cabeceraPrimera() {
-    doc.save().rect(0, 0, PAGE_W, 118).fill(colorCliente).restore();
+  // ── Utilidades de dibujo ────────────────────────────────────────────────
 
-    doc.fillColor('#c7d2fe').font('Helvetica-Bold').fontSize(8)
-      .text('CALENDARIO EDITORIAL', MARGIN, 26, { characterSpacing: 1.5 });
-    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(22)
-      .text(nombreCliente, MARGIN, 42, { width: CONTENT_W - 90, ellipsis: true });
-    doc.fillColor('#c7d2fe').font('Helvetica').fontSize(11)
-      .text(mes.label, MARGIN, 76);
+  function imagenRedondeada(buf, x, y, w, h, r = 8) {
+    try {
+      doc.save();
+      doc.roundedRect(x, y, w, h, r).clip();
+      doc.image(buf, x, y, { cover: [w, h], align: 'center', valign: 'center' });
+      doc.restore();
+    } catch {
+      try { doc.restore(); } catch { /* nada */ }
+    }
+    doc.save().roundedRect(x, y, w, h, r).lineWidth(0.6).strokeColor(BORDER).stroke().restore();
+  }
 
-    // Logo en caja blanca
-    const box = 64;
-    const bx = PAGE_W - MARGIN - box;
-    doc.save().roundedRect(bx, 27, box, box, 10).fill('#ffffff').restore();
+  function regla(x1, y1, x2, y2, color = BORDER, grosor = 0.7) {
+    doc.save().moveTo(x1, y1).lineTo(x2, y2).lineWidth(grosor).strokeColor(color).stroke().restore();
+  }
+
+  // ── Portada ─────────────────────────────────────────────────────────────
+
+  function portada() {
+    doc.save().rect(0, 0, PAGE_W, PAGE_H).fill(PAPER).restore();
+    doc.save().rect(0, 0, 10, PAGE_H).fill(colorCliente).restore();
+
+    doc.fillColor(MUTED).font('Helvetica-Bold').fontSize(7)
+      .text('STUDIO MB', MARGIN, 38, { characterSpacing: 1.6 });
+    doc.fillColor(MUTED).font('Helvetica').fontSize(7)
+      .text('CALENDARIO EDITORIAL', PAGE_W - MARGIN - 190, 38, {
+        width: 190, align: 'right', characterSpacing: 1.2,
+      });
+
+    const logoBox = 64;
+    const lx = PAGE_W - MARGIN - logoBox;
+    const ly = 58;
     if (logoBuf) {
+      doc.save().roundedRect(lx, ly, logoBox, logoBox, 10).fill('#ffffff').restore();
       try {
-        doc.image(logoBuf, bx + 6, 33, { fit: [box - 12, box - 12], align: 'center', valign: 'center' });
+        doc.image(logoBuf, lx + 7, ly + 7, { fit: [logoBox - 14, logoBox - 14], align: 'center', valign: 'center' });
       } catch { /* logo no válido */ }
     } else {
-      doc.fillColor(colorCliente).font('Helvetica-Bold').fontSize(20)
-        .text('mb', bx, 48, { width: box, align: 'center' });
+      doc.save().circle(lx + logoBox / 2, ly + logoBox / 2, logoBox / 2).fill(mezclar(colorCliente, 0.88)).restore();
+      doc.fillColor(colorCliente).font('Helvetica-Bold').fontSize(22)
+        .text(iniciales(nombreCliente), lx, ly + 19, { width: logoBox, align: 'center' });
+    }
+
+    doc.fillColor(MUTED).font('Helvetica').fontSize(7)
+      .text('CLIENTE', MARGIN, 116, { characterSpacing: 1.5 });
+    doc.fillColor(INK).font('Helvetica-Bold').fontSize(24)
+      .text(nombreCliente, MARGIN, 130, { width: CONTENT_W - 100, ellipsis: true });
+
+    const mesTxt = mes.label.split(' de ')[0].toUpperCase();
+    doc.fillColor(colorCliente).font('Helvetica-Bold').fontSize(46)
+      .text(mesTxt, MARGIN, 190, { characterSpacing: -0.5 });
+    doc.fillColor('#8d8781').font('Helvetica').fontSize(20)
+      .text(String(mes.year), MARGIN, 246);
+
+    regla(MARGIN, 292, PAGE_W - MARGIN, 292);
+
+    const stats = [
+      { valor: posts.length, etiqueta: posts.length === 1 ? 'PUBLICACIÓN' : 'PUBLICACIONES' },
+      { valor: redes.size, etiqueta: redes.size === 1 ? 'RED' : 'REDES' },
+      { valor: conDiseno, etiqueta: 'CON DISEÑO' },
+    ];
+    const colW = CONTENT_W / 3;
+    stats.forEach((s, i) => {
+      const x = MARGIN + i * colW;
+      doc.fillColor(INK).font('Helvetica-Bold').fontSize(24).text(String(s.valor), x, 313);
+      doc.fillColor(MUTED).font('Helvetica-Bold').fontSize(6.5)
+        .text(s.etiqueta, x, 345, { characterSpacing: 1.1 });
+      if (i > 0) regla(x - 20, 316, x - 20, 352);
+    });
+
+    const tiles = [];
+    for (const p of posts) {
+      const buf = imagenes.get(p.id);
+      if (buf) tiles.push(buf);
+      if (tiles.length === 3) break;
+    }
+
+    const my = 390;
+    const mh = 250;
+    if (tiles.length > 0) {
+      const gap = 10;
+      const tw = tiles.length === 1
+        ? CONTENT_W
+        : tiles.length === 2 ? (CONTENT_W - gap) / 2 : (CONTENT_W - gap * 2) / 3;
+      tiles.forEach((buf, i) => imagenRedondeada(buf, MARGIN + i * (tw + gap), my, tw, mh, 9));
+    } else {
+      doc.save().roundedRect(MARGIN, my, CONTENT_W, mh, 10).fill(mezclar(colorCliente, 0.9)).restore();
+      doc.fillColor(mezclar(colorCliente, 0.55)).font('Helvetica-Bold').fontSize(150)
+        .text(iniciales(nombreCliente), MARGIN, my + 32, { width: CONTENT_W, align: 'center' });
+      doc.fillColor(colorCliente).font('Helvetica-Bold').fontSize(8)
+        .text('CALENDARIO EDITORIAL', MARGIN, my + mh - 30, {
+          width: CONTENT_W, align: 'center', characterSpacing: 1.5,
+        });
+    }
+
+    doc.fillColor(MUTED).font('Helvetica').fontSize(9)
+      .text('Planificación editorial y diseños del mes.', MARGIN, 670, { width: CONTENT_W });
+    doc.fillColor('#8d8781').font('Helvetica').fontSize(7)
+      .text(`Generado el ${new Date().toLocaleDateString('es-ES')}`, MARGIN, 686, { width: CONTENT_W });
+
+    if (posts.length === 0) {
+      doc.fillColor(MUTED).font('Helvetica').fontSize(10)
+        .text('No hay publicaciones planificadas para este mes.', MARGIN, 710, { width: CONTENT_W });
     }
   }
 
-  function cabeceraSiguiente() {
-    doc.save().rect(0, 0, PAGE_W, 54).fill('#f9fafb').restore();
-    doc.fillColor(colorCliente).font('Helvetica-Bold').fontSize(11).text(nombreCliente, MARGIN, 20, { width: CONTENT_W - 150, ellipsis: true });
-    doc.fillColor(MUTED).font('Helvetica').fontSize(9).text(mes.label, PAGE_W - MARGIN - 150, 22, { width: 150, align: 'right' });
-    doc.save().moveTo(MARGIN, 54).lineTo(PAGE_W - MARGIN, 54).lineWidth(0.5).strokeColor(BORDER).stroke().restore();
+  // ── Cabecera de páginas interiores ──────────────────────────────────────
+
+  function cabeceraInterior() {
+    doc.save().rect(0, 0, PAGE_W, 6).fill(colorCliente).restore();
+
+    doc.fillColor(MUTED).font('Helvetica-Bold').fontSize(6.5)
+      .text('CALENDARIO EDITORIAL', MARGIN, 32, { characterSpacing: 1.4 });
+    doc.fillColor(colorCliente).font('Helvetica-Bold').fontSize(12)
+      .text(nombreCliente, MARGIN, 45, { width: CONTENT_W - 190, ellipsis: true });
+    doc.fillColor(MUTED).font('Helvetica').fontSize(9)
+      .text(mes.label, PAGE_W - MARGIN - 190, 46, { width: 190, align: 'right' });
+
+    regla(MARGIN, 74, PAGE_W - MARGIN, 74);
+
+    doc.fillColor(INK).font('Helvetica-Bold').fontSize(18)
+      .text('Publicaciones', MARGIN, 92);
+    doc.fillColor(MUTED).font('Helvetica').fontSize(8)
+      .text(`${posts.length} ${posts.length === 1 ? 'publicación' : 'publicaciones'}`, PAGE_W - MARGIN - 160, 99, {
+        width: 160, align: 'right',
+      });
   }
 
-  function pie() {
-    doc.fillColor('#9ca3af').font('Helvetica').fontSize(7)
-      .text('Studio mb · calendario editorial', MARGIN, PAGE_H - 28, { width: CONTENT_W, align: 'center' });
-  }
+  // ── Ficha de publicación ────────────────────────────────────────────────
 
-  cabeceraPrimera();
-  pie();
+  function tarjeta(p, y) {
+    const x = MARGIN;
+    const w = CONTENT_W;
+    const h = CARD_H;
 
-  let y = 142;
-
-  if (posts.length === 0) {
-    doc.fillColor(MUTED).font('Helvetica').fontSize(12)
-      .text(`No hay publicaciones en ${mes.label}.`, MARGIN, y + 20, { width: CONTENT_W, align: 'center' });
-  }
-
-  const imgW = 92;
-  const imgH = 123;
-  const colW = CONTENT_W - imgW - 18;
-  const itemH = 142;
-
-  for (const p of posts) {
-    if (y + itemH > PAGE_H - 46) {
-      doc.addPage();
-      cabeceraSiguiente();
-      pie();
-      y = 76;
-    }
+    doc.save().roundedRect(x, y, w, h, 6).fill('#ffffff').lineWidth(0.7).strokeColor(BORDER).stroke().restore();
+    doc.save().rect(x, y + 12, 3, h - 24).fill(colorCliente).restore();
 
     const { dia, mes: mm } = fechaCorta(p.fecha_publicacion);
-    azulClaro(doc, MARGIN, y, CONTENT_W, itemH - 10);
+    doc.fillColor(colorCliente).font('Helvetica-Bold').fontSize(21)
+      .text(dia, x + 14, y + 18, { width: 44, align: 'center' });
+    doc.fillColor(MUTED).font('Helvetica-Bold').fontSize(6.5)
+      .text(mesCorto(mm), x + 14, y + 46, { width: 44, align: 'center', characterSpacing: 1 });
 
-    // Fecha
-    doc.fillColor(INK).font('Helvetica-Bold').fontSize(20).text(dia, MARGIN + 12, y + 12, { width: 42, align: 'center' });
-    doc.fillColor(MUTED).font('Helvetica').fontSize(8).text(mm, MARGIN + 12, y + 35, { width: 42, align: 'center' });
+    regla(x + 64, y + 18, x + 64, y + h - 18);
 
-    // Título y meta
-    const tx = MARGIN + 66;
+    const ix = x + w - 16 - 132;
+    const iy = y + 16;
+    const iw = 132;
+    const ih = 165;
+    const tx = x + 78;
+    const tw = ix - 16 - tx;
+
+    const tipo = String(p.tipo_contenido || 'Publicación');
+    const tipoTxt = tipo.charAt(0).toUpperCase() + tipo.slice(1);
     doc.fillColor(INK).font('Helvetica-Bold').fontSize(12)
-      .text(p.tipo_contenido || 'Publicación', tx, y + 12, { width: colW, ellipsis: true });
+      .text(tipoTxt, tx, y + 16, { width: tw, ellipsis: true });
 
-    const meta = [p.formato, p.red ? redNombre(p.red) : null].filter(Boolean).join(' · ');
+    const formato = p.formato && String(p.formato).toLowerCase() !== tipo.toLowerCase()
+      ? p.formato
+      : null;
+    const meta = [formato, p.red ? redNombre(p.red) : null].filter(Boolean).join(' · ');
     if (meta) {
-      doc.fillColor(MUTED).font('Helvetica').fontSize(8.5).text(meta, tx, y + 30, { width: colW });
+      doc.fillColor(MUTED).font('Helvetica').fontSize(8)
+        .text(meta, tx, y + 35, { width: tw, ellipsis: true });
     }
 
-    // Chip de estado
-    const estadoTxt = ESTADO_PDF[p.estado] ?? p.estado ?? '';
+    const estadoTxt = ESTADO_PDF[p.estado] ?? p.estado ?? '—';
+    doc.font('Helvetica-Bold').fontSize(6.5);
     const chipW = doc.widthOfString(estadoTxt) + 12;
-    doc.save().roundedRect(tx, y + 43, chipW, 14, 7).fill(ESTADO_COLOR[p.estado] ?? '#f3f4f6').restore();
-    doc.fillColor(INK).font('Helvetica-Bold').fontSize(7).text(estadoTxt, tx + 6, y + 47, { width: chipW - 12 });
+    doc.save().roundedRect(tx, y + 52, chipW, 14, 7)
+      .fill(ESTADO_COLOR[p.estado] ?? '#f5f5f4').restore();
+    doc.fillColor('#44403c').font('Helvetica-Bold').fontSize(6.5)
+      .text(estadoTxt, tx + 6, y + 56, { width: chipW - 12 });
 
-    // Copy
     if (p.copywriting) {
-      doc.fillColor('#374151').font('Helvetica').fontSize(9)
-        .text(p.copywriting, tx, y + 64, { width: colW, height: 40, ellipsis: true, lineGap: 1 });
+      doc.fillColor('#3f3f46').font('Helvetica').fontSize(8.6)
+        .text(p.copywriting, tx, y + 76, {
+          width: tw, height: 68, ellipsis: true, lineGap: 1.1,
+        });
     }
 
-    // Hashtags
-    if (Array.isArray(p.hashtags) && p.hashtags.length) {
-      const tags = p.hashtags.map((h) => (String(h).startsWith('#') ? h : `#${h}`)).join(' ');
-      doc.fillColor('#6d28d9').font('Helvetica').fontSize(8)
-        .text(tags, tx, y + 108, { width: colW, height: 12, ellipsis: true });
+    const tags = Array.isArray(p.hashtags) ? p.hashtags : [];
+    if (tags.length) {
+      const texto = tags.map((h) => (String(h).startsWith('#') ? h : `#${h}`)).join(' ');
+      doc.fillColor(mezclar(colorCliente, -0.15)).font('Helvetica').fontSize(7.2)
+        .text(texto, tx, y + 150, { width: tw, height: 32, ellipsis: true, lineGap: 1 });
     }
 
-    // Imagen de diseño final
-    const ix = PAGE_W - MARGIN - imgW - 12;
-    const iy = y + 10;
-    const img = imagenes.get(p.id);
-    if (img) {
-      try {
-        doc.save().rect(ix, iy, imgW, imgH).lineWidth(0.5).strokeColor(BORDER).stroke().restore();
-        doc.image(img, ix, iy, { cover: [imgW, imgH], align: 'center', valign: 'center' });
-      } catch { /* imagen no válida */ }
+    const buf = imagenes.get(p.id);
+    if (buf) {
+      imagenRedondeada(buf, ix, iy, iw, ih, 5);
     } else {
-      doc.save().roundedRect(ix, iy, imgW, imgH, 4).fill('#ffffff').strokeColor(BORDER).lineWidth(0.5).stroke().restore();
-      doc.fillColor('#9ca3af').font('Helvetica').fontSize(7)
-        .text('Sin diseño\nfinal', ix, iy + imgH / 2 - 8, { width: imgW, align: 'center' });
+      doc.save().roundedRect(ix, iy, iw, ih, 5).fill(mezclar(colorCliente, 0.94)).restore();
+      doc.fillColor(mezclar(colorCliente, 0.35)).font('Helvetica-Bold').fontSize(7)
+        .text('PENDIENTE', ix, iy + ih / 2 - 18, {
+          width: iw, align: 'center', characterSpacing: 1.2,
+        });
+      doc.fillColor(MUTED).font('Helvetica').fontSize(7.5)
+        .text('de diseño', ix, iy + ih / 2 - 4, { width: iw, align: 'center' });
     }
-
-    y += itemH;
   }
 
-  // Resumen
+  // ── Pie de página (después de maquetar, sin romper el flujo) ────────────
+
+  function numerarPaginas() {
+    const range = doc.bufferedPageRange();
+    for (let i = range.start; i < range.start + range.count; i += 1) {
+      doc.switchToPage(i);
+      // El pie va por debajo del margen inferior: desactivamos el salto
+      // automático de PDFKit mientras lo dibujamos.
+      const margenInferior = doc.page.margins.bottom;
+      doc.page.margins.bottom = 0;
+      regla(MARGIN, PAGE_H - 54, PAGE_W - MARGIN, PAGE_H - 54);
+      doc.fillColor('#8d8781').font('Helvetica').fontSize(7)
+        .text('Studio mb · calendario editorial', MARGIN, PAGE_H - 42, { width: CONTENT_W - 90 });
+      doc.text(`${i + 1} / ${range.count}`, PAGE_W - MARGIN - 70, PAGE_H - 42, {
+        width: 70, align: 'right',
+      });
+      doc.page.margins.bottom = margenInferior;
+    }
+  }
+
+  // ── Composición ─────────────────────────────────────────────────────────
+
+  portada();
+
   if (posts.length > 0) {
-    if (y + 30 > PAGE_H - 46) {
-      doc.addPage();
-      cabeceraSiguiente();
-      pie();
-      y = 76;
+    doc.addPage();
+    cabeceraInterior();
+
+    let y = CARD_TOP;
+    for (const p of posts) {
+      if (y + CARD_H > CARD_BOTTOM) {
+        doc.addPage();
+        cabeceraInterior();
+        y = CARD_TOP;
+      }
+      tarjeta(p, y);
+      y += CARD_H + CARD_GAP;
     }
-    doc.fillColor(MUTED).font('Helvetica').fontSize(8)
-      .text(`${posts.length} ${posts.length === 1 ? 'publicación' : 'publicaciones'} · generado el ${new Date().toLocaleDateString('es-ES')}`,
-        MARGIN, y + 4, { width: CONTENT_W });
   }
 
+  numerarPaginas();
+  doc.flushPages();
   doc.end();
+
   const pdf = await terminado;
 
   return new Response(new Uint8Array(pdf), {
