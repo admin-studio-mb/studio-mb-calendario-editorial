@@ -27,8 +27,15 @@ import { directusFetch } from './directus-fetch.js';
 import { env } from './env.js';
 import { sendEmail, smtpConfigurado } from './email.js';
 import { esCliente } from './roles.js';
+import { ESTADO_LABEL } from './flujo.js';
+import { redNombre } from './redes.js';
 import { parseFechaPublicacion } from './fecha.js';
 import { normalizarPrefs } from './prefs.js';
+import {
+  asuntoNotificacion,
+  construirEmailNotificacion,
+  construirTextoNotificacion,
+} from './email-notificaciones.js';
 
 const APP_URL = (process.env.PUBLIC_APP_URL || 'https://calendar.studiomb.es').replace(/\/$/, '');
 
@@ -78,6 +85,10 @@ function recorte(s, n = 140) {
   return t.length > n ? `${t.slice(0, n)}…` : t;
 }
 
+function idDe(valor) {
+  return typeof valor === 'object' ? valor?.id : valor;
+}
+
 function etiquetaPublicacion(p) {
   const d = parseFechaPublicacion(p?.fecha_publicacion);
   const fecha = d && !Number.isNaN(d.getTime())
@@ -86,11 +97,61 @@ function etiquetaPublicacion(p) {
   return [p?.tipo_contenido, fecha].filter(Boolean).join(' · ') || 'publicación';
 }
 
+function fechaLarga(valor) {
+  const d = parseFechaPublicacion(valor);
+  return d && !Number.isNaN(d.getTime())
+    ? d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
+}
+
+function fechaCorta(valor) {
+  const d = parseFechaPublicacion(valor);
+  return d && !Number.isNaN(d.getTime())
+    ? d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
+    : '';
+}
+
+async function nombreCliente(clienteId) {
+  if (!clienteId) return '';
+  const r = await directusFetch({
+    path: `/items/clientes/${clienteId}`,
+    token: token(),
+    search: { fields: 'nombre' },
+  });
+  return r.ok ? (r.data?.nombre ?? '') : '';
+}
+
+function mensajeEstado(anterior, nuevo, actor) {
+  const key = `${anterior}->${nuevo}`;
+  const mensajes = {
+    'revision->en_diseno': 'El cliente ha confirmado el texto. La publicación pasa a diseño.',
+    'revision->borrador': 'El cliente ha pedido cambios en el texto. Vuelve a borrador para corregirlo.',
+    'revision_diseno->aprobado': 'El cliente ha aprobado el diseño. La publicación queda aprobada.',
+    'revision_diseno->en_diseno': 'El cliente ha pedido cambios en el diseño. Vuelve a diseño para corregirlo.',
+    'revision_conjunta->aprobado': 'El cliente ha aprobado el texto y el diseño. La publicación queda aprobada.',
+    'revision_conjunta->borrador': 'El cliente ha pedido cambios en el texto. Vuelve a borrador para corregirlo.',
+    'revision_conjunta->en_diseno': 'El cliente ha pedido cambios en el diseño. Vuelve a diseño para corregirlo.',
+    'aprobado->publicado': 'La publicación se ha marcado como publicada.',
+  };
+  if (mensajes[key]) return mensajes[key];
+  if (nuevo === 'revision') return 'El equipo ha enviado la publicación para que revises el texto.';
+  if (nuevo === 'revision_conjunta') return 'El equipo ha enviado la publicación para que revises el texto y el diseño.';
+  if (nuevo === 'revision_diseno') return 'El diseño está listo para que lo revises.';
+  if (nuevo === 'aprobado') {
+    return esCliente(actor)
+      ? 'El cliente ha aprobado la publicación.'
+      : 'La publicación ha quedado aprobada.';
+  }
+  const a = ESTADO_LABEL[anterior] ?? anterior ?? '—';
+  const b = ESTADO_LABEL[nuevo] ?? nuevo ?? '—';
+  return `La publicación ha pasado de ${a} a ${b}.`;
+}
+
 /**
  * Crea la notificación para una lista de usuarios y envía los emails.
  * @param {object} opts { usuarios, tipo, titulo, cuerpo, url, publicacionId }
  */
-async function crearPara({ usuarios, tipo, titulo, cuerpo, url, publicacionId = null }) {
+async function crearPara({ usuarios, tipo, titulo, cuerpo, url, publicacionId = null, email = null }) {
   const conPrefs = (usuarios ?? [])
     .filter((u) => u?.id)
     .map((u) => ({ ...u, prefs: normalizarPrefs(u.preferencias) }));
@@ -133,15 +194,10 @@ async function crearPara({ usuarios, tipo, titulo, cuerpo, url, publicacionId = 
 
   // Emails (best-effort, uno a uno; no bloquea el flujo si falla).
   if (!smtpConfigurado()) return;
-  const enlace = url ? `\n\n${APP_URL}${url}` : '';
-  const html = `
-    <div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:24px">
-      <p style="font-size:12px;letter-spacing:2px;color:#6b7280;text-transform:uppercase;margin:0 0 8px">Studio mb · Calendario</p>
-      <h2 style="font-size:18px;color:#111827;margin:0 0 12px">${escapeHtml(titulo)}</h2>
-      <p style="font-size:14px;color:#374151;line-height:1.6;margin:0 0 16px">${escapeHtml(cuerpo ?? '')}</p>
-      ${url ? `<p style="margin:0 0 16px"><a href="${APP_URL}${url}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px">Abrir en el calendario</a></p>` : ''}
-      <p style="font-size:11px;color:#9ca3af;margin:24px 0 0">Recibes este email porque tienes cuenta en el calendario editorial de Studio mb.</p>
-    </div>`;
+  const enlace = url ? `${APP_URL}${url}` : null;
+  const html = construirEmailNotificacion({ titulo, cuerpo, enlace, contexto: email });
+  const texto = construirTextoNotificacion({ titulo, cuerpo, enlace, contexto: email });
+  const asunto = asuntoNotificacion({ titulo, contexto: email });
 
   for (const u of recipients) {
     if (!u.email) continue;
@@ -149,8 +205,8 @@ async function crearPara({ usuarios, tipo, titulo, cuerpo, url, publicacionId = 
     if (u.prefs.notifEmail !== 'instante') continue;
     const res = await sendEmail({
       to: u.email,
-      subject: `[Studio mb] ${titulo}`,
-      text: `${titulo}\n\n${cuerpo ?? ''}${enlace}`,
+      subject: asunto,
+      text: texto,
       html,
     });
     if (res.ok) {
@@ -174,14 +230,6 @@ async function crearPara({ usuarios, tipo, titulo, cuerpo, url, publicacionId = 
       });
     }
   }
-}
-
-function escapeHtml(s) {
-  return String(s ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 /**
@@ -223,6 +271,7 @@ export async function notificarEstado({ actor, publicacion, anterior, nuevo }) {
   try {
     if (!publicacion) return;
     const etiqueta = etiquetaPublicacion(publicacion);
+    const clienteId = idDe(publicacion.cliente_id);
 
     let usuarios = [];
     let titulo = '';
@@ -230,12 +279,12 @@ export async function notificarEstado({ actor, publicacion, anterior, nuevo }) {
 
     switch (nuevo) {
       case 'revision':
-        usuarios = await usuariosDeCliente(publicacion.cliente_id);
+        usuarios = await usuariosDeCliente(clienteId);
         titulo = 'Nuevo post para revisar';
         url = '/dashboard/pendientes';
         break;
       case 'revision_conjunta':
-        usuarios = await usuariosDeCliente(publicacion.cliente_id);
+        usuarios = await usuariosDeCliente(clienteId);
         titulo = 'Texto y diseño listos para revisar';
         url = '/dashboard/pendientes';
         break;
@@ -256,7 +305,7 @@ export async function notificarEstado({ actor, publicacion, anterior, nuevo }) {
           : 'El cliente confirmó el texto';
         break;
       case 'revision_diseno':
-        usuarios = await usuariosDeCliente(publicacion.cliente_id);
+        usuarios = await usuariosDeCliente(clienteId);
         titulo = 'Diseño listo para aprobar';
         url = '/dashboard/pendientes';
         break;
@@ -267,14 +316,40 @@ export async function notificarEstado({ actor, publicacion, anterior, nuevo }) {
           : 'El cliente aprobó el diseño';
         break;
       case 'publicado':
-        usuarios = await usuariosDeCliente(publicacion.cliente_id);
+        usuarios = await usuariosDeCliente(clienteId);
         titulo = 'Publicación marcada como publicada';
         break;
       default:
         return;
     }
 
-    const cuerpo = `${etiqueta}${anterior ? ` · ${anterior} → ${nuevo}` : ''}`;
+    const anteriorLabel = ESTADO_LABEL[anterior] ?? anterior ?? '—';
+    const nuevoLabel = ESTADO_LABEL[nuevo] ?? nuevo ?? '—';
+    const clienteNombre = await nombreCliente(clienteId);
+    const cuerpo = [
+      etiqueta,
+      `${anteriorLabel} → ${nuevoLabel}`,
+      clienteNombre ? `Cliente: ${clienteNombre}` : null,
+    ].filter(Boolean).join(' · ');
+
+    const email = {
+      anterior: anteriorLabel,
+      anteriorClave: anterior,
+      nuevo: nuevoLabel,
+      nuevoClave: nuevo,
+      mensaje: mensajeEstado(anterior, nuevo, actor),
+      actor: actor ? nombreDe(actor) : '',
+      publicacion: {
+        tipo: publicacion.tipo_contenido || 'Publicación',
+        formato: publicacion.formato || '',
+        red: publicacion.red ? redNombre(publicacion.red) : '',
+        fecha: fechaLarga(publicacion.fecha_publicacion),
+        fechaCorta: fechaCorta(publicacion.fecha_publicacion),
+        cliente: clienteNombre,
+        copy: recorte(publicacion.copywriting, 170),
+      },
+    };
+
     await crearPara({
       usuarios,
       tipo: 'estado',
@@ -282,6 +357,7 @@ export async function notificarEstado({ actor, publicacion, anterior, nuevo }) {
       cuerpo,
       url,
       publicacionId: publicacion.id ?? null,
+      email,
     });
   } catch (err) {
     console.error('[notificaciones] estado:', err?.message ?? err);
