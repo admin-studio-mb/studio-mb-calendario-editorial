@@ -127,11 +127,11 @@ export default function FeedMockup({ posts = [] }) {
       {/* Modal detalle */}
       {open && (
         <div
-          className="fixed inset-0 bg-ink-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in"
+          className="fixed inset-0 bg-ink-900/70 backdrop-blur-sm z-50 flex items-start sm:items-center justify-center p-4 overflow-y-auto animate-in fade-in"
           onClick={() => setOpen(null)}
         >
           <article
-            className="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-pop"
+            className="bg-white rounded-2xl max-w-md w-full max-h-[92dvh] overflow-y-auto shadow-pop my-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <img
