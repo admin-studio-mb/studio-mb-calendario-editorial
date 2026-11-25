@@ -14,7 +14,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { parseFechaPublicacion } from '../lib/fecha.js';
-import { transicionesPermitidas, ESTADO_LABEL } from '../lib/flujo.js';
+import { transicionesPermitidas, ESTADO_LABEL, esCliente } from '../lib/flujo.js';
 import { disenoImagenes } from '../lib/diseno.js';
 import DesignCarousel from './DesignCarousel.jsx';
 import { redNombre } from '../lib/redes.js';
@@ -55,6 +55,8 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
   const [motivoTo, setMotivoTo] = useState('en_diseno');
   const [motivo, setMotivo] = useState('');
   const [motivoErr, setMotivoErr] = useState('');
+  const [enlaceBusy, setEnlaceBusy] = useState(null);
+  const [loteBusy, setLoteBusy] = useState(false);
 
   // Si el usuario confirma/aprueba desde el modal (que actualiza el store),
   // quitamos de la lista los posts que ya no están pendientes. Para eso el
@@ -86,6 +88,77 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
   const porTexto = posts.filter((p) => p.estado === 'revision' && (!soloMios || esMia(p)));
   const porDiseno = posts.filter((p) => p.estado === 'revision_diseno' && (!soloMios || esMia(p)));
   const porConjunta = posts.filter((p) => p.estado === 'revision_conjunta' && (!soloMios || esMia(p)));
+  const pendientes = posts.filter((p) =>
+    p.estado === 'revision' || p.estado === 'revision_diseno' || p.estado === 'revision_conjunta');
+  const esEquipoUsuario = !esCliente(currentUser);
+
+  function flashAviso(msg) {
+    setAviso(msg);
+    setTimeout(() => setAviso(''), 4000);
+  }
+
+  async function copiarAlPortapapeles(texto) {
+    try {
+      await navigator.clipboard.writeText(texto);
+      return true;
+    } catch {
+      window.prompt('Copia el enlace:', texto);
+      return false;
+    }
+  }
+
+  async function enlaceDePost(post) {
+    const res = await fetch(`/api/publicaciones/${post.id}/enlace`, { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.token) {
+      throw new Error(data.error ?? `No se pudo crear el enlace (${res.status}).`);
+    }
+    return `${window.location.origin}/aprobar/${data.token}`;
+  }
+
+  async function crearEnlacePost(post) {
+    if (enlaceBusy) return;
+    setEnlaceBusy(post.id);
+    setError('');
+    try {
+      const url = await enlaceDePost(post);
+      await copiarAlPortapapeles(url);
+      flashAviso(`✓ Enlace de “${post.tipo_contenido || 'la publicación'}” copiado.`);
+    } catch (err) {
+      setError(err.message ?? 'No se pudo crear el enlace.');
+    } finally {
+      setEnlaceBusy(null);
+    }
+  }
+
+  async function crearEnlacePendientes() {
+    if (loteBusy || pendientes.length === 0) return;
+    setLoteBusy(true);
+    setError('');
+    try {
+      const tokens = [];
+      const errores = [];
+      for (const post of pendientes) {
+        try {
+          const url = await enlaceDePost(post);
+          tokens.push(url.split('/').pop());
+        } catch (err) {
+          errores.push(err.message);
+        }
+      }
+      if (tokens.length === 0) throw new Error(errores[0] ?? 'No se pudo crear el enlace.');
+      const url = `${window.location.origin}/aprobar/lote?tokens=${encodeURIComponent(tokens.join(','))}`;
+      await copiarAlPortapapeles(url);
+      flashAviso(
+        `✓ Enlace con ${tokens.length} ${tokens.length === 1 ? 'pendiente' : 'pendientes'} copiado.`
+        + (errores.length ? ` (${errores.length} sin enlace)` : ''),
+      );
+    } catch (err) {
+      setError(err.message ?? 'No se pudo crear el enlace de pendientes.');
+    } finally {
+      setLoteBusy(false);
+    }
+  }
 
   async function cambiarEstado(post, nuevo, motivoTexto = null) {
     setBusy(post.id);
@@ -348,6 +421,17 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
               Ver completo
             </button>
+            {esEquipoUsuario && (
+              <button
+                type="button"
+                onClick={() => crearEnlacePost(post)}
+                disabled={enlaceBusy === post.id}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-brand-700 hover:bg-brand-50 border border-brand-200 transition disabled:opacity-50"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                {enlaceBusy === post.id ? 'Creando…' : 'Enlace'}
+              </button>
+            )}
             <Acciones post={post} />
           </div>
         </div>
@@ -362,6 +446,25 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
       )}
       {aviso && (
         <div className="rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm p-3">{aviso}</div>
+      )}
+
+      {esEquipoUsuario && (
+        <div className="flex items-center justify-between gap-3 flex-wrap rounded-xl border border-ink-200 bg-white px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-ink-800">Enlace para el cliente</p>
+            <p className="text-xs text-ink-500">
+              Incluye los {pendientes.length} {pendientes.length === 1 ? 'pendiente' : 'pendientes'} de esta vista en una sola página.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={crearEnlacePendientes}
+            disabled={loteBusy || pendientes.length === 0}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-brand-600 text-white hover:bg-brand-700 transition disabled:opacity-50"
+          >
+            {loteBusy ? 'Creando…' : `Copiar enlace de pendientes (${pendientes.length})`}
+          </button>
+        </div>
       )}
 
       <label className="inline-flex items-center gap-2 text-sm text-ink-600 select-none">

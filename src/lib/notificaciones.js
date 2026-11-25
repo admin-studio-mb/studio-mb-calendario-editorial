@@ -75,6 +75,43 @@ async function usuariosDeCliente(clienteId) {
   return r.ok && Array.isArray(r.data) ? r.data : [];
 }
 
+/**
+ * Copia fija de avisos de estado: por defecto, Iván. Así un cambio que
+ * corresponde al cliente no se pierde si el cliente no tiene usuario o no
+ * tiene el email activado. Se puede cambiar con NOTIFICACIONES_ESTADO_EMAILS
+ * (lista separada por comas) y se respetan las preferencias de ese usuario.
+ */
+const COPIA_ESTADO = (process.env.NOTIFICACIONES_ESTADO_EMAILS || 'ivan.luengo@studiomb.es')
+  .split(',')
+  .map((e) => e.trim())
+  .filter(Boolean);
+
+async function usuariosCopiaEstado() {
+  if (COPIA_ESTADO.length === 0) return [];
+  const r = await directusFetch({
+    path: '/users',
+    token: token(),
+    search: {
+      'filter[status][_eq]': 'active',
+      'filter[email][_in]': COPIA_ESTADO.join(','),
+      fields: 'id,email,first_name,last_name,preferencias',
+      limit: '-1',
+    },
+  });
+  return r.ok && Array.isArray(r.data) ? r.data : [];
+}
+
+/** Une destinatarios sin duplicados (la copia fija puede coincidir con el equipo). */
+function unirUsuarios(...listas) {
+  const mapa = new Map();
+  for (const lista of listas) {
+    for (const u of lista ?? []) {
+      if (u?.id) mapa.set(u.id, u);
+    }
+  }
+  return [...mapa.values()];
+}
+
 function nombreDe(u) {
   const n = [u?.first_name, u?.last_name].filter(Boolean).join(' ').trim();
   return n || u?.email || 'Alguien';
@@ -152,9 +189,12 @@ function mensajeEstado(anterior, nuevo, actor) {
  * @param {object} opts { usuarios, tipo, titulo, cuerpo, url, publicacionId }
  */
 async function crearPara({ usuarios, tipo, titulo, cuerpo, url, publicacionId = null, email = null }) {
-  const conPrefs = (usuarios ?? [])
-    .filter((u) => u?.id)
-    .map((u) => ({ ...u, prefs: normalizarPrefs(u.preferencias) }));
+  const conPrefs = [...new Map(
+    (usuarios ?? [])
+      .filter((u) => u?.id)
+      .map((u) => ({ ...u, prefs: normalizarPrefs(u.preferencias) }))
+      .map((u) => [u.id, u]),
+  ).values()];
 
   // Preferencia "Avisarme de": si el usuario no quiere este tipo, no se le
   // crea ni la campanita ni el email.
@@ -322,6 +362,10 @@ export async function notificarEstado({ actor, publicacion, anterior, nuevo }) {
       default:
         return;
     }
+
+    // Copia fija (Iván por defecto): recibe también los avisos cuyo
+    // destinatario natural es el cliente. Se respetan sus preferencias.
+    usuarios = unirUsuarios(usuarios, await usuariosCopiaEstado());
 
     const anteriorLabel = ESTADO_LABEL[anterior] ?? anterior ?? '—';
     const nuevoLabel = ESTADO_LABEL[nuevo] ?? nuevo ?? '—';

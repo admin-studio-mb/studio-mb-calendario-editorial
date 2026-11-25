@@ -129,7 +129,7 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
       const res = await fetch(`/api/publicaciones/${post.id}/enlace`, { method: 'POST' });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
-      setEnlaceUrl(data.url);
+      setEnlaceUrl(`${window.location.origin}/aprobar/${data.token}`);
       const patch = {
         id: post.id,
         token_aprobacion: data.token,

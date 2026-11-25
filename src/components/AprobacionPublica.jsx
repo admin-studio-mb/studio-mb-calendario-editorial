@@ -284,7 +284,7 @@ export default function AprobacionPublica({ token }) {
             {motivoPanel ? (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-2">
                 <label htmlFor="motivo" className="block text-[11px] font-semibold uppercase tracking-wider text-amber-800">
-                  ¿Qué hay que cambiar?
+                  ¿Qué quieres cambiar? Deja un comentario
                 </label>
                 {pendienteConjunta && (
                   <select

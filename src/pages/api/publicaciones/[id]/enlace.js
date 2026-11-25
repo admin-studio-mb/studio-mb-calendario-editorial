@@ -23,17 +23,25 @@ function json(payload, status = 200) {
   });
 }
 
-function urlDe(token) {
-  return `${APP_URL}/aprobar/${token}`;
+function urlDe(token, origin = APP_URL) {
+  return `${origin.replace(/\/$/, '')}/aprobar/${token}`;
 }
 
-export async function POST({ params, locals }) {
+export async function POST({ params, request, locals }) {
   const token = locals?.token ?? null;
   if (!token) return json({ error: 'Unauthorized' }, 401);
   if (esCliente(locals?.user)) return json({ error: 'No autorizado.' }, 403);
 
   const id = params?.id;
   if (!id) return json({ error: 'Falta el id de la publicación.' }, 400);
+
+  // El enlace se genera con el origen desde el que se está usando la app:
+  // en local no debe apuntar al dominio de producción.
+  let origin = APP_URL;
+  try {
+    const u = new URL(request.url);
+    if (u.origin && u.origin !== 'null') origin = u.origin;
+  } catch { /* usa APP_URL */ }
 
   const actual = await directusFetch({
     path: `/items/publicaciones/${id}`,
@@ -48,7 +56,7 @@ export async function POST({ params, locals }) {
   if (enlaceValido(actual.data)) {
     return json({
       token: actual.data.token_aprobacion,
-      url: urlDe(actual.data.token_aprobacion),
+      url: urlDe(actual.data.token_aprobacion, origin),
       expira: actual.data.aprobacion_expira,
       reutilizado: true,
     });
@@ -69,7 +77,7 @@ export async function POST({ params, locals }) {
   }
 
   await clearDirectusCache(token);
-  return json({ token: nuevo, url: urlDe(nuevo), expira, reutilizado: false }, 201);
+  return json({ token: nuevo, url: urlDe(nuevo, origin), expira, reutilizado: false }, 201);
 }
 
 export async function DELETE({ params, locals }) {

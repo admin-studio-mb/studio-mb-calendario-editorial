@@ -60,7 +60,10 @@ async function buscarPorToken(token) {
       limit: '1',
     },
   });
-  if (!r.ok) return { error: 'No se pudo leer la publicación.', status: 500 };
+  if (!r.ok) {
+    console.error('[publico/aprobacion GET]', r.status, r.raw);
+    return { error: 'No se pudo leer la publicación.', status: 500 };
+  }
   const post = (r.data ?? [])[0];
   if (!post) return { error: 'Enlace no válido.', status: 404 };
   if (!enlaceValido(post)) return { error: 'Este enlace ha caducado.', status: 410 };

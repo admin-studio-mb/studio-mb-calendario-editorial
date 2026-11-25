@@ -1,0 +1,27 @@
+---
+// ============================================================================
+//  /aprobar/lote?tokens=... — varios pendientes en una sola página pública.
+//  Los tokens siguen siendo la credencial; el middleware deja pasar /aprobar/.
+// ============================================================================
+import AprobacionLote from '../../components/AprobacionLote.jsx';
+import '../../styles/globals.css';
+
+export const prerender = false;
+
+const tokens = Astro.url.searchParams.get('tokens') ?? '';
+---
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Pendientes de aprobación</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body class="min-h-screen bg-ink-50 antialiased">
+    <main class="max-w-3xl mx-auto px-4 py-6">
+      <AprobacionLote client:load tokens={tokens} />
+    </main>
+  </body>
+</html>
