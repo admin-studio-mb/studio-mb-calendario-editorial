@@ -802,6 +802,9 @@ Claves en `directus_users.preferencias` (además de `panelNueva`):
   `/users/me` con el token del usuario.
 - `CommentThread` y `/api/comentarios` incluyen `usuario_id.avatar`, así los
   avatares también salen junto a los comentarios.
+- **Administración**: en `Usuarios`, el Administrador puede cambiar la foto
+  de cualquier persona desde el modal de edición (`PATCH /api/usuarios/:id`
+  acepta `avatar` uuid o null). La lista y el formulario ya piden `avatar`.
 
 Scripts de referencia en `scripts/`: `setup-client-permissions.py`,
 `add-comentario-cliente-id.py`, `verify-client-permissions.py`,

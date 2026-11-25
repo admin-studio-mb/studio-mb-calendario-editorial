@@ -18,7 +18,8 @@ import { clearDirectusCache } from '../../../lib/cache.js';
 import { esAdmin, ROL } from '../../../lib/roles.js';
 
 const ROLES_VALIDOS = [ROL.ADMIN, ROL.EDITOR, ROL.CLIENTE];
-const USER_FIELDS = 'id,email,first_name,last_name,status,role.id,role.name,cliente_id';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const USER_FIELDS = 'id,email,first_name,last_name,status,role.id,role.name,cliente_id,avatar';
 
 function json(payload, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -89,6 +90,14 @@ export async function PATCH({ params, request, locals }) {
     const pw = String(body.password);
     if (pw.length < 8) return json({ error: 'La contraseña debe tener al menos 8 caracteres.' }, 400);
     payload.password = pw;
+  }
+
+  // Foto de perfil: un administrador puede cambiarla a cualquier usuario.
+  if (body.avatar !== undefined) {
+    if (body.avatar !== null && !UUID_RE.test(String(body.avatar))) {
+      return json({ error: 'avatar debe ser un id de archivo o null.' }, 400);
+    }
+    payload.avatar = body.avatar;
   }
 
   if (Object.keys(payload).length === 0) {

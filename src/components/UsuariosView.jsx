@@ -277,8 +277,34 @@ function UsuarioForm({ initial = {}, clientes = [], isSelf = false, onCancel, on
   const [clienteId, setClienteId] = useState(initial.cliente_id ?? '');
   const [status, setStatus] = useState(initial.status === 'suspended' ? 'suspended' : 'active');
   const [password, setPassword] = useState('');
+  const [avatar, setAvatar] = useState(initial.avatar ?? null);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [quitarAvatar, setQuitarAvatar] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  const iniciales = ([firstName, lastName]
+    .map((p) => (p ?? '').trim()[0] ?? '')
+    .join('')
+    .toUpperCase()) || '?';
+
+  function onAvatarFile(e) {
+    const file = e.target.files?.[0] ?? null;
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('La foto debe ser una imagen.');
+      return;
+    }
+    if (file.size > 6 * 1024 * 1024) {
+      setError('La imagen no puede superar 6 MB.');
+      return;
+    }
+    setError('');
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+    setQuitarAvatar(false);
+  }
 
   async function submit(e) {
     e.preventDefault();
@@ -303,6 +329,19 @@ function UsuarioForm({ initial = {}, clientes = [], isSelf = false, onCancel, on
 
     setSaving(true);
     try {
+      if (isEdit) {
+        if (avatarFile) {
+          const fd = new FormData();
+          fd.append('file', avatarFile);
+          const up = await fetch('/api/files', { method: 'POST', body: fd });
+          const upJson = await up.json().catch(() => ({}));
+          if (!up.ok) throw new Error(upJson.error ?? `Subida de foto falló (${up.status})`);
+          body.avatar = upJson.id;
+        } else if (quitarAvatar) {
+          body.avatar = null;
+        }
+      }
+
       const res = await fetch(isEdit ? `/api/usuarios/${initial.id}` : '/api/usuarios', {
         method: isEdit ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -349,6 +388,49 @@ function UsuarioForm({ initial = {}, clientes = [], isSelf = false, onCancel, on
           <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputBase} placeholder="Apellidos" />
         </Field>
       </div>
+
+      {isEdit && (
+        <Field label="Foto de perfil" hint="JPG, PNG, WebP o GIF · máximo 6 MB.">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-white text-sm font-semibold flex items-center justify-center overflow-hidden shrink-0">
+              {(avatarPreview || avatar) ? (
+                <img
+                  src={avatarPreview ?? `/api/assets/${avatar}?width=96&height=96&fit=cover`}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                iniciales
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <label className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 text-white hover:bg-brand-700 transition cursor-pointer">
+                {(avatarPreview || avatar) ? 'Cambiar foto' : 'Subir foto'}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  onChange={onAvatarFile}
+                  className="hidden"
+                />
+              </label>
+              {(avatarPreview || avatar) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAvatarFile(null);
+                    setAvatarPreview(null);
+                    setAvatar(null);
+                    setQuitarAvatar(true);
+                  }}
+                  className="px-2 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition"
+                >
+                  Quitar
+                </button>
+              )}
+            </div>
+          </div>
+        </Field>
+      )}
 
       <Field
         label="Rol"

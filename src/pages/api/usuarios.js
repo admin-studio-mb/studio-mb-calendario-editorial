@@ -14,7 +14,7 @@ import { clearDirectusCache } from '../../lib/cache.js';
 import { esAdmin, ROL } from '../../lib/roles.js';
 
 const ROLES_VALIDOS = [ROL.ADMIN, ROL.EDITOR, ROL.CLIENTE];
-const USER_FIELDS = 'id,email,first_name,last_name,status,role.id,role.name,cliente_id';
+const USER_FIELDS = 'id,email,first_name,last_name,status,role.id,role.name,cliente_id,avatar';
 
 function json(payload, status = 200) {
   return new Response(JSON.stringify(payload), {
