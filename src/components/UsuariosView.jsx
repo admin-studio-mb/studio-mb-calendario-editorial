@@ -37,6 +37,13 @@ function Field({ label, hint, children }) {
   );
 }
 
+/** Iniciales del usuario para cuando no tiene foto. */
+function inicialesDe(u) {
+  const a = (u?.first_name ?? '').trim()[0] ?? '';
+  const b = (u?.last_name ?? '').trim()[0] ?? '';
+  return (a + b).toUpperCase() || (u?.email?.[0]?.toUpperCase() ?? '?');
+}
+
 export default function UsuariosView({ initialUsuarios = [], clientes = [], currentUserId = '' }) {
   const [usuarios, setUsuarios] = useState(initialUsuarios);
   const [modal, setModal] = useState(null); // null | 'new' | usuario
@@ -151,12 +158,25 @@ export default function UsuariosView({ initialUsuarios = [], clientes = [], curr
                 return (
                   <tr key={u.id} className="hover:bg-ink-50/40 transition">
                     <td className="px-5 py-3">
-                      <div className="min-w-0">
-                        <p className="font-medium text-ink-900 truncate">
-                          {[u.first_name, u.last_name].filter(Boolean).join(' ') || '—'}
-                          {yo && <span className="ml-2 text-[10px] uppercase tracking-wider text-brand-600 font-semibold">tú</span>}
-                        </p>
-                        <p className="text-xs text-ink-400 truncate">{u.email}</p>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-white text-xs font-semibold flex items-center justify-center shrink-0 overflow-hidden">
+                          {u.avatar ? (
+                            <img
+                              src={`/api/assets/${u.avatar}?width=80&height=80&fit=cover`}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            inicialesDe(u)
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-ink-900 truncate">
+                            {[u.first_name, u.last_name].filter(Boolean).join(' ') || '—'}
+                            {yo && <span className="ml-2 text-[10px] uppercase tracking-wider text-brand-600 font-semibold">tú</span>}
+                          </p>
+                          <p className="text-xs text-ink-400 truncate">{u.email}</p>
+                        </div>
                       </div>
                     </td>
                     <td className="px-5 py-3">
