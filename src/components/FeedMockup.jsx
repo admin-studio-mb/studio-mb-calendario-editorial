@@ -88,15 +88,15 @@ export default function FeedMockup({ posts = [] }) {
                     className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
                   />
 
-                  {/* Hover overlay */}
-                  <span className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <span className="text-white text-xs font-semibold flex items-center gap-3">
-                      <span className="flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                      </span>
+                  {/* Hover overlay estilo Instagram: me gusta + comentarios */}
+                  <span className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition flex items-center justify-center gap-5 opacity-0 group-hover:opacity-100">
+                    <span className="text-white text-sm font-semibold flex items-center gap-1.5">
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                      {p.likes_count ?? 0}
+                    </span>
+                    <span className="text-white text-sm font-semibold flex items-center gap-1.5">
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.656 17.008a9.993 9.993 0 1 0-3.59 3.615L22 22l-1.344-4.992z"/></svg>
+                      {p.comentarios_count ?? 0}
                     </span>
                   </span>
 
@@ -107,9 +107,10 @@ export default function FeedMockup({ posts = [] }) {
                     </span>
                   )}
                   {p.formato === 'carrusel' && (
-                    <span className="absolute top-1.5 right-1.5 text-[10px] bg-black/70 text-white px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
-                      <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="14" height="14" rx="2"/><rect x="7" y="7" width="14" height="14" rx="2"/></svg>
-                      Carrusel
+                    <span className="absolute top-1.5 right-1.5 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" aria-label="Carrusel" title="Carrusel">
+                      <svg className="w-5 h-5" viewBox="0 0 48 48" fill="currentColor" role="img" aria-hidden="true">
+                        <path d="M34.8 29.7V11c0-2.9-2.3-5.2-5.2-5.2H11c-2.9 0-5.2 2.3-5.2 5.2v18.7c0 2.9 2.3 5.2 5.2 5.2h18.7c2.8-.1 5.1-2.4 5.1-5.2zM39.2 15v16.1c0 4.5-3.7 8.2-8.2 8.2H14.9c-.6 0-.9.7-.5 1.1 1 1.1 2.4 1.8 4.1 1.8h13.4c5.7 0 10.3-4.6 10.3-10.3V18.5c0-1.6-.7-3.1-1.8-4.1-.5-.4-1.2 0-1.2.6z"></path>
+                      </svg>
                     </span>
                   )}
                 </button>

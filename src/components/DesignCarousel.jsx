@@ -74,13 +74,13 @@ export default function DesignCarousel({
         ))}
       </div>
 
-      {/* Flechas (escritorio) */}
+      {/* Flechas (siempre visibles, como Instagram) */}
       <button
         type="button"
         onClick={() => irA(Math.max(0, idx - 1))}
         disabled={idx === 0}
         aria-label="Imagen anterior"
-        className="hidden sm:flex absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 items-center justify-center rounded-full bg-black/45 text-white hover:bg-black/65 disabled:opacity-0 transition"
+        className="flex absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 sm:w-8 sm:h-8 items-center justify-center rounded-full bg-black/45 text-white hover:bg-black/65 disabled:opacity-0 transition"
       >
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
@@ -89,7 +89,7 @@ export default function DesignCarousel({
         onClick={() => irA(Math.min(fuentes.length - 1, idx + 1))}
         disabled={idx === fuentes.length - 1}
         aria-label="Imagen siguiente"
-        className="hidden sm:flex absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 items-center justify-center rounded-full bg-black/45 text-white hover:bg-black/65 disabled:opacity-0 transition"
+        className="flex absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 sm:w-8 sm:h-8 items-center justify-center rounded-full bg-black/45 text-white hover:bg-black/65 disabled:opacity-0 transition"
       >
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
       </button>

@@ -34,14 +34,22 @@ async function fetchCollection(path) {
   return json.data ?? [];
 }
 
-const [publicacionesRaw, clientes] = await Promise.all([
+const [publicacionesRaw, clientes, comentariosRaw] = await Promise.all([
   fetchCollection('publicaciones'),
   fetchCollection('clientes'),
+  fetchCollection('comentarios'),
 ]);
+
+const comentariosPorPost = new Map();
+for (const c of comentariosRaw) {
+  const id = typeof c.publicacion_id === 'object' ? c.publicacion_id?.id : c.publicacion_id;
+  if (id) comentariosPorPost.set(id, (comentariosPorPost.get(id) ?? 0) + 1);
+}
 
 const publicaciones = publicacionesRaw.map((p) => ({
   ...p,
   cliente: p.cliente_id ?? null,
+  comentarios_count: comentariosPorPost.get(p.id) ?? 0,
 }));
 
 // Cliente activo: el equipo puede trabajar enfocado en uno solo.
