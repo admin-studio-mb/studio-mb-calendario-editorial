@@ -1,8 +1,9 @@
 ---
 // ============================================================================
 //  /dashboard/pendientes — lo que espera confirmación.
-//    revision        → confirmar texto
-//    revision_diseno → aprobar diseño
+//    revision           → confirmar texto
+//    revision_diseno    → aprobar diseño
+//    revision_conjunta  → aprobar texto y diseño
 //  El cliente ve solo lo suyo (permisos Directus); el equipo ve todo.
 // ============================================================================
 import Layout from '../../../layouts/Layout.astro';
@@ -22,7 +23,7 @@ const [rPosts, rClientes] = await Promise.all([
     path: '/items/publicaciones',
     token,
     search: {
-      'filter[estado][_in]': 'revision,revision_diseno',
+      'filter[estado][_in]': 'revision,revision_diseno,revision_conjunta',
       fields: 'id,cliente_id,tipo_contenido,formato,copywriting,hashtags,imagenes_fondo,fecha_publicacion,estado,diseno_final,diseno_slides',
       limit: '-1',
       sort: 'fecha_publicacion',
@@ -52,7 +53,7 @@ const publicaciones = (rPosts.ok && Array.isArray(rPosts.data) ? rPosts.data : [
   <header class="mb-8">
     <h1 class="text-2xl md:text-3xl font-bold text-ink-900 tracking-tight">Pendientes</h1>
     <p class="mt-1 text-sm text-ink-500">
-      Publicaciones que esperan una confirmación: primero el texto, luego el diseño.
+      Publicaciones que esperan una confirmación: texto, diseño o ambos a la vez.
     </p>
   </header>
 

@@ -8,7 +8,7 @@
 import { directusFetch } from '../../../lib/directus-fetch.js';
 import { clearDirectusCache } from '../../../lib/cache.js';
 import { normalizarFechaPublicacion } from '../../../lib/fecha.js';
-import { esCliente, transicionPermitida } from '../../../lib/flujo.js';
+import { esCliente, transicionPermitida, puedeRevisionConjunta } from '../../../lib/flujo.js';
 import { normalizarDisenoSlides } from '../../../lib/diseno.js';
 import { notificarEstado } from '../../../lib/notificaciones.js';
 import { registrarActividad, borrarActividadDe } from '../../../lib/actividad.js';
@@ -18,7 +18,7 @@ import { etiquetaEstado } from '../../../lib/actividad.js';
 const REQUIRED_STRING_FIELDS = ['cliente_id', 'formato', 'estado'];
 const VALID_FORMATO = ['post', 'reel', 'carrusel', 'story'];
 const VALID_RED = ['instagram', 'linkedin', 'facebook'];
-const VALID_ESTADO = ['borrador', 'revision', 'en_diseno', 'revision_diseno', 'aprobado', 'publicado'];
+const VALID_ESTADO = ['borrador', 'revision', 'en_diseno', 'revision_diseno', 'revision_conjunta', 'aprobado', 'publicado'];
 
 function json(payload, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -71,17 +71,19 @@ export async function PATCH({ params, request, locals }) {
       return json({ error: 'Falta el estado.' }, 400);
     }
     const estadoActual = prev?.estado;
-    if (!transicionPermitida(estadoActual, body.estado, user)) {
+    if (!transicionPermitida(estadoActual, body.estado, user, prev)) {
       return json(
         { error: `Transición no permitida: ${estadoActual} → ${body.estado}` },
         403,
       );
     }
 
-    // "Pedir cambios" exige motivo: rechazo de texto (revision → borrador) o
-    // de diseño (revision_diseno → en_diseno).
+    // "Pedir cambios" exige motivo: rechazo de texto o diseño, incluida la
+    // revisión conjunta (texto → borrador, diseño → en_diseno).
     const pideCambios = (estadoActual === 'revision' && body.estado === 'borrador')
-      || (estadoActual === 'revision_diseno' && body.estado === 'en_diseno');
+      || (estadoActual === 'revision_diseno' && body.estado === 'en_diseno')
+      || (estadoActual === 'revision_conjunta'
+        && (body.estado === 'borrador' || body.estado === 'en_diseno'));
     if (pideCambios) {
       const motivo = typeof body.motivo_rechazo === 'string' ? body.motivo_rechazo.trim() : '';
       if (!motivo) {
@@ -110,6 +112,9 @@ export async function PATCH({ params, request, locals }) {
   }
   if (body.estado !== undefined && !VALID_ESTADO.includes(body.estado)) {
     return json({ error: `Estado inválido. Valores permitidos: ${VALID_ESTADO.join(', ')}` }, 400);
+  }
+  if (body.estado === 'revision_conjunta' && !puedeRevisionConjunta(prev)) {
+    return json({ error: 'Para revisión conjunta hacen falta el texto y el diseño final.' }, 400);
   }
   if (body.motivo_rechazo !== undefined && body.motivo_rechazo !== null
       && typeof body.motivo_rechazo !== 'string') {
@@ -157,9 +162,9 @@ export async function PATCH({ params, request, locals }) {
     }
   }
 
-  // Limpieza: al volver a revisión (texto o diseño), el motivo anterior ya no
-  // aplica (el historial conserva el que hubo).
-  if (body.estado === 'revision' || body.estado === 'revision_diseno') {
+  // Limpieza: al volver a revisión (texto, diseño o conjunta), el motivo
+  // anterior ya no aplica (el historial conserva el que hubo).
+  if (body.estado === 'revision' || body.estado === 'revision_diseno' || body.estado === 'revision_conjunta') {
     payload.motivo_rechazo = null;
   }
 

@@ -21,6 +21,7 @@ const ESTADO_LABEL = {
   revision: 'Pendiente de confirmar texto',
   en_diseno: 'En diseño',
   revision_diseno: 'Pendiente de aprobar diseño',
+  revision_conjunta: 'Pendiente de aprobar texto y diseño',
   aprobado: 'Aprobado',
   publicado: 'Publicado',
 };
@@ -33,6 +34,7 @@ export default function AprobacionPublica({ token }) {
   const [okMsg, setOkMsg] = useState('');
   const [motivoPanel, setMotivoPanel] = useState(false);
   const [motivo, setMotivo] = useState('');
+  const [cambio, setCambio] = useState('texto');
   const [motivoError, setMotivoError] = useState('');
 
   async function cargar() {
@@ -62,13 +64,14 @@ export default function AprobacionPublica({ token }) {
     }
   }, [post]);
 
-  async function enviar(accion, motivoTexto = null) {
+  async function enviar(accion, motivoTexto = null, cambioTexto = null) {
     setEnviando(true);
     setError('');
     setMotivoError('');
     try {
       const body = { accion };
       if (motivoTexto !== null) body.motivo = motivoTexto;
+      if (cambioTexto !== null) body.cambio = cambioTexto;
       const res = await fetch(`/api/publico/aprobacion/${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -76,11 +79,14 @@ export default function AprobacionPublica({ token }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
+      const eraConjunta = post?.estado === 'revision_conjunta';
       setOkMsg(
         accion === 'cambios'
           ? '✓ Cambios enviados. El equipo revisará tus comentarios.'
           : accion === 'aprobar'
-            ? '✓ Publicación aprobada. ¡Gracias!'
+            ? (eraConjunta
+              ? '✓ Texto y diseño aprobados. ¡Gracias!'
+              : '✓ Publicación aprobada. ¡Gracias!')
             : '✓ Texto confirmado. Pasamos al diseño.',
       );
       setMotivoPanel(false);
@@ -120,7 +126,8 @@ export default function AprobacionPublica({ token }) {
 
   const pendienteTexto = post.estado === 'revision';
   const pendienteDiseno = post.estado === 'revision_diseno';
-  const puedeActuar = pendienteTexto || pendienteDiseno;
+  const pendienteConjunta = post.estado === 'revision_conjunta';
+  const puedeActuar = pendienteTexto || pendienteDiseno || pendienteConjunta;
 
   return (
     <div className="space-y-4">
@@ -279,6 +286,18 @@ export default function AprobacionPublica({ token }) {
                 <label htmlFor="motivo" className="block text-[11px] font-semibold uppercase tracking-wider text-amber-800">
                   ¿Qué hay que cambiar?
                 </label>
+                {pendienteConjunta && (
+                  <select
+                    value={cambio}
+                    onChange={(e) => setCambio(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-amber-200 bg-white text-sm text-ink-800 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                    aria-label="Qué hay que cambiar"
+                  >
+                    <option value="texto">Solo el texto</option>
+                    <option value="diseno">Solo el diseño</option>
+                    <option value="ambos">Texto y diseño</option>
+                  </select>
+                )}
                 <textarea
                   id="motivo"
                   rows={3}
@@ -302,7 +321,7 @@ export default function AprobacionPublica({ token }) {
                     </button>
                     <button
                       type="button"
-                      onClick={() => enviar('cambios', motivo.trim())}
+                      onClick={() => enviar('cambios', motivo.trim(), pendienteConjunta ? cambio : null)}
                       disabled={enviando || motivo.trim().length === 0}
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-white hover:bg-amber-600 transition disabled:opacity-50"
                     >
@@ -315,7 +334,7 @@ export default function AprobacionPublica({ token }) {
               <div className="flex items-center gap-2 flex-wrap justify-end">
                 <button
                   type="button"
-                  onClick={() => { setMotivo(''); setMotivoError(''); setMotivoPanel(true); }}
+                  onClick={() => { setMotivo(''); setMotivoError(''); setCambio('texto'); setMotivoPanel(true); }}
                   disabled={enviando}
                   className="px-3.5 py-2 rounded-lg text-sm font-semibold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition disabled:opacity-50"
                 >
@@ -339,6 +358,16 @@ export default function AprobacionPublica({ token }) {
                     className="px-3.5 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50"
                   >
                     {enviando ? 'Enviando…' : '✓ Aprobar publicación'}
+                  </button>
+                )}
+                {pendienteConjunta && (
+                  <button
+                    type="button"
+                    onClick={() => enviar('aprobar')}
+                    disabled={enviando}
+                    className="px-3.5 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50"
+                  >
+                    {enviando ? 'Enviando…' : '✓ Aprobar texto y diseño'}
                   </button>
                 )}
               </div>

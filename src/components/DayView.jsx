@@ -168,6 +168,7 @@ export default function DayView({
                       p.estado === 'revision' ? 'bg-blue-400' :
                       p.estado === 'en_diseno' ? 'bg-purple-400' :
                       p.estado === 'revision_diseno' ? 'bg-pink-400' :
+                      p.estado === 'revision_conjunta' ? 'bg-indigo-400' :
                       p.estado === 'aprobado' ? 'bg-emerald-500' :
                       p.estado === 'publicado' ? 'bg-teal-500' :
                       'bg-ink-300',
@@ -203,6 +204,7 @@ export default function DayView({
                       p.estado === 'revision' ? 'bg-blue-100 text-blue-800' :
                       p.estado === 'en_diseno' ? 'bg-purple-100 text-purple-800' :
                       p.estado === 'revision_diseno' ? 'bg-pink-100 text-pink-800' :
+                      p.estado === 'revision_conjunta' ? 'bg-indigo-100 text-indigo-800' :
                       p.estado === 'aprobado' ? 'bg-emerald-100 text-emerald-800' :
                       p.estado === 'publicado' ? 'bg-teal-100 text-teal-800' :
                       'bg-ink-100 text-ink-700',
@@ -236,6 +238,7 @@ function titleCaseEstado(s) {
     revision: 'Revisión',
     en_diseno: 'En diseño',
     revision_diseno: 'Rev. diseño',
+    revision_conjunta: 'Rev. conjunta',
     aprobado: 'Aprobado',
     publicado: 'Publicado',
   };

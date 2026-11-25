@@ -229,6 +229,7 @@ function ListItem({ post, clienteNombre, isSelected, isDragging, onClick, onDrag
         post.estado === 'revision' ? 'bg-blue-400' :
         post.estado === 'en_diseno' ? 'bg-purple-400' :
         post.estado === 'revision_diseno' ? 'bg-pink-400' :
+        post.estado === 'revision_conjunta' ? 'bg-indigo-400' :
         post.estado === 'aprobado' ? 'bg-emerald-500' :
         post.estado === 'publicado' ? 'bg-teal-500' :
         'bg-ink-300',
@@ -278,6 +279,7 @@ function titleCaseEstado(s) {
     revision: 'Revisión',
     en_diseno: 'En diseño',
     revision_diseno: 'Rev. diseño',
+    revision_conjunta: 'Rev. conjunta',
     aprobado: 'Aprobado',
     publicado: 'Publicado',
   };

@@ -40,6 +40,7 @@ const TONO_CLASSES = {
   emerald: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200',
   amber: 'bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200',
   teal: 'bg-teal-50 text-teal-700 hover:bg-teal-100 border-teal-200',
+  indigo: 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200',
 };
 
 export default function EditPostModal({ clientes = [], currentUser = null }) {
@@ -264,7 +265,9 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
   /** Click en una acción del flujo: intercepta los rechazos del cliente. */
   function onAccion(accion) {
     const esRechazo = (post?.estado === 'revision_diseno' && accion.to === 'en_diseno')
-      || (post?.estado === 'revision' && accion.to === 'borrador');
+      || (post?.estado === 'revision' && accion.to === 'borrador')
+      || (post?.estado === 'revision_conjunta'
+        && (accion.to === 'borrador' || accion.to === 'en_diseno'));
     if (cliente && esRechazo) {
       setMotivoTo(accion.to);
       setMotivo('');
@@ -297,7 +300,7 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
 
   if (!post) return null;
 
-  const acciones = transicionesPermitidas(post.estado, currentUser);
+  const acciones = transicionesPermitidas(post.estado, currentUser, post);
 
   return (
     <div

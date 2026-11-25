@@ -234,15 +234,26 @@ export async function notificarEstado({ actor, publicacion, anterior, nuevo }) {
         titulo = 'Nuevo post para revisar';
         url = '/dashboard/pendientes';
         break;
+      case 'revision_conjunta':
+        usuarios = await usuariosDeCliente(publicacion.cliente_id);
+        titulo = 'Texto y diseño listos para revisar';
+        url = '/dashboard/pendientes';
+        break;
       case 'borrador':
-        // Solo cuando el cliente rechaza el texto (revision → borrador).
-        if (anterior !== 'revision' || !esCliente(actor)) return;
+        // Solo cuando el cliente rechaza el texto (revision → borrador) o
+        // pide cambios en la revisión conjunta (texto/ambos → borrador).
+        if (
+          !esCliente(actor)
+          || (anterior !== 'revision' && anterior !== 'revision_conjunta')
+        ) return;
         usuarios = await usuariosEquipo();
         titulo = 'El cliente pidió cambios en el texto';
         break;
       case 'en_diseno':
         usuarios = await usuariosEquipo();
-        titulo = 'El cliente confirmó el texto';
+        titulo = anterior === 'revision_conjunta'
+          ? 'El cliente pidió cambios de diseño'
+          : 'El cliente confirmó el texto';
         break;
       case 'revision_diseno':
         usuarios = await usuariosDeCliente(publicacion.cliente_id);
@@ -251,7 +262,9 @@ export async function notificarEstado({ actor, publicacion, anterior, nuevo }) {
         break;
       case 'aprobado':
         usuarios = await usuariosEquipo();
-        titulo = 'El cliente aprobó el diseño';
+        titulo = anterior === 'revision_conjunta'
+          ? 'El cliente aprobó texto y diseño'
+          : 'El cliente aprobó el diseño';
         break;
       case 'publicado':
         usuarios = await usuariosDeCliente(publicacion.cliente_id);

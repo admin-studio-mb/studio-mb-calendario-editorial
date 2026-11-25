@@ -20,6 +20,7 @@ const COLOR_ESTADO = {
   revision: 'bg-blue-400',
   en_diseno: 'bg-purple-400',
   revision_diseno: 'bg-pink-400',
+  revision_conjunta: 'bg-indigo-400',
   aprobado: 'bg-emerald-500',
   publicado: 'bg-teal-500',
 };

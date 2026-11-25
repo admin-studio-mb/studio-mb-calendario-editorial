@@ -316,6 +316,7 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], mos
                 <option value="revision">Revisión texto</option>
                 <option value="en_diseno">En diseño</option>
                 <option value="revision_diseno">Revisión diseño</option>
+                <option value="revision_conjunta">Revisión conjunta</option>
                 <option value="aprobado">Aprobado</option>
                 <option value="publicado">Publicado</option>
               </select>

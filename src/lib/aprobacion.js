@@ -15,6 +15,9 @@ export const DIAS_APROBACION = 30;
 /** Acciones que permite el enlace público. */
 export const ACCIONES_PUBLICAS = ['confirmar', 'aprobar', 'cambios'];
 
+/** Qué se pide cambiar en una revisión conjunta. */
+export const CAMBIOS_VALIDOS = ['texto', 'diseno', 'ambos'];
+
 /** Token aleatorio de 32 caracteres hex. */
 export function generarToken() {
   return randomBytes(16).toString('hex');
@@ -43,16 +46,25 @@ export function enlaceValido(post, ahora = Date.now()) {
  * Estado destino de una acción pública según el estado actual.
  * Devuelve null si la acción no aplica a ese estado.
  *
+ * En revisión conjunta, `cambio` decide si vuelve a texto (borrador), a
+ * diseño (en_diseno) o a ambos (borrador).
+ *
  * @param {'confirmar'|'aprobar'|'cambios'} accion
  * @param {string} estado
+ * @param {'texto'|'diseno'|'ambos'|null} [cambio]
  * @returns {string|null}
  */
-export function destinoDeAccion(accion, estado) {
+export function destinoDeAccion(accion, estado, cambio = null) {
   if (accion === 'confirmar' && estado === 'revision') return 'en_diseno';
-  if (accion === 'aprobar' && estado === 'revision_diseno') return 'aprobado';
+  if (accion === 'aprobar' && (estado === 'revision_diseno' || estado === 'revision_conjunta')) {
+    return 'aprobado';
+  }
   if (accion === 'cambios') {
     if (estado === 'revision') return 'borrador';
     if (estado === 'revision_diseno') return 'en_diseno';
+    if (estado === 'revision_conjunta') {
+      return cambio === 'diseno' ? 'en_diseno' : 'borrador';
+    }
   }
   return null;
 }

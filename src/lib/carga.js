@@ -11,7 +11,7 @@ import { parseFechaPublicacion } from './fecha.js';
 export const SIN_ASIGNAR = '__sin_asignar__';
 
 /** Estados en orden del flujo (para pintar barras y leyendas). */
-export const ESTADOS_CARGA = ['borrador', 'revision', 'en_diseno', 'revision_diseno', 'aprobado', 'publicado'];
+export const ESTADOS_CARGA = ['borrador', 'revision', 'en_diseno', 'revision_diseno', 'revision_conjunta', 'aprobado', 'publicado'];
 
 /** Posts cuyo fecha_publicacion cae en el mes del cursor. */
 export function postsDelMes(publicaciones, cursor) {

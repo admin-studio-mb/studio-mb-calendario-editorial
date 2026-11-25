@@ -31,7 +31,7 @@ export default function Kpis() {
       const fecha = parseFechaPublicacion(p.fecha_publicacion);
       if (!fecha || !isSameMonth(fecha, cursor)) continue;
       enMes++;
-      if (p.estado === 'revision' || p.estado === 'revision_diseno') enRevision++;
+      if (p.estado === 'revision' || p.estado === 'revision_diseno' || p.estado === 'revision_conjunta') enRevision++;
       else if (p.estado === 'aprobado' || p.estado === 'publicado') aprobadas++;
     }
     return { total, enMes, enRevision, aprobadas };

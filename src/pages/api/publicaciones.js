@@ -14,7 +14,7 @@
 import { directusFetch } from '../../lib/directus-fetch.js';
 import { clearDirectusCache } from '../../lib/cache.js';
 import { normalizarFechaPublicacion } from '../../lib/fecha.js';
-import { esCliente } from '../../lib/flujo.js';
+import { esCliente, puedeRevisionConjunta } from '../../lib/flujo.js';
 import { normalizarDisenoSlides } from '../../lib/diseno.js';
 import { registrarActividad } from '../../lib/actividad.js';
 
@@ -22,7 +22,7 @@ export const prerender = false;
 
 const FORMATOS = new Set(['post', 'reel', 'carrusel', 'story']);
 const REDES = new Set(['instagram', 'linkedin', 'facebook']);
-const ESTADOS = new Set(['borrador', 'revision', 'en_diseno', 'revision_diseno', 'aprobado', 'publicado']);
+const ESTADOS = new Set(['borrador', 'revision', 'en_diseno', 'revision_diseno', 'revision_conjunta', 'aprobado', 'publicado']);
 
 export async function POST({ request, locals }) {
   const token = locals.token ?? null;
@@ -104,6 +104,9 @@ function validate(b) {
   if (b.responsable_id !== undefined && b.responsable_id !== null
       && typeof b.responsable_id !== 'string') return 'responsable_id inválido.';
   if (b.estado && !ESTADOS.has(b.estado)) return `estado debe ser uno de: ${[...ESTADOS].join(', ')}.`;
+  if (b.estado === 'revision_conjunta' && !puedeRevisionConjunta(b)) {
+    return 'Para revisión conjunta hacen falta el texto y el diseño final.';
+  }
   return null;
 }
 

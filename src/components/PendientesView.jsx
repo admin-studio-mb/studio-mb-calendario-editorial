@@ -2,8 +2,9 @@
 //  src/components/PendientesView.jsx
 // ----------------------------------------------------------------------------
 //  Vista "Pendientes": lista los posts que esperan una acción.
-//    - revision        → el cliente (o quien sea) tiene que confirmar el texto.
-//    - revision_diseno → el cliente tiene que aprobar el diseño.
+//    - revision           → el cliente tiene que confirmar el texto.
+//    - revision_diseno    → el cliente tiene que aprobar el diseño.
+//    - revision_conjunta  → el cliente tiene que aprobar texto y diseño.
 //
 //  Los botones salen de transicionesPermitidas() (misma fuente que el modal
 //  y que el guard del servidor). Incluye "Confirmar todos" para los textos.
@@ -14,6 +15,8 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { parseFechaPublicacion } from '../lib/fecha.js';
 import { transicionesPermitidas, ESTADO_LABEL } from '../lib/flujo.js';
+import { disenoImagenes } from '../lib/diseno.js';
+import DesignCarousel from './DesignCarousel.jsx';
 import { redNombre } from '../lib/redes.js';
 import RedIcon from './RedIcon.jsx';
 import { publicacionesStore, hydratePublicaciones } from '../stores/publicaciones.js';
@@ -31,11 +34,6 @@ function fechaLabel(p) {
   const d = parseFechaPublicacion(p.fecha_publicacion);
   if (!d || Number.isNaN(d.getTime())) return 'Sin fecha';
   return format(d, "d 'de' MMMM · HH:mm", { locale: es });
-}
-
-function disenoIdOf(post) {
-  const id = typeof post.diseno_final === 'object' ? post.diseno_final?.id : post.diseno_final;
-  return id || null;
 }
 
 function slideImg(imagen) {
@@ -69,7 +67,9 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
       if (!Array.isArray(list) || list.length === 0) return;
       setPosts((prev) => prev.filter((p) => {
         const cur = list.find((x) => x.id === p.id);
-        return !cur || cur.estado === 'revision' || cur.estado === 'revision_diseno';
+        return !cur || cur.estado === 'revision'
+          || cur.estado === 'revision_diseno'
+          || cur.estado === 'revision_conjunta';
       }));
     });
     return unsub;
@@ -85,6 +85,7 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
 
   const porTexto = posts.filter((p) => p.estado === 'revision' && (!soloMios || esMia(p)));
   const porDiseno = posts.filter((p) => p.estado === 'revision_diseno' && (!soloMios || esMia(p)));
+  const porConjunta = posts.filter((p) => p.estado === 'revision_conjunta' && (!soloMios || esMia(p)));
 
   async function cambiarEstado(post, nuevo, motivoTexto = null) {
     setBusy(post.id);
@@ -150,7 +151,7 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
   }
 
   function Acciones({ post }) {
-    const acciones = transicionesPermitidas(post.estado, currentUser);
+    const acciones = transicionesPermitidas(post.estado, currentUser, post);
     if (acciones.length === 0) {
       return <span className="text-xs text-ink-400">Sin acciones para tu rol</span>;
     }
@@ -164,7 +165,9 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
             onClick={() => {
               // Pedir cambios (texto o diseño) exige motivo.
               const esRechazo = (post.estado === 'revision_diseno' && a.to === 'en_diseno')
-                || (post.estado === 'revision' && a.to === 'borrador');
+                || (post.estado === 'revision' && a.to === 'borrador')
+                || (post.estado === 'revision_conjunta'
+                  && (a.to === 'borrador' || a.to === 'en_diseno'));
               if (esRechazo) {
                 setMotivo('');
                 setMotivoErr('');
@@ -184,7 +187,7 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
   }
 
   function Tarjeta({ post }) {
-    const disenoId = disenoIdOf(post);
+    const disenos = disenoImagenes(post);
     const slides = Array.isArray(post.imagenes_fondo) ? post.imagenes_fondo : [];
     return (
       <article className="card overflow-hidden">
@@ -280,14 +283,18 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
           </div>
 
           {/* Diseño final (si lo hay) */}
-          {disenoId && (
+          {disenos.length > 0 && (
             <div>
-              <p className="text-[11px] uppercase tracking-wider text-ink-400 font-semibold mb-2">Diseño final</p>
-              <img
-                src={`/api/assets/${disenoId}`}
-                alt="Diseño final"
-                className="w-28 aspect-[3/4] object-cover rounded-md border border-ink-200 bg-ink-100"
-              />
+              <p className="text-[11px] uppercase tracking-wider text-ink-400 font-semibold mb-2">
+                Diseño final{disenos.length > 1 ? ` · ${disenos.length} slides` : ''}
+              </p>
+              <div className="max-w-[220px]">
+                <DesignCarousel
+                  images={disenos}
+                  alt="Diseño final"
+                  className="rounded-lg border border-ink-200"
+                />
+              </div>
             </div>
           )}
 
@@ -367,6 +374,19 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
         Solo mis publicaciones
         {soloMios && <span className="text-xs text-ink-400">(responsable: tú)</span>}
       </label>
+
+      <section>
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-ink-500 mb-3">
+          Texto y diseño · {porConjunta.length}
+        </h2>
+        {porConjunta.length === 0 ? (
+          <p className="text-sm text-ink-400 py-6">Nada pendiente de revisión conjunta.</p>
+        ) : (
+          <div className="space-y-3">
+            {porConjunta.map((p) => <Tarjeta key={p.id} post={p} />)}
+          </div>
+        )}
+      </section>
 
       <section>
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">

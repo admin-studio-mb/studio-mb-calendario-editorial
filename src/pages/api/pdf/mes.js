@@ -39,6 +39,7 @@ const ESTADO_COLOR = {
   revision: '#dbeafe',
   en_diseno: '#ede9fe',
   revision_diseno: '#fce7f3',
+  revision_conjunta: '#e0e7ff',
   aprobado: '#d1fae5',
   publicado: '#ccfbf1',
 };

@@ -60,6 +60,7 @@ export const ESTADO_PDF = {
   revision: 'Revisión texto',
   en_diseno: 'En diseño',
   revision_diseno: 'Revisión diseño',
+  revision_conjunta: 'Revisión conjunta',
   aprobado: 'Aprobado',
   publicado: 'Publicado',
 };

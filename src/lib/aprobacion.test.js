@@ -45,6 +45,10 @@ describe('destinoDeAccion', () => {
     expect(destinoDeAccion('aprobar', 'revision_diseno')).toBe('aprobado');
     expect(destinoDeAccion('cambios', 'revision')).toBe('borrador');
     expect(destinoDeAccion('cambios', 'revision_diseno')).toBe('en_diseno');
+    expect(destinoDeAccion('aprobar', 'revision_conjunta')).toBe('aprobado');
+    expect(destinoDeAccion('cambios', 'revision_conjunta', 'texto')).toBe('borrador');
+    expect(destinoDeAccion('cambios', 'revision_conjunta', 'diseno')).toBe('en_diseno');
+    expect(destinoDeAccion('cambios', 'revision_conjunta', 'ambos')).toBe('borrador');
   });
 
   it('no aplica en estados que no tocan', () => {

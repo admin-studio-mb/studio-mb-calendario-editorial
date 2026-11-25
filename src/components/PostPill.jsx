@@ -11,6 +11,7 @@ const ESTADO_LABEL = {
   revision: 'Revisión',
   en_diseno: 'En diseño',
   revision_diseno: 'Rev. diseño',
+  revision_conjunta: 'Rev. conjunta',
   aprobado: 'Aprobado',
   publicado: 'Publicado',
 };
@@ -32,6 +33,7 @@ export function estadoColor(estado) {
     case 'revision':        return 'bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-100';
     case 'en_diseno':       return 'bg-purple-50 text-purple-800 hover:bg-purple-100 border border-purple-100';
     case 'revision_diseno': return 'bg-pink-50 text-pink-800 hover:bg-pink-100 border border-pink-100';
+    case 'revision_conjunta': return 'bg-indigo-50 text-indigo-800 hover:bg-indigo-100 border border-indigo-100';
     case 'aprobado':        return 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-100';
     case 'publicado':       return 'bg-teal-50 text-teal-800 hover:bg-teal-100 border border-teal-100';
     default:                return 'bg-ink-100 text-ink-700 hover:bg-ink-200 border border-ink-200';
@@ -44,6 +46,7 @@ function estadoBadge(estado) {
     case 'revision':        return 'bg-blue-100 text-blue-800';
     case 'en_diseno':       return 'bg-purple-100 text-purple-800';
     case 'revision_diseno': return 'bg-pink-100 text-pink-800';
+    case 'revision_conjunta': return 'bg-indigo-100 text-indigo-800';
     case 'aprobado':        return 'bg-emerald-100 text-emerald-800';
     case 'publicado':       return 'bg-teal-100 text-teal-800';
     default:                return 'bg-ink-100 text-ink-700';

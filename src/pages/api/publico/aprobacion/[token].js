@@ -12,7 +12,7 @@ import { clearDirectusCache } from '../../../../lib/cache.js';
 import { env } from '../../../../lib/env.js';
 import { registrarActividad, etiquetaEstado } from '../../../../lib/actividad.js';
 import { notificarEstado } from '../../../../lib/notificaciones.js';
-import { destinoDeAccion, enlaceValido, accionExigeMotivo } from '../../../../lib/aprobacion.js';
+import { destinoDeAccion, enlaceValido, accionExigeMotivo, CAMBIOS_VALIDOS } from '../../../../lib/aprobacion.js';
 import { normalizarHex } from '../../../../lib/marca.js';
 
 export const prerender = false;
@@ -122,7 +122,13 @@ export async function POST({ params, request }) {
   const { post, error, status } = await buscarPorToken(token);
   if (error) return json({ error }, status);
 
-  const destino = destinoDeAccion(accion, post.estado);
+  const cambio = String(body?.cambio ?? '').trim() || null;
+  if (accion === 'cambios' && post.estado === 'revision_conjunta'
+      && !CAMBIOS_VALIDOS.includes(cambio)) {
+    return json({ error: 'Indica si hay que cambiar el texto, el diseño o ambos.' }, 400);
+  }
+
+  const destino = destinoDeAccion(accion, post.estado, cambio);
   if (!destino) {
     return json({ error: 'Esta publicación ya no admite esa acción.', estado: post.estado }, 409);
   }
@@ -135,7 +141,11 @@ export async function POST({ params, request }) {
   }
 
   const payload = { estado: destino };
-  if (accion === 'cambios') payload.motivo_rechazo = motivo;
+  if (accion === 'cambios') {
+    payload.motivo_rechazo = cambio && post.estado === 'revision_conjunta'
+      ? `[${cambio === 'diseno' ? 'Diseño' : cambio === 'ambos' ? 'Texto y diseño' : 'Texto'}] ${motivo}`
+      : motivo;
+  }
 
   const r = await directusFetch({
     path: `/items/publicaciones/${post.id}`,
