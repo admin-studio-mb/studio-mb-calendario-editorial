@@ -58,6 +58,22 @@ async function fetchAssetBuffer(token, valor, { width = 700, format = 'jpg' } = 
   }
 }
 
+/** Imagen externa (Drive/Unsplash): se descarga tal cual, con miniatura en Drive. */
+async function fetchExternalBuffer(url, { width = 700 } = {}) {
+  if (!/^https?:\/\//i.test(String(url))) return null;
+  let destino = String(url);
+  if (/googleusercontent\.com\/d\//i.test(destino) && !/[=][whs]\d+/i.test(destino)) {
+    destino += `=w${width}`;
+  }
+  try {
+    const res = await fetch(destino, { cache: 'no-store' });
+    if (!res.ok) return null;
+    return Buffer.from(await res.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
 function idDe(valor) {
   return typeof valor === 'object' ? valor?.id : valor;
 }
@@ -70,9 +86,26 @@ function slidesDe(p) {
   return Array.isArray(slides) ? slides : [];
 }
 
-/** Portada del post: diseño final o primera slide del carrusel. */
+function fondosDe(p) {
+  let fondos = p?.imagenes_fondo;
+  if (typeof fondos === 'string') {
+    try { fondos = JSON.parse(fondos); } catch { fondos = []; }
+  }
+  return Array.isArray(fondos) ? fondos : [];
+}
+
+/** Primera imagen de fondo (Google Drive u otra URL) como propuesta. */
+function imagenFondoDe(p) {
+  const fondo = fondosDe(p).find((f) => f?.imagen);
+  return fondo?.imagen || null;
+}
+
+/** Portada del post: diseño final, primera slide o imagen de fondo. */
 function portadaDe(p) {
-  return idDe(p.diseno_final) || idDe(slidesDe(p)[0]) || null;
+  const id = idDe(p.diseno_final) || idDe(slidesDe(p)[0]);
+  if (id) return { valor: id, externa: false, final: true };
+  const url = imagenFondoDe(p);
+  return url ? { valor: url, externa: true, final: false } : null;
 }
 
 function fechaCorta(valor) {
@@ -120,7 +153,7 @@ export async function GET({ request, locals }) {
     path: '/items/publicaciones',
     token,
     search: {
-      fields: 'id,cliente_id,tipo_contenido,formato,red,fecha_publicacion,copywriting,hashtags,estado,diseno_final,diseno_slides',
+      fields: 'id,cliente_id,tipo_contenido,formato,red,fecha_publicacion,copywriting,hashtags,estado,diseno_final,diseno_slides,imagenes_fondo',
       limit: '-1',
     },
   });
@@ -145,18 +178,23 @@ export async function GET({ request, locals }) {
   const nombreCliente = cliente?.nombre ?? 'Studio mb';
   const colorCliente = normalizarHex(cliente?.color_marca) ?? BRAND;
 
-  // Portadas (diseño final o primera slide del carrusel).
+  // Portadas (diseño final, primera slide o imagen de fondo de propuesta).
   const imagenes = new Map();
+  const propuestas = new Set();
   for (const p of posts) {
-    const id = portadaDe(p);
-    if (id) {
-      const buf = await fetchAssetBuffer(token, id, { width: 700, format: 'jpg' });
-      if (buf) imagenes.set(p.id, buf);
+    const portada = portadaDe(p);
+    if (!portada) continue;
+    const buf = portada.externa
+      ? await fetchExternalBuffer(portada.valor)
+      : await fetchAssetBuffer(token, portada.valor, { width: 700, format: 'jpg' });
+    if (buf) {
+      imagenes.set(p.id, buf);
+      if (!portada.final) propuestas.add(p.id);
     }
   }
 
   const redes = new Set(posts.map((p) => p.red).filter(Boolean));
-  const conDiseno = posts.filter((p) => Boolean(portadaDe(p))).length;
+  const conDiseno = posts.filter((p) => portadaDe(p)?.final).length;
 
   const doc = new PDFDocument({
     size: 'A4',
@@ -230,8 +268,8 @@ export async function GET({ request, locals }) {
 
     const stats = [
       { valor: posts.length, etiqueta: posts.length === 1 ? 'PUBLICACIÓN' : 'PUBLICACIONES' },
-      { valor: redes.size, etiqueta: redes.size === 1 ? 'RED' : 'REDES' },
-      { valor: conDiseno, etiqueta: 'CON DISEÑO' },
+      { valor: redes.size, etiqueta: redes.size === 1 ? 'RED SOCIAL' : 'REDES' },
+      { valor: conDiseno, etiqueta: 'DISEÑO FINAL' },
     ];
     const colW = CONTENT_W / 3;
     stats.forEach((s, i) => {
@@ -264,6 +302,13 @@ export async function GET({ request, locals }) {
       doc.fillColor(colorCliente).font('Helvetica-Bold').fontSize(8)
         .text('CALENDARIO EDITORIAL', MARGIN, my + mh - 30, {
           width: CONTENT_W, align: 'center', characterSpacing: 1.5,
+        });
+    }
+
+    if (propuestas.size > 0) {
+      doc.fillColor('#92400e').font('Helvetica-Bold').fontSize(7)
+        .text('Las imágenes de portada son propuestas pendientes de diseño final.', MARGIN, 652, {
+          width: CONTENT_W,
         });
     }
 
@@ -364,6 +409,17 @@ export async function GET({ request, locals }) {
     const buf = imagenes.get(p.id);
     if (buf) {
       imagenRedondeada(buf, ix, iy, iw, ih, 5);
+      if (propuestas.has(p.id)) {
+        const bw = 52;
+        const bh = 13;
+        const by = iy + ih - bh - 6;
+        doc.save().roundedRect(ix + 6, by, bw, bh, 6)
+          .fill('#fde68a').lineWidth(0.6).strokeColor('#d97706').stroke().restore();
+        doc.fillColor('#78350f').font('Helvetica-Bold').fontSize(5.5)
+          .text('PROPUESTA', ix + 6, by + 3.7, {
+            width: bw, align: 'center', characterSpacing: 0.5,
+          });
+      }
     } else {
       doc.save().roundedRect(ix, iy, iw, ih, 5).fill(mezclar(colorCliente, 0.94)).restore();
       doc.fillColor(mezclar(colorCliente, 0.35)).font('Helvetica-Bold').fontSize(7)
