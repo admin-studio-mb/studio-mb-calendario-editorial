@@ -115,6 +115,16 @@
   box-shadow: var(--shadow-card);
 }
 
+/* Scroll sin barra visible: se sigue pudiendo desplazar con rueda/dedo. */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 .dark .card,
 .dark [class*="card"] {
   background: var(--color-ink-100);

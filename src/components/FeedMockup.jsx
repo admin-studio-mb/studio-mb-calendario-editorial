@@ -131,7 +131,7 @@ export default function FeedMockup({ posts = [] }) {
           onClick={() => setOpen(null)}
         >
           <article
-            className="bg-white rounded-2xl max-w-md w-full max-h-[92dvh] overflow-y-auto shadow-pop my-auto"
+            className="bg-white rounded-2xl max-w-md w-full max-h-[92dvh] overflow-y-auto scrollbar-none shadow-pop my-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <img
