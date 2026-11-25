@@ -754,6 +754,29 @@ Claves en `directus_users.preferencias` (además de `panelNueva`):
   como id y `esEditor()`/`esCliente()` fallan en silencio. `setup-lectura-roles.py`
   concede `read` (id, name) a las policies de cliente y editor.
 
+### 6.27 Diseño final en carrusel
+
+- `publicaciones.diseno_slides` (JSON) guarda la lista ordenada de imágenes
+  del diseño (ids de Directus o URLs). `diseno_final` se mantiene como
+  **portada** (primera slide) para PDF y compatibilidad.
+- `src/lib/diseno.js` es la fuente de verdad: `normalizarDisenoSlides`
+  (máx. 10, sin duplicados), `disenoImagenes`, `disenoPortada`.
+- En `PostForm`, si el formato es `carrusel` el bloque de diseño final pasa a
+  ser múltiple: sube N imágenes, se previsualizan, se pueden reordenar (la
+  primera es la portada) y quitar. Para post/reel/story sigue siendo una
+  sola imagen y se limpia `diseno_slides`.
+- `DesignCarousel` (React) pinta un visor horizontal con `snap-x`,
+  scrollbar oculto, flechas en escritorio, puntos y contador. Se usa en el
+  detalle del mockup, en el enlace público de aprobación y en la vista de
+  solo lectura del cliente.
+- El mockup sigue entrando solo con posts que tengan diseño (portada o
+  slides) y la cuadrícula usa la primera slide.
+- API: `POST`/`PATCH /api/publicaciones` sanean `diseno_slides` y, si llega,
+  ponen la primera como `diseno_final`. El rol Cliente no puede tocar esos
+  campos.
+- El PDF del mes usa la portada; si en el futuro se quieren todas las
+  slides habría que maquetar varias páginas por post.
+
 Scripts de referencia en `scripts/`: `setup-client-permissions.py`,
 `add-comentario-cliente-id.py`, `verify-client-permissions.py`,
 `verify-app-flow-client.py`. Ver `scripts/README.md`.

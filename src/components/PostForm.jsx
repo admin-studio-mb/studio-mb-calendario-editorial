@@ -8,6 +8,7 @@ import { toISOlocal, parseFechaPublicacion } from '../lib/fecha.js';
 import { hashtagsACadena } from '../lib/textos.js';
 import CopyButton from './CopyButton.jsx';
 import { redesDeCliente, tiposDeRed, redNombre } from '../lib/redes.js';
+import { MAX_DISENO_SLIDES, idDiseno, normalizarDisenoSlides } from '../lib/diseno.js';
 
 const FORMATOS = ['post', 'reel', 'carrusel', 'story'];
 
@@ -165,6 +166,15 @@ export default function PostForm({
   );
   const [disenoFile, setDisenoFile] = useState(null);
   const [removeDiseno, setRemoveDiseno] = useState(false);
+  // Carrusel: slides ya guardadas (ids) + archivos nuevos pendientes de subir.
+  const [disenoSlides, setDisenoSlides] = useState(() => {
+    const guardadas = normalizarDisenoSlides(initial.diseno_slides);
+    if (guardadas.length > 0) return guardadas;
+    // Compatibilidad: carrusel antiguo con una sola portada.
+    const portada = idDiseno(initial.diseno_final);
+    return portada ? [portada] : [];
+  });
+  const [disenoNuevos, setDisenoNuevos] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
@@ -174,6 +184,34 @@ export default function PostForm({
   const [equipo, setEquipo] = useState([]);
 
   const isEdit = Boolean(initial.id);
+
+  function anadirDisenoFiles(e) {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    const libres = Math.max(0, MAX_DISENO_SLIDES - disenoSlides.length - disenoNuevos.length);
+    const nuevos = files.slice(0, libres).map((file) => ({ file, url: URL.createObjectURL(file) }));
+    if (nuevos.length > 0) setDisenoNuevos((prev) => [...prev, ...nuevos]);
+    e.target.value = '';
+  }
+
+  function quitarDisenoNuevo(indice) {
+    setDisenoNuevos((prev) => {
+      const item = prev[indice];
+      if (item?.url) URL.revokeObjectURL(item.url);
+      return prev.filter((_, i) => i !== indice);
+    });
+  }
+
+  function moverDisenoSlide(indice, delta) {
+    setDisenoSlides((prev) => {
+      const destino = indice + delta;
+      if (destino < 0 || destino >= prev.length) return prev;
+      const copia = [...prev];
+      [copia[indice], copia[destino]] = [copia[destino], copia[indice]];
+      return copia;
+    });
+  }
+
 
   useEffect(() => {
     let cancel = false;
@@ -309,6 +347,7 @@ export default function PostForm({
       // envía: se cambia únicamente con los botones de flujo del modal.
       ...(isEdit ? {} : { estado: 'borrador' }),
       diseno_final: removeDiseno ? null : existingDisenoId,
+      diseno_slides: normalizarDisenoSlides(initial.diseno_slides),
     };
 
     try {
@@ -337,14 +376,31 @@ export default function PostForm({
       setInfo(isEdit ? 'Actualizando publicación…' : 'Guardando publicación…');
 
       try {
-        // 3) Subida del diseño final si hay archivo nuevo (solo edición).
-        if (disenoFile) {
-          const fd = new FormData();
-          fd.append('file', disenoFile);
-          const upRes = await fetch('/api/files', { method: 'POST', body: fd });
-          if (!upRes.ok) throw new Error(`Upload falló (${upRes.status})`);
-          const upJson = await upRes.json();
-          payload.diseno_final = upJson?.id ?? null;
+        if (formato === 'carrusel') {
+          // 3a) Carrusel: subimos las slides nuevas y conservamos las guardadas.
+          const subidas = [];
+          for (const item of disenoNuevos) {
+            const fd = new FormData();
+            fd.append('file', item.file);
+            const upRes = await fetch('/api/files', { method: 'POST', body: fd });
+            if (!upRes.ok) throw new Error(`Upload falló (${upRes.status})`);
+            const upJson = await upRes.json().catch(() => null);
+            if (upJson?.id) subidas.push(upJson.id);
+          }
+          const todas = [...disenoSlides, ...subidas].slice(0, MAX_DISENO_SLIDES);
+          payload.diseno_slides = todas;
+          payload.diseno_final = todas[0] ?? null;
+        } else {
+          // 3b) Post/reel/story: una sola imagen de diseño final.
+          payload.diseno_slides = [];
+          if (disenoFile) {
+            const fd = new FormData();
+            fd.append('file', disenoFile);
+            const upRes = await fetch('/api/files', { method: 'POST', body: fd });
+            if (!upRes.ok) throw new Error(`Upload falló (${upRes.status})`);
+            const upJson = await upRes.json();
+            payload.diseno_final = upJson?.id ?? null;
+          }
         }
 
         // 4) POST (crear) o PATCH (editar) según modo.
@@ -641,7 +697,77 @@ export default function PostForm({
 
         {/* Diseño final: SOLO en edición (una publicación nueva debe pasar
             antes por revisión y diseño). */}
-        {isEdit && (
+        {isEdit && (formato === 'carrusel' ? (
+          <Field
+            label="Diseño final · carrusel"
+            hint="Sube las slides en orden. La primera será la portada en la cuadrícula del feed."
+          >
+            <input
+              id="diseno-carrusel"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={anadirDisenoFiles}
+              disabled={disenoSlides.length + disenoNuevos.length >= MAX_DISENO_SLIDES}
+              className="block w-full text-sm text-ink-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:text-white hover:file:bg-brand-700 file:cursor-pointer disabled:opacity-50"
+            />
+
+            {(disenoSlides.length > 0 || disenoNuevos.length > 0) && (
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {disenoSlides.map((id, i) => (
+                  <div key={id} className="relative rounded-lg overflow-hidden border border-ink-200 bg-white aspect-[3/4]">
+                    <img src={`/api/assets/${id}`} alt={`Slide ${i + 1}`} className="w-full h-full object-cover" />
+                    <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/60 text-white text-[10px] font-semibold">
+                      {i + 1}{i === 0 ? ' · portada' : ''}
+                    </span>
+                    <div className="absolute bottom-1 inset-x-1 flex items-center justify-between gap-1">
+                      <button
+                        type="button"
+                        onClick={() => moverDisenoSlide(i, -1)}
+                        disabled={i === 0}
+                        className="w-6 h-6 rounded bg-white/90 text-ink-700 text-xs disabled:opacity-40 hover:bg-white"
+                        title="Mover antes"
+                      >←</button>
+                      <button
+                        type="button"
+                        onClick={() => moverDisenoSlide(i, 1)}
+                        disabled={i === disenoSlides.length - 1}
+                        className="w-6 h-6 rounded bg-white/90 text-ink-700 text-xs disabled:opacity-40 hover:bg-white"
+                        title="Mover después"
+                      >→</button>
+                      <button
+                        type="button"
+                        onClick={() => setDisenoSlides((prev) => prev.filter((x) => x !== id))}
+                        className="w-6 h-6 rounded bg-red-600/90 text-white text-xs hover:bg-red-600"
+                        title="Quitar slide"
+                      >×</button>
+                    </div>
+                  </div>
+                ))}
+
+                {disenoNuevos.map((item, i) => (
+                  <div key={item.url} className="relative rounded-lg overflow-hidden border border-brand-200 bg-white aspect-[3/4]">
+                    <img src={item.url} alt={`Slide nueva ${i + 1}`} className="w-full h-full object-cover" />
+                    <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-brand-600 text-white text-[10px] font-semibold">
+                      Nueva · se subirá al guardar
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => quitarDisenoNuevo(i)}
+                      className="absolute bottom-1 right-1 w-6 h-6 rounded bg-red-600/90 text-white text-xs hover:bg-red-600"
+                      title="Quitar slide"
+                    >×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <p className="mt-2 text-[11px] text-ink-400">
+              {disenoSlides.length + disenoNuevos.length} de {MAX_DISENO_SLIDES} imágenes.
+              {disenoSlides.length === 0 && disenoNuevos.length === 0 && ' Sin slides todavía.'}
+            </p>
+          </Field>
+        ) : (
           <Field label="Diseño final" hint="Foto definitiva que verá el cliente en el mockup del feed.">
             <input
               id="diseno"
@@ -694,7 +820,7 @@ export default function PostForm({
               );
             })()}
           </Field>
-        )}
+        ))}
       </div>
 
       <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-ink-100 bg-ink-50/50">

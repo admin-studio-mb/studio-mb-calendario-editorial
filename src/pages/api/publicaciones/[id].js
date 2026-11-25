@@ -9,6 +9,7 @@ import { directusFetch } from '../../../lib/directus-fetch.js';
 import { clearDirectusCache } from '../../../lib/cache.js';
 import { normalizarFechaPublicacion } from '../../../lib/fecha.js';
 import { esCliente, transicionPermitida } from '../../../lib/flujo.js';
+import { normalizarDisenoSlides } from '../../../lib/diseno.js';
 import { notificarEstado } from '../../../lib/notificaciones.js';
 import { registrarActividad, borrarActividadDe } from '../../../lib/actividad.js';
 import { etiquetaEstado } from '../../../lib/actividad.js';
@@ -132,6 +133,7 @@ export async function PATCH({ params, request, locals }) {
     'fecha_publicacion',
     'estado',
     'diseno_final',
+    'diseno_slides',
     'motivo_rechazo',
   ];
   const payload = {};
@@ -144,6 +146,14 @@ export async function PATCH({ params, request, locals }) {
     const norm = normalizarFechaPublicacion(payload.fecha_publicacion);
     if (!norm) return json({ error: 'fecha_publicacion inválida.' }, 400);
     payload.fecha_publicacion = norm;
+  }
+
+  // Carrusel: se sanean las slides y la primera pasa a ser la portada.
+  if (payload.diseno_slides !== undefined) {
+    payload.diseno_slides = normalizarDisenoSlides(payload.diseno_slides);
+    if (payload.diseno_final === undefined) {
+      payload.diseno_final = payload.diseno_slides[0] ?? null;
+    }
   }
 
   // Limpieza: al volver a revisión (texto o diseño), el motivo anterior ya no

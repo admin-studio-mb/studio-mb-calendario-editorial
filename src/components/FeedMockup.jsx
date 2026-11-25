@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react';
 import { useStore } from '@nanostores/react';
 import { publicacionesStore, filtrosStore, cursorStore } from '../stores/publicaciones.js';
 import { parseFechaPublicacion } from '../lib/fecha.js';
+import { disenoImagenes, disenoPortada } from '../lib/diseno.js';
+import DesignCarousel from './DesignCarousel.jsx';
 
 /**
  * FeedMockup — grid 3 columnas estilo Instagram con las publicaciones del
@@ -30,8 +32,8 @@ export default function FeedMockup({ posts = [] }) {
     const year = cursor.getFullYear();
     const month = cursor.getMonth();
     const filtered = source.filter((p) => {
-      // Solo posts con foto final.
-      if (!disenoIdOf(p)) return false;
+      // Solo posts con foto final (portada, o primera slide del carrusel).
+      if (!disenoPortada(p)) return false;
       // Solo del mes visible en el calendario.
       const d = parseFechaPublicacion(p.fecha_publicacion);
       if (!d || d.getFullYear() !== year || d.getMonth() !== month) return false;
@@ -69,7 +71,8 @@ export default function FeedMockup({ posts = [] }) {
         <div className="p-3">
           <div className="grid grid-cols-3 gap-1">
             {displayPosts.map((p) => {
-              const cover = `/api/assets/${disenoIdOf(p)}`;
+              const portada = disenoPortada(p);
+              const cover = /^https?:\/\//i.test(portada) ? portada : `/api/assets/${portada}`;
               return (
                 <button
                   key={p.id}
@@ -134,11 +137,7 @@ export default function FeedMockup({ posts = [] }) {
             className="bg-white rounded-2xl max-w-md w-full max-h-[92dvh] overflow-y-auto scrollbar-none shadow-pop my-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <img
-              src={`/api/assets/${disenoIdOf(open)}`}
-              alt=""
-              className="w-full aspect-[3/4] object-cover"
-            />
+            <DesignCarousel images={disenoImagenes(open)} alt="Diseño final" />
             <div className="p-5 space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 font-medium uppercase tracking-wider">
@@ -160,12 +159,4 @@ export default function FeedMockup({ posts = [] }) {
       )}
     </>
   );
-}
-
-/** Resuelve el id de la foto final (diseno_final) o null si no hay. */
-function disenoIdOf(post) {
-  const id = typeof post.diseno_final === 'object'
-    ? post.diseno_final?.id
-    : post.diseno_final;
-  return id || null;
 }

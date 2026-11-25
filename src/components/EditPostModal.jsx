@@ -27,6 +27,8 @@ import { parseFechaPublicacion } from '../lib/fecha.js';
 import { redNombre } from '../lib/redes.js';
 import { hashtagsACadena } from '../lib/textos.js';
 import { fechaDuplicado, payloadDuplicado, DIAS_DUPLICADO } from '../lib/duplicar.js';
+import { disenoImagenes } from '../lib/diseno.js';
+import DesignCarousel from './DesignCarousel.jsx';
 import RedIcon from './RedIcon.jsx';
 
 /** Clases Tailwind por tono de botón (los define TRANSICIONES en flujo.js). */
@@ -566,12 +568,9 @@ function slideImg(imagen) {
   return `/api/assets/${s}`;
 }
 
-/** Resuelve el id de la foto final (diseno_final) o null. */
+/** Resuelve las imágenes del diseño final (slides del carrusel o la única). */
 function disenoIdOf(post) {
-  const id = typeof post.diseno_final === 'object'
-    ? post.diseno_final?.id
-    : post.diseno_final;
-  return id || null;
+  return disenoImagenes(post);
 }
 
 /**
@@ -586,7 +585,7 @@ function PostReadOnly({ post, clientes = [] }) {
     : 'Sin fecha';
 
   const slides = Array.isArray(post.imagenes_fondo) ? post.imagenes_fondo : [];
-  const disenoId = disenoIdOf(post);
+  const disenos = disenoIdOf(post);
 
   return (
     <div className="p-5 space-y-4">
@@ -683,21 +682,12 @@ function PostReadOnly({ post, clientes = [] }) {
         </div>
       )}
 
-      {disenoId && (
+      {disenos.length > 0 && (
         <div>
-          <p className="text-[11px] uppercase tracking-wider text-ink-400 font-semibold mb-2">Diseño final</p>
-          <a
-            href={`/api/assets/${disenoId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block"
-          >
-            <img
-              src={`/api/assets/${disenoId}`}
-              alt="Diseño final"
-              className="w-32 aspect-[3/4] object-cover rounded-lg border border-ink-200 bg-ink-100"
-            />
-          </a>
+          <p className="text-[11px] uppercase tracking-wider text-ink-400 font-semibold mb-2">
+            Diseño final{disenos.length > 1 ? ` · ${disenos.length} slides` : ''}
+          </p>
+          <DesignCarousel images={disenos} alt="Diseño final" className="rounded-lg border border-ink-200 max-w-xs" />
         </div>
       )}
 

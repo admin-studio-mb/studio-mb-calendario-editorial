@@ -23,7 +23,7 @@ const [rPosts, rClientes] = await Promise.all([
     token,
     search: {
       'filter[estado][_in]': 'revision,revision_diseno',
-      fields: 'id,cliente_id,tipo_contenido,formato,copywriting,hashtags,imagenes_fondo,fecha_publicacion,estado,diseno_final',
+      fields: 'id,cliente_id,tipo_contenido,formato,copywriting,hashtags,imagenes_fondo,fecha_publicacion,estado,diseno_final,diseno_slides',
       limit: '-1',
       sort: 'fecha_publicacion',
     },

@@ -15,6 +15,7 @@ import { directusFetch } from '../../lib/directus-fetch.js';
 import { clearDirectusCache } from '../../lib/cache.js';
 import { normalizarFechaPublicacion } from '../../lib/fecha.js';
 import { esCliente } from '../../lib/flujo.js';
+import { normalizarDisenoSlides } from '../../lib/diseno.js';
 import { registrarActividad } from '../../lib/actividad.js';
 
 export const prerender = false;
@@ -44,6 +45,9 @@ export async function POST({ request, locals }) {
   const err = validate(body);
   if (err) return json({ error: err }, 400);
 
+  // Diseño final: un carrusel trae varias slides; la primera es la portada.
+  const disenoSlides = normalizarDisenoSlides(body.diseno_slides);
+
   // Payload: la fecha va como HORA DE PARED local (naive, sin Z) porque
   // Directus la guarda en `timestamp without time zone`.
   const payload = {
@@ -58,7 +62,8 @@ export async function POST({ request, locals }) {
     imagenes_fondo: Array.isArray(body.imagenes_fondo) ? body.imagenes_fondo : [],
     fecha_publicacion: normalizarFechaPublicacion(body.fecha_publicacion),
     estado: body.estado ?? 'borrador',
-    diseno_final: body.diseno_final ?? null,
+    diseno_final: disenoSlides[0] ?? body.diseno_final ?? null,
+    diseno_slides: disenoSlides,
   };
 
   const r = await directusFetch({

@@ -56,7 +56,7 @@ async function buscarPorToken(token) {
     token: tokenServidor(),
     search: {
       'filter[token_aprobacion][_eq]': token,
-      fields: 'id,cliente_id.nombre,cliente_id.logo,cliente_id.color_marca,tipo_contenido,formato,red,copywriting,hashtags,imagenes_fondo,fecha_publicacion,estado,motivo_rechazo,diseno_final,token_aprobacion,aprobacion_expira',
+      fields: 'id,cliente_id.nombre,cliente_id.logo,cliente_id.color_marca,tipo_contenido,formato,red,copywriting,hashtags,imagenes_fondo,fecha_publicacion,estado,motivo_rechazo,diseno_final,diseno_slides,token_aprobacion,aprobacion_expira',
       limit: '1',
     },
   });
@@ -78,6 +78,10 @@ export async function GET({ params }) {
     ? post.cliente_id.logo?.id
     : post.cliente_id?.logo;
 
+  const disenos = (Array.isArray(post.diseno_slides) ? post.diseno_slides : [])
+    .map(urlArchivo)
+    .filter(Boolean);
+
   return json({
     cliente: post.cliente_id?.nombre ?? '',
     marca: {
@@ -92,7 +96,8 @@ export async function GET({ params }) {
     copy: post.copywriting ?? '',
     hashtags: Array.isArray(post.hashtags) ? post.hashtags : [],
     slides: slidesPublicos(post.imagenes_fondo),
-    diseno: urlArchivo(post.diseno_final),
+    diseno: disenos[0] ?? urlArchivo(post.diseno_final),
+    disenos,
     estado: post.estado,
     motivo: post.motivo_rechazo ?? null,
   });

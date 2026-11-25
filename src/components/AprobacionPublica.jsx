@@ -14,6 +14,7 @@ import { redNombre } from '../lib/redes.js';
 import RedIcon from './RedIcon.jsx';
 import CopyButton from './CopyButton.jsx';
 import { hashtagsACadena } from '../lib/textos.js';
+import DesignCarousel from './DesignCarousel.jsx';
 
 const ESTADO_LABEL = {
   borrador: 'Borrador',
@@ -250,7 +251,14 @@ export default function AprobacionPublica({ token }) {
             </div>
           )}
 
-          {post.diseno && (
+          {Array.isArray(post.disenos) && post.disenos.length > 0 ? (
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-ink-400 font-semibold mb-2">
+                Diseño final{post.disenos.length > 1 ? ` · ${post.disenos.length} slides` : ''}
+              </p>
+              <DesignCarousel images={post.disenos} alt="Diseño final" className="rounded-xl border border-ink-200" />
+            </div>
+          ) : post.diseno && (
             <div>
               <p className="text-[11px] uppercase tracking-wider text-ink-400 font-semibold mb-2">Diseño final</p>
               <a href={post.diseno} target="_blank" rel="noopener noreferrer" className="inline-block">
