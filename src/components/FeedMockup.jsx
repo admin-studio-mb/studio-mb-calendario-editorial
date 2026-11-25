@@ -2,53 +2,59 @@ import { useState, useMemo } from 'react';
 import { useStore } from '@nanostores/react';
 import { publicacionesStore, filtrosStore, cursorStore } from '../stores/publicaciones.js';
 import { parseFechaPublicacion } from '../lib/fecha.js';
-import { disenoImagenes, disenoPortada } from '../lib/diseno.js';
+import { disenoImagenes, disenoPropuesto } from '../lib/diseno.js';
 import DesignCarousel from './DesignCarousel.jsx';
 
 /**
  * FeedMockup — grid 3 columnas estilo Instagram con las publicaciones del
- * mes visible en el calendario (cursorStore). Solo entran posts que tengan
- * FOTO FINAL (`diseno_final`): es la vista "así quedará este mes" que ve
- * el cliente tras el diseño.
+ * mes visible en el calendario (cursorStore).
  *
- * Orden: la foto del último día del mes va arriba a la izquierda (la
- * primera), así que se ordena por fecha descendente. Las celdas van en
- * formato 3:4.
+ * Dos modos:
+ *  - Final: solo posts con diseño final (así quedará el mes).
+ *  - Propuesta: añade los que aún no tienen diseño usando la primera foto
+ *    de sus slides, marcados como "Propuesta".
+ *
+ * Orden: la publicación del último día del mes va arriba a la izquierda
+ * (la primera), así que se ordena por fecha descendente. Celdas 3:4.
  *
  * Props:
  *   - posts: Array inicial opcional (hidratado por SSR).
- *
- *  Las imágenes se sirven por el proxy autenticado /api/assets/<id>, así que
- *  no hace falta ninguna URL de Directus en el navegador.
  */
 export default function FeedMockup({ posts = [] }) {
   const storePosts = useStore(publicacionesStore);
   const filtros = useStore(filtrosStore);
   const cursor = useStore(cursorStore);
   const [open, setOpen] = useState(null);
+  const [modoManual, setModoManual] = useState(null);
 
-  const displayPosts = useMemo(() => {
+  const { conDiseno, propuestas } = useMemo(() => {
     const source = storePosts.length > 0 ? storePosts : posts;
     const year = cursor.getFullYear();
     const month = cursor.getMonth();
-    const filtered = source.filter((p) => {
-      // Solo posts con foto final (portada, o primera slide del carrusel).
-      if (!disenoPortada(p)) return false;
-      // Solo del mes visible en el calendario.
+    const delMes = source.filter((p) => {
       const d = parseFechaPublicacion(p.fecha_publicacion);
       if (!d || d.getFullYear() !== year || d.getMonth() !== month) return false;
-      // Respetamos los filtros compartidos del calendario.
       if (filtros.clienteId && p.cliente_id !== filtros.clienteId) return false;
       if (filtros.estado && p.estado !== filtros.estado) return false;
       if (filtros.formato && p.formato !== filtros.formato) return false;
       if (filtros.red && p.red !== filtros.red) return false;
       return true;
     });
-    // Último día del mes primero (arriba a la izquierda).
-    return [...filtered]
-      .sort((a, b) => (parseFechaPublicacion(b.fecha_publicacion)?.getTime() ?? 0)
-        - (parseFechaPublicacion(a.fecha_publicacion)?.getTime() ?? 0));
+    return {
+      conDiseno: delMes.filter((p) => disenoImagenes(p).length > 0),
+      propuestas: delMes.filter((p) => disenoImagenes(p).length === 0 && disenoPropuesto(p).length > 0),
+    };
   }, [storePosts, posts, filtros, cursor]);
+
+  const hayPropuestas = propuestas.length > 0;
+  // Mientras hay propuestas se abre en "Propuesta"; si todo tiene diseño, Final.
+  const modo = modoManual ?? (hayPropuestas ? 'propuesta' : 'final');
+
+  const displayPosts = useMemo(() => {
+    const lista = modo === 'final' ? conDiseno : [...conDiseno, ...propuestas];
+    return [...lista].sort((a, b) => (parseFechaPublicacion(b.fecha_publicacion)?.getTime() ?? 0)
+      - (parseFechaPublicacion(a.fecha_publicacion)?.getTime() ?? 0));
+  }, [modo, conDiseno, propuestas]);
 
   const mesLabel = cursor.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
 
@@ -62,17 +68,39 @@ export default function FeedMockup({ posts = [] }) {
             </span>
             <div>
               <h3 className="text-sm font-semibold text-ink-900 capitalize">Mockup de feed · {mesLabel}</h3>
-              <p className="text-xs text-ink-500">{displayPosts.length} posts con diseño</p>
+              <p className="text-xs text-ink-500">
+                {displayPosts.length} posts · {conDiseno.length} con diseño
+                {modo === 'propuesta' && propuestas.length > 0 ? ` · ${propuestas.length} propuestas` : ''}
+              </p>
             </div>
           </div>
-          <span className="text-[10px] uppercase tracking-wider text-ink-400 font-medium">Vista previa</span>
+          <div className="inline-flex rounded-lg bg-ink-100 p-0.5 text-[11px] font-medium">
+            <button
+              type="button"
+              onClick={() => setModoManual('final')}
+              aria-pressed={modo === 'final'}
+              className={`px-2.5 py-1 rounded-md transition ${modo === 'final' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-700'}`}
+            >
+              Final
+            </button>
+            <button
+              type="button"
+              onClick={() => setModoManual('propuesta')}
+              aria-pressed={modo === 'propuesta'}
+              className={`px-2.5 py-1 rounded-md transition ${modo === 'propuesta' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-700'}`}
+            >
+              Propuesta{propuestas.length > 0 ? ` (${propuestas.length})` : ''}
+            </button>
+          </div>
         </header>
 
         <div className="p-3">
           <div className="grid grid-cols-3 gap-1">
             {displayPosts.map((p) => {
-              const portada = disenoPortada(p);
-              const cover = /^https?:\/\//i.test(portada) ? portada : `/api/assets/${portada}`;
+              const diseno = disenoImagenes(p);
+              const esPropuesta = diseno.length === 0;
+              const portada = (esPropuesta ? disenoPropuesto(p) : diseno)[0];
+              const cover = /^(https?:\/\/|\/)/i.test(portada) ? portada : `/api/assets/${portada}`;
               return (
                 <button
                   key={p.id}
@@ -87,6 +115,12 @@ export default function FeedMockup({ posts = [] }) {
                     loading="lazy"
                     className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
                   />
+
+                  {esPropuesta && (
+                    <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-amber-400 text-ink-900 text-[10px] font-bold shadow-sm">
+                      Propuesta
+                    </span>
+                  )}
 
                   {/* Hover overlay estilo Instagram: me gusta + comentarios */}
                   <span className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition flex items-center justify-center gap-5 opacity-0 group-hover:opacity-100">
@@ -119,9 +153,15 @@ export default function FeedMockup({ posts = [] }) {
 
             {displayPosts.length === 0 && (
               <p className="col-span-3 text-center text-sm text-ink-500 py-12">
-                Este mes aún no hay posts con foto final.
+                {modo === 'final'
+                  ? 'Este mes aún no hay posts con diseño final.'
+                  : 'Este mes no hay diseños ni fotos propuestas.'}
                 <br />
-                <span className="text-xs text-ink-400">Sube el diseño final desde «Editar publicación» y aparecerá aquí.</span>
+                <span className="text-xs text-ink-400">
+                  {modo === 'final'
+                    ? 'Cambia a «Propuesta» para ver las fotos de los slides o sube el diseño final desde «Editar publicación».'
+                    : 'Añade fotos a los slides desde «Editar publicación» y aparecerán aquí como propuesta.'}
+                </span>
               </p>
             )}
           </div>
@@ -129,7 +169,11 @@ export default function FeedMockup({ posts = [] }) {
       </section>
 
       {/* Modal detalle */}
-      {open && (
+      {open && (() => {
+        const diseno = disenoImagenes(open);
+        const esPropuesta = diseno.length === 0;
+        const imagenes = esPropuesta ? disenoPropuesto(open) : diseno;
+        return (
         <div
           className="fixed inset-0 bg-ink-900/70 backdrop-blur-sm z-50 flex items-start sm:items-center justify-center p-4 overflow-y-auto animate-in fade-in"
           onClick={() => setOpen(null)}
@@ -138,15 +182,22 @@ export default function FeedMockup({ posts = [] }) {
             className="bg-white rounded-2xl max-w-md w-full max-h-[92dvh] overflow-y-auto scrollbar-none shadow-pop my-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <DesignCarousel images={disenoImagenes(open)} alt="Diseño final" />
+            <DesignCarousel images={imagenes} alt={esPropuesta ? 'Foto propuesta' : 'Diseño final'} />
             <div className="p-5 space-y-3">
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between gap-2 text-xs flex-wrap">
                 <span className="px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 font-medium uppercase tracking-wider">
                   {open.formato}
                 </span>
-                {open.tipo_contenido && (
-                  <span className="text-ink-500">{open.tipo_contenido}</span>
-                )}
+                <div className="flex items-center gap-2">
+                  {esPropuesta && (
+                    <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold">
+                      Propuesta · sin diseño final
+                    </span>
+                  )}
+                  {open.tipo_contenido && (
+                    <span className="text-ink-500">{open.tipo_contenido}</span>
+                  )}
+                </div>
               </div>
               <p className="text-sm whitespace-pre-line text-ink-700 leading-relaxed">{open.copywriting}</p>
               {open.hashtags?.length > 0 && (
@@ -157,7 +208,8 @@ export default function FeedMockup({ posts = [] }) {
             </div>
           </article>
         </div>
-      )}
+        );
+      })()}
     </>
   );
 }

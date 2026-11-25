@@ -45,3 +45,25 @@ export function disenoImagenes(post) {
 export function disenoPortada(post) {
   return disenoImagenes(post)[0] ?? null;
 }
+
+/** Primera foto de los slides editoriales (propuesta antes del diseño). */
+export function fotoPropuesta(post) {
+  const slides = Array.isArray(post?.imagenes_fondo) ? post.imagenes_fondo : [];
+  for (const slide of slides) {
+    const valor = slide && typeof slide === 'object' ? slide.imagen : slide;
+    const id = idDiseno(valor);
+    if (id) return id;
+  }
+  return null;
+}
+
+/**
+ * Imágenes para la vista "Propuesta": el diseño final si ya existe; si no,
+ * la primera foto de los slides. No mezcla estados dentro de una misma lista.
+ */
+export function disenoPropuesto(post) {
+  const diseno = disenoImagenes(post);
+  if (diseno.length > 0) return diseno;
+  const foto = fotoPropuesta(post);
+  return foto ? [foto] : [];
+}

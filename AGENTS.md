@@ -771,6 +771,15 @@ Claves en `directus_users.preferencias` (además de `panelNueva`):
   solo lectura del cliente.
 - El mockup sigue entrando solo con posts que tengan diseño (portada o
   slides) y la cuadrícula usa la primera slide.
+- **Modo Propuesta** en el mockup: además de los diseños, enseña los posts
+  sin diseño usando la primera foto de sus slides, con etiqueta ámbar
+  "Propuesta" en la celda y "Propuesta · sin diseño final" al abrirlo. Se
+  abre en Propuesta mientras haya alguna; si todo tiene diseño, en Final.
+  El modo Final (solo diseños) es el que representa el feed real y el que
+  se usa para PDF y aprobación.
+- `disenoPropuesto()` y `fotoPropuesta()` en `src/lib/diseno.js`: priorizan
+  el diseño final y, si no existe, devuelven la primera foto válida de
+  `imagenes_fondo`. Si el slide no tiene foto, no hay propuesta.
 - API: `POST`/`PATCH /api/publicaciones` sanean `diseno_slides` y, si llega,
   ponen la primera como `diseno_final`. El rol Cliente no puede tocar esos
   campos.

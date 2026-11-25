@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_DISENO_SLIDES, disenoImagenes, disenoPortada, idDiseno, normalizarDisenoSlides } from './diseno.js';
+import { MAX_DISENO_SLIDES, disenoImagenes, disenoPortada, disenoPropuesto, fotoPropuesta, idDiseno, normalizarDisenoSlides } from './diseno.js';
 
 const A = '11111111-1111-1111-1111-111111111111';
 const B = '22222222-2222-2222-2222-222222222222';
@@ -48,5 +48,18 @@ describe('disenoImagenes', () => {
   it('disenoPortada devuelve la primera', () => {
     expect(disenoPortada({ diseno_slides: [B, C] })).toBe(B);
     expect(disenoPortada({})).toBeNull();
+  });
+});
+
+describe('fotoPropuesta / disenoPropuesto', () => {
+  it('usa la primera foto de los slides', () => {
+    expect(fotoPropuesta({ imagenes_fondo: [{ texto: 'Hola', imagen: A }, { imagen: B }] })).toBe(A);
+    expect(fotoPropuesta({ imagenes_fondo: [{ texto: 'sin foto' }] })).toBeNull();
+  });
+
+  it('prioriza el diseño final sobre la foto propuesta', () => {
+    expect(disenoPropuesto({ diseno_final: C, imagenes_fondo: [{ imagen: A }] })).toEqual([C]);
+    expect(disenoPropuesto({ imagenes_fondo: [{ imagen: A }] })).toEqual([A]);
+    expect(disenoPropuesto({ imagenes_fondo: [] })).toEqual([]);
   });
 });
