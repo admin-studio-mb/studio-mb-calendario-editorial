@@ -20,6 +20,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import PostForm from './PostForm.jsx';
 import CommentThread from './CommentThread.jsx';
+import HistorialModal from './HistorialModal.jsx';
 import CopyButton from './CopyButton.jsx';
 import { removePublicacion, updatePublicacion, addPublicacion, selectedPostIdStore } from '../stores/publicaciones.js';
 import { transicionesPermitidas, esCliente, ESTADO_LABEL } from '../lib/flujo.js';
@@ -59,6 +60,7 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
 
   // Historial de actividad de la publicación abierta.
   const [historial, setHistorial] = useState([]);
+  const [historialAbierto, setHistorialAbierto] = useState(false);
 
   // Enlace público de aprobación (solo equipo).
   const [enlacePanel, setEnlacePanel] = useState(false);
@@ -549,13 +551,36 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
             )}
           </div>
           <div className="lg:col-span-2 p-4 bg-ink-50/30">
-            <Historial items={historial} />
+            <button
+              type="button"
+              onClick={() => setHistorialAbierto(true)}
+              className="w-full mb-5 flex items-center gap-3 rounded-xl border border-ink-200 bg-white px-3 py-2.5 text-left transition hover:border-brand-300 hover:bg-brand-50/40"
+            >
+              <span className="inline-flex w-7 h-7 items-center justify-center rounded-lg bg-ink-50 text-ink-500 shrink-0">
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /><path d="M12 8v4l3 2" />
+                </svg>
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs font-semibold text-ink-800">Historial</span>
+                <span className="block text-[11px] text-ink-500">
+                  {historial.length === 0
+                    ? 'Sin cambios todavía'
+                    : `${historial.length} ${historial.length === 1 ? 'cambio' : 'cambios'} · ver detalle`}
+                </span>
+              </span>
+              <span className="text-[11px] font-semibold text-brand-600 shrink-0">Ver</span>
+            </button>
             <CommentThread
               currentUser={currentUser}
             />
           </div>
         </div>
       </div>
+
+      {historialAbierto && (
+        <HistorialModal items={historial} onClose={() => setHistorialAbierto(false)} />
+      )}
     </div>
   );
 }
@@ -694,74 +719,6 @@ function PostReadOnly({ post, clientes = [] }) {
       <p className="text-xs text-ink-400 pt-1">
         ¿Quieres cambios? Deja un comentario en el hilo de la derecha.
       </p>
-    </div>
-  );
-}
-
-const TIPO_LABEL = {
-  creado: 'Creada',
-  duplicado: 'Duplicada',
-  edicion: 'Edición',
-  estado: 'Cambio de estado',
-  sistema: 'Sistema',
-};
-
-function nombreDe(usuario) {
-  if (!usuario) return 'Sistema';
-  const nombre = [usuario.first_name, usuario.last_name].filter(Boolean).join(' ').trim();
-  return nombre || usuario.email || 'Sistema';
-}
-
-function fechaEvento(valor) {
-  if (!valor) return '';
-  const d = new Date(valor);
-  if (Number.isNaN(d.getTime())) return '';
-  return format(d, "d MMM · HH:mm", { locale: es });
-}
-
-/**
- * Historial de la publicación: altas, cambios de estado y ediciones.
- * Se muestra encima del hilo de comentarios (3 eventos, ampliable).
- */
-function Historial({ items = [] }) {
-  const [todo, setTodo] = useState(false);
-  if (!Array.isArray(items) || items.length === 0) return null;
-
-  const visibles = todo ? items : items.slice(0, 3);
-
-  return (
-    <div className="mb-5">
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <h4 className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-          Historial
-        </h4>
-        {items.length > 3 && (
-          <button
-            type="button"
-            onClick={() => setTodo((v) => !v)}
-            className="text-[11px] font-medium text-brand-600 hover:underline"
-          >
-            {todo ? 'Ver menos' : `Ver todo (${items.length})`}
-          </button>
-        )}
-      </div>
-      <ul className="space-y-2.5">
-        {visibles.map((h) => (
-          <li key={h.id} className="text-xs leading-relaxed">
-            <span className="text-ink-400">{fechaEvento(h.fecha_creacion)}</span>
-            <span className="text-ink-300"> · </span>
-            <span className="font-medium text-ink-700">{nombreDe(h.usuario)}</span>
-            <span className="block text-ink-500">
-              {h.detalle ?? TIPO_LABEL[h.tipo] ?? 'Evento'}
-            </span>
-            {h.motivo && (
-              <span className="mt-1 block rounded border border-amber-100 bg-amber-50 px-2 py-1 text-amber-800">
-                “{h.motivo}”
-              </span>
-            )}
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

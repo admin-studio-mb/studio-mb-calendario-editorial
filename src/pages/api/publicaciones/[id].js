@@ -12,6 +12,7 @@ import { esCliente, transicionPermitida } from '../../../lib/flujo.js';
 import { normalizarDisenoSlides } from '../../../lib/diseno.js';
 import { notificarEstado } from '../../../lib/notificaciones.js';
 import { registrarActividad, borrarActividadDe } from '../../../lib/actividad.js';
+import { diffPublicacion, textoDetalle } from '../../../lib/actividad-diff.js';
 import { etiquetaEstado } from '../../../lib/actividad.js';
 
 const REQUIRED_STRING_FIELDS = ['cliente_id', 'formato', 'estado'];
@@ -47,12 +48,12 @@ export async function PATCH({ params, request, locals }) {
 
   // Datos previos: los usan el guard de rol y las notificaciones.
   let prev = null;
-  if (body.estado !== undefined) {
+  {
     const actual = await directusFetch({
       path: `/items/publicaciones/${id}`,
       method: 'GET',
       token,
-      search: { fields: 'id,estado,cliente_id,tipo_contenido,fecha_publicacion' },
+      search: { fields: '*' },
     });
     if (!actual.ok) {
       return json({ error: 'No se pudo leer la publicación.' }, actual.status || 500);
@@ -187,7 +188,9 @@ export async function PATCH({ params, request, locals }) {
     });
   }
 
-  // Historial: cambio de estado o edición de campos (best-effort).
+  // Historial: el cambio de estado y las ediciones reales son eventos distintos
+  // (un mismo PATCH puede traer las dos cosas). Solo se guardan los campos que
+  // cambian de verdad y con su valor de antes y de después.
   if (body.estado !== undefined && prev && prev.estado !== body.estado) {
     await registrarActividad({
       publicacion_id: id,
@@ -198,16 +201,15 @@ export async function PATCH({ params, request, locals }) {
       motivo: payload.motivo_rechazo ?? null,
       usuario: user,
     });
-  } else {
-    const campos = Object.keys(payload).filter((k) => payload[k] !== undefined && k !== 'motivo_rechazo');
-    if (campos.length > 0) {
-      await registrarActividad({
-        publicacion_id: id,
-        tipo: 'edicion',
-        detalle: `Editado: ${campos.join(', ')}`,
-        usuario: user,
-      });
-    }
+  }
+  const cambios = diffPublicacion(prev, payload, { ignorar: ['estado'] });
+  if (cambios.length > 0) {
+    await registrarActividad({
+      publicacion_id: id,
+      tipo: 'edicion',
+      detalle: textoDetalle(cambios),
+      usuario: user,
+    });
   }
 
   return json(r.data);
