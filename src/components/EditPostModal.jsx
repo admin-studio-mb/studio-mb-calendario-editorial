@@ -22,6 +22,7 @@ import PostForm from './PostForm.jsx';
 import CommentThread from './CommentThread.jsx';
 import HistorialModal from './HistorialModal.jsx';
 import CopyButton from './CopyButton.jsx';
+import useBodyScrollLock from '../lib/useBodyScrollLock.js';
 import { removePublicacion, updatePublicacion, addPublicacion, selectedPostIdStore } from '../stores/publicaciones.js';
 import { transicionesPermitidas, esCliente, ESTADO_LABEL } from '../lib/flujo.js';
 import { parseFechaPublicacion } from '../lib/fecha.js';
@@ -45,6 +46,7 @@ const TONO_CLASSES = {
 
 export default function EditPostModal({ clientes = [], currentUser = null }) {
   const [post, setPost] = useState(null);
+  useBodyScrollLock(Boolean(post));
   const [quickSaving, setQuickSaving] = useState(false);
 
   // Duplicar: panel con fecha y POST como borrador.
@@ -308,9 +310,10 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
       onClick={close}
     >
       <div
-        className="bg-white rounded-2xl w-full max-w-5xl max-h-[92vh] overflow-y-auto shadow-pop"
+        className="bg-white rounded-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden shadow-pop"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="overflow-y-auto min-h-0">
         {/* Header sticky con título, acciones de flujo y eliminar */}
         <header className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-ink-100 bg-white gap-3 flex-wrap">
           <div className="flex items-center gap-3">
@@ -578,6 +581,7 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
               currentUser={currentUser}
             />
           </div>
+        </div>
         </div>
       </div>
 

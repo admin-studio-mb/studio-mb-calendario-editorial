@@ -13,6 +13,7 @@ import { useState } from 'react';
 import Calendar from './Calendar.jsx';
 import FeedMockup from './FeedMockup.jsx';
 import PostForm from './PostForm.jsx';
+import useBodyScrollLock from '../lib/useBodyScrollLock.js';
 
 export default function DashboardShell({
   publicaciones = [],
@@ -24,6 +25,7 @@ export default function DashboardShell({
 }) {
   const panelFijo = puedeCrear && mostrarPanel !== false;
   const [modalNueva, setModalNueva] = useState(false);
+  useBodyScrollLock(modalNueva);
 
   return (
     <>
@@ -49,7 +51,7 @@ export default function DashboardShell({
 
         {panelFijo && (
           <aside className="space-y-4 lg:space-y-6 order-2 lg:order-3">
-            <PostForm clientes={clientes} />
+            <PostForm clientes={clientes} clienteActivo={clienteActivo} />
           </aside>
         )}
 
@@ -66,14 +68,17 @@ export default function DashboardShell({
           onClick={() => setModalNueva(false)}
         >
           <div
-            className="bg-white rounded-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto shadow-pop"
+            className="bg-white rounded-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden shadow-pop"
             onClick={(e) => e.stopPropagation()}
           >
-            <PostForm
-              clientes={clientes}
-              onCancel={() => setModalNueva(false)}
-              onSubmitted={() => setModalNueva(false)}
-            />
+            <div className="overflow-y-auto min-h-0">
+              <PostForm
+                clientes={clientes}
+                clienteActivo={clienteActivo}
+                onCancel={() => setModalNueva(false)}
+                onSubmitted={() => setModalNueva(false)}
+              />
+            </div>
           </div>
         </div>
       )}

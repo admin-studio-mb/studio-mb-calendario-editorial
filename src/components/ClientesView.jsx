@@ -7,12 +7,14 @@
 
 import { useState } from 'react';
 import ClienteForm from './ClienteForm.jsx';
+import useBodyScrollLock from '../lib/useBodyScrollLock.js';
 
 export default function ClientesView({ initialClientes = [], canManage = true, canEdit = null }) {
   // Admin: crear, editar y borrar. Editor: solo editar la información.
   const puedeEditar = canEdit ?? canManage;
   const [clientes, setClientes] = useState(initialClientes);
   const [editTarget, setEditTarget] = useState(null); // null = cerrado, 'new' = crear, objeto = editar
+  useBodyScrollLock(Boolean(editTarget));
   const [deletingId, setDeletingId] = useState(null);
   const [deleteError, setDeleteError] = useState('');
 
@@ -205,9 +207,10 @@ export default function ClientesView({ initialClientes = [], canManage = true, c
           onClick={() => setEditTarget(null)}
         >
           <div
-            className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-pop"
+            className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden shadow-pop"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="overflow-y-auto min-h-0">
             <header className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-ink-100 bg-white">
               <div>
                 <h3 className="text-base font-semibold text-ink-900">
@@ -232,6 +235,7 @@ export default function ClientesView({ initialClientes = [], canManage = true, c
                 onCancel={() => setEditTarget(null)}
                 onSubmitted={handleSubmitted}
               />
+            </div>
             </div>
           </div>
         </div>

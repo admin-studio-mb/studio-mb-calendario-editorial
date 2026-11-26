@@ -127,16 +127,26 @@ function previewOf(slide) {
   return `/api/assets/${s}`;
 }
 
+function clienteInicial(clientes, clienteActivo, clienteGuardado) {
+  if (clienteGuardado) return clienteGuardado;
+  if (clienteActivo && clientes.some((c) => c.id === clienteActivo)) return clienteActivo;
+  return clientes[0]?.id ?? '';
+}
+
 /**
  * PostForm — formulario controlado para crear/editar una publicación.
  *
  * Props:
  *   - clientes: Array<{ id, nombre, tipos_contenido_disponibles: string[] }>
+ *   - clienteActivo: id del cliente elegido en el sidebar (si no es "Todos").
  *   - initial:  objeto publicación (o {} para creación).
  *   - onCancel: () => void
  *   - onSubmitted: (saved) => void  → se avisa tras guardar correctamente.
  *
  * Notas de comportamiento:
+ *   - Al crear, el cliente activo del sidebar se preselecciona. Si el
+ *     sidebar está en "Todos los clientes", se mantiene el primer cliente
+ *     como hasta ahora.
  *   - `tipo_contenido` se carga dinámicamente a partir del cliente elegido.
  *   - Los slides (texto + foto por slide) se guardan en `imagenes_fondo`
  *     como JSON [{ texto, imagen }]. `textos_slides` queda como campo legacy
@@ -146,11 +156,14 @@ function previewOf(slide) {
  */
 export default function PostForm({
   clientes = [],
+  clienteActivo = null,
   initial = {},
   onCancel,
   onSubmitted,
 }) {
-  const [clienteId, setClienteId] = useState(initial.cliente_id ?? clientes[0]?.id ?? '');
+  const [clienteId, setClienteId] = useState(() => (
+    clienteInicial(clientes, clienteActivo, initial.cliente_id)
+  ));
   const [red, setRed] = useState(initial.red ?? null);
   const [tipo, setTipo] = useState(initial.tipo_contenido ?? '');
   const [formato, setFormato] = useState(initial.formato ?? 'post');
@@ -445,7 +458,7 @@ export default function PostForm({
 
         if (!isEdit) {
           // Limpiamos el form solo en modo creación.
-          setClienteId(clientes[0]?.id ?? '');
+          setClienteId(clienteInicial(clientes, clienteActivo));
           setTipo('');
           setCopywriting('');
           setHashtags('');

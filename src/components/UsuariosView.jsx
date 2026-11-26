@@ -12,6 +12,7 @@
 
 import { useState } from 'react';
 import { ROL } from '../lib/roles.js';
+import useBodyScrollLock from '../lib/useBodyScrollLock.js';
 
 const ROL_LABEL = {
   [ROL.ADMIN]: 'Administrador',
@@ -47,6 +48,7 @@ function inicialesDe(u) {
 export default function UsuariosView({ initialUsuarios = [], clientes = [], currentUserId = '' }) {
   const [usuarios, setUsuarios] = useState(initialUsuarios);
   const [modal, setModal] = useState(null); // null | 'new' | usuario
+  useBodyScrollLock(Boolean(modal));
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState(null);
 
@@ -252,9 +254,10 @@ export default function UsuariosView({ initialUsuarios = [], clientes = [], curr
           onClick={() => setModal(null)}
         >
           <div
-            className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-pop"
+            className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden shadow-pop"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="overflow-y-auto min-h-0">
             <header className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-ink-100 bg-white">
               <div>
                 <h3 className="text-base font-semibold text-ink-900">
@@ -280,6 +283,7 @@ export default function UsuariosView({ initialUsuarios = [], clientes = [], curr
                 onCancel={() => setModal(null)}
                 onSaved={handleSaved}
               />
+            </div>
             </div>
           </div>
         </div>
