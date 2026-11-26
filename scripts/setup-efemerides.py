@@ -115,6 +115,22 @@ FIELDS = [
         "schema": {"default_value": "propia"},
     },
     {"field": "notas", "type": "text", "meta": {"interface": "input-multiline"}, "schema": {"is_nullable": True}},
+    {
+        "field": "cliente_id", "type": "uuid",
+        "meta": {
+            "interface": "select-dropdown-m2o",
+            "special": ["m2o"],
+            "display": "related-values",
+            "options": {"template": "{{nombre}}"},
+            "note": "Vacío = visible para todos los clientes",
+        },
+        "schema": {
+            "is_nullable": True,
+            "foreign_key_table": "clientes",
+            "foreign_key_column": "id",
+            "on_delete": "SET NULL",
+        },
+    },
 ]
 
 print("== Colección `efemerides` ==")
@@ -142,10 +158,42 @@ for f in FIELDS:
     print(f"  POST {f['field']} → {st}" + ("" if st in (200, 201) else f" {json.dumps(body)[:160]}"))
 
 print()
+print("== Relación efemerides.cliente_id → clientes ==")
+st, rels = api("/relations")
+have = {(r.get("collection"), r.get("field")) for r in rels.get("data", [])}
+if (COL, "cliente_id") in have:
+    print("  ya existe")
+else:
+    st, body = api("/relations", "POST", {
+        "collection": COL,
+        "field": "cliente_id",
+        "related_collection": "clientes",
+        "meta": {
+            "many_collection": COL,
+            "many_field": "cliente_id",
+            "one_collection": "clientes",
+            "one_field": None,
+            "one_deselect_action": "nullify",
+        },
+        "schema": {
+            "table": COL,
+            "column": "cliente_id",
+            "foreign_key_table": "clientes",
+            "foreign_key_column": "id",
+            "on_delete": "SET NULL",
+        },
+    })
+    print(f"  POST relation → {st}" + ("" if st in (200, 201) else f" {json.dumps(body)[:160]}"))
+
+print()
 print("== Semilla ==")
-st, cur = api(f"/items/{COL}?fields=dia,mes,nombre&limit=-1")
-actuales = {(i["dia"], i["mes"], i["nombre"]) for i in cur.get("data", [])} if st == 200 else set()
-nuevos = [d for d in SEED if d not in actuales]
+st, cur = api(f"/items/{COL}?limit=-1")
+if st == 200 and isinstance(cur, dict):
+    actuales = {(i["dia"], i["mes"], i["nombre"]) for i in cur.get("data", [])}
+else:
+    actuales = set()
+    print(f"  AVISO: no se pudo leer la colección ({st}); no se siembra para no duplicar")
+nuevos = [d for d in SEED if (d[0], d[1], d[2]) not in actuales] if st == 200 else []
 if nuevos:
     st, body = api(f"/items/{COL}", "POST", [
         {"dia": d, "mes": m, "nombre": n, "ambito": a} for d, m, n, a in nuevos
@@ -158,19 +206,31 @@ print()
 print("== Permisos de lectura ==")
 st, pol = api("/policies?fields=id,name&limit=-1")
 policies = {p["name"]: p["id"] for p in pol.get("data", [])}
-st, perms = api("/permissions?fields=id,policy,collection,action&limit=-1")
+st, perms = api("/permissions?fields=id,policy,collection,action,permissions&limit=-1")
 allp = perms.get("data", []) if st == 200 else []
+FILTRO_CLIENTE = {
+    "_or": [
+        {"cliente_id": {"_null": True}},
+        {"cliente_id": {"_eq": "$CURRENT_USER.cliente_id"}},
+    ],
+}
 for pname in ("cliente_acceso", "editor_acceso"):
     pid = policies.get(pname)
     if not pid:
         continue
     row = next((p for p in allp if p.get("policy") == pid and p.get("collection") == COL and p.get("action") == "read"), None)
     if row:
-        print(f"  {pname}.read: ya existe")
+        if pname == "cliente_acceso" and row.get("permissions") != FILTRO_CLIENTE:
+            st, body = api(f"/permissions/{row['id']}", "PATCH", {"permissions": FILTRO_CLIENTE})
+            print(f"  PATCH {pname}.read filtro cliente → {st}" + ("" if st in (200, 204) else f" {json.dumps(body)[:160]}"))
+        else:
+            print(f"  {pname}.read: ya existe")
         continue
     st, body = api("/permissions", "POST", {
         "policy": pid, "collection": COL, "action": "read",
-        "fields": ["*"], "permissions": {}, "validation": {},
+        "fields": ["*"],
+        "permissions": FILTRO_CLIENTE if pname == "cliente_acceso" else {},
+        "validation": {},
     })
     print(f"  POST {pname}.read → {st}" + ("" if st in (200, 201) else f" {json.dumps(body)[:160]}"))
 

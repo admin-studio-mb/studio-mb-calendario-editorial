@@ -8,7 +8,7 @@ import { es } from 'date-fns/locale';
 import { publicacionesStore, cursorStore, filtrosStore, selectedPostIdStore, hydratePublicaciones, updatePublicacion } from '../stores/publicaciones.js';
 import { REDES } from '../lib/redes.js';
 import { parseFechaPublicacion, toISOlocal } from '../lib/fecha.js';
-import { efemeridesDelMes, agruparPorDia, colorDeAmbito } from '../lib/efemerides.js';
+import { efemeridesDelMes, efemeridesVisibles, agruparPorDia, colorDeAmbito } from '../lib/efemerides.js';
 import WeekView from './WeekView.jsx';
 import ListView from './ListView.jsx';
 import DayView from './DayView.jsx';
@@ -60,8 +60,8 @@ export default function Calendar({ initialPublicaciones = [], clientes = [], mos
   }, [mesVisible, anioVisible]);
 
   const efemeridesPorDia = useMemo(
-    () => agruparPorDia(efemeridesDelMes(efemeridesMes, mesVisible)),
-    [efemeridesMes, mesVisible],
+    () => agruparPorDia(efemeridesDelMes(efemeridesVisibles(efemeridesMes, clienteActivo), mesVisible)),
+    [efemeridesMes, mesVisible, clienteActivo],
   );
 
   // Alcance global: el cliente elegido en el sidebar manda también aquí.

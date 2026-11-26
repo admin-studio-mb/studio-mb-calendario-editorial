@@ -13,6 +13,30 @@ export const SIN_ASIGNAR = '__sin_asignar__';
 /** Estados en orden del flujo (para pintar barras y leyendas). */
 export const ESTADOS_CARGA = ['borrador', 'revision', 'en_diseno', 'revision_diseno', 'revision_conjunta', 'aprobado', 'publicado'];
 
+/** Estados en los que la pelota está en el tejado del cliente. */
+export const ESTADOS_ESPERA_CLIENTE = ['revision', 'revision_diseno', 'revision_conjunta'];
+
+export function esEsperaCliente(estado) {
+  return ESTADOS_ESPERA_CLIENTE.includes(estado);
+}
+
+/**
+ * Días completos desde el último cambio de estado. `estado_desde` lo rellena
+ * la página de Carga con la última actividad de tipo `estado`; si no hay
+ * historial, se usa `fecha_actualizacion` como aproximación.
+ *
+ * @param {object} post
+ * @param {Date} [ahora]
+ * @returns {number|null}
+ */
+export function diasEnEstado(post, ahora = new Date()) {
+  const fecha = parseFechaPublicacion(post?.estado_desde ?? post?.fecha_actualizacion ?? null);
+  if (!fecha) return null;
+  const ms = ahora.getTime() - fecha.getTime();
+  if (!Number.isFinite(ms)) return null;
+  return ms <= 0 ? 0 : Math.floor(ms / 86400000);
+}
+
 /** Posts cuyo fecha_publicacion cae en el mes del cursor. */
 export function postsDelMes(publicaciones, cursor) {
   const y = cursor.getFullYear();
@@ -31,7 +55,23 @@ function nombreDe(u) {
 function filaVacia(id, nombre, email) {
   const porEstado = {};
   for (const e of ESTADOS_CARGA) porEstado[e] = 0;
-  return { id, nombre, email, total: 0, porEstado };
+  return {
+    id, nombre, email,
+    total: 0,
+    porEstado,
+    esperandoCliente: 0,
+    diasEsperando: null,
+  };
+}
+
+function anotarEspera(fila, post, ahora) {
+  const estado = post.estado ?? 'borrador';
+  if (!esEsperaCliente(estado)) return;
+  fila.esperandoCliente += 1;
+  const dias = diasEnEstado(post, ahora);
+  if (dias !== null && (fila.diasEsperando === null || dias > fila.diasEsperando)) {
+    fila.diasEsperando = dias;
+  }
 }
 
 /**
@@ -42,7 +82,7 @@ function filaVacia(id, nombre, email) {
  * @param {{id:string,first_name?:string,last_name?:string,email?:string}[]} usuarios
  * @param {Date} cursor
  */
-export function resumenPorResponsable(publicaciones, usuarios, cursor) {
+export function resumenPorResponsable(publicaciones, usuarios, cursor, ahora = new Date()) {
   const posts = postsDelMes(publicaciones, cursor);
 
   const filas = new Map();
@@ -61,16 +101,25 @@ export function resumenPorResponsable(publicaciones, usuarios, cursor) {
     fila.total += 1;
     const estado = p.estado ?? 'borrador';
     fila.porEstado[estado] = (fila.porEstado[estado] ?? 0) + 1;
+    anotarEspera(fila, p, ahora);
   }
 
   const filasVisibles = [...filas.values()]
     .filter((f) => f.total > 0)
     .sort((a, b) => b.total - a.total);
 
+  const esperandoCliente = filasVisibles.reduce((n, f) => n + f.esperandoCliente, 0);
+  const diasEsperando = filasVisibles.reduce(
+    (max, f) => (f.diasEsperando === null ? max : Math.max(max, f.diasEsperando)),
+    null,
+  );
+
   return {
     posts,
     total: posts.length,
     sinAsignar: filas.get(SIN_ASIGNAR).total,
+    esperandoCliente,
+    diasEsperando,
     filas: filasVisibles,
   };
 }
@@ -82,7 +131,7 @@ export function resumenPorResponsable(publicaciones, usuarios, cursor) {
  * @param {{id:string,nombre:string}[]} clientes
  * @param {Date} cursor
  */
-export function resumenPorCliente(publicaciones, clientes, cursor) {
+export function resumenPorCliente(publicaciones, clientes, cursor, ahora = new Date()) {
   const posts = postsDelMes(publicaciones, cursor);
   const nombre = new Map((clientes ?? []).map((c) => [c.id, c.nombre]));
 
@@ -95,11 +144,17 @@ export function resumenPorCliente(publicaciones, clientes, cursor) {
         nombre: nombre.get(key) ?? 'Sin cliente',
         total: 0,
         sinResponsable: 0,
+        esperandoCliente: 0,
+        diasEsperando: null,
+        porEstado: {},
       });
     }
     const fila = filas.get(key);
     fila.total += 1;
     if (!p.responsable_id) fila.sinResponsable += 1;
+    const estado = p.estado ?? 'borrador';
+    fila.porEstado[estado] = (fila.porEstado[estado] ?? 0) + 1;
+    anotarEspera(fila, p, ahora);
   }
 
   return [...filas.values()].sort((a, b) => b.total - a.total);

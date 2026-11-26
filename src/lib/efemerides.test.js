@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { agruparPorDia, colorDeAmbito, efemeridesDelMes, nombreMes, AMBITOS_VALIDOS } from './efemerides.js';
+import { agruparPorDia, colorDeAmbito, efemeridesDelMes, efemeridesVisibles, nombreMes, AMBITOS_VALIDOS } from './efemerides.js';
 
 const ITEMS = [
   { id: '1', dia: 6, mes: 1, nombre: 'Reyes', ambito: 'espana' },
@@ -35,6 +35,26 @@ describe('colorDeAmbito', () => {
 
   it('todos los ámbitos tienen punto', () => {
     for (const a of AMBITOS_VALIDOS) expect(colorDeAmbito(a)).toMatch(/^bg-/);
+  });
+});
+
+describe('efemeridesVisibles', () => {
+  const CON_CLIENTE = [
+    { id: 'g', nombre: 'Global', cliente_id: null },
+    { id: 'c1', nombre: 'Solo cliente 1', cliente_id: 'cli-1' },
+    { id: 'c2', nombre: 'Solo cliente 2', cliente_id: 'cli-2' },
+  ];
+
+  it('sin cliente activo deja pasar todas', () => {
+    expect(efemeridesVisibles(CON_CLIENTE, null).map((e) => e.id)).toEqual(['g', 'c1', 'c2']);
+  });
+
+  it('con cliente activo deja las globales y las suyas', () => {
+    expect(efemeridesVisibles(CON_CLIENTE, 'cli-1').map((e) => e.id)).toEqual(['g', 'c1']);
+  });
+
+  it('tolera listas vacías', () => {
+    expect(efemeridesVisibles(null, 'cli-1')).toEqual([]);
   });
 });
 

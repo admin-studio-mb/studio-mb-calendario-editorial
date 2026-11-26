@@ -27,22 +27,42 @@ async function fetchCollection(path) {
   return json.data ?? [];
 }
 
-const [publicaciones, clientes, equipoRaw] = await Promise.all([
+const [publicacionesRaw, clientes, equipoRaw, actividad] = await Promise.all([
   fetchCollection('publicaciones'),
   fetchCollection('clientes'),
   fetch(
     `${baseUrl}/users?fields=id,first_name,last_name,email&limit=-1&filter[status][_eq]=active&filter[role][name][_in]=Administrator,Editor&sort=first_name`,
     { headers: baseHeaders, cache: 'no-store' },
   ).then((r) => (r.ok ? r.json() : { data: [] })),
+  fetch(
+    `${baseUrl}/items/actividad?limit=-1&fields=publicacion_id,tipo,estado_nuevo,fecha_creacion&filter[tipo][_eq]=estado&sort=-fecha_creacion`,
+    { headers: baseHeaders, cache: 'no-store' },
+  ).then((r) => (r.ok ? r.json() : { data: [] })),
 ]);
 
 const equipo = equipoRaw.data ?? [];
+
+// Para saber cuánto lleva cada publicación parada en su estado actual,
+// usamos el último evento de tipo `estado`. Si una publicación es anterior
+// al historial, caemos a `fecha_actualizacion`.
+const ultimoCambioEstado = new Map();
+for (const a of actividad.data ?? []) {
+  const id = typeof a.publicacion_id === 'object' ? a.publicacion_id?.id : a.publicacion_id;
+  if (id && !ultimoCambioEstado.has(id)) {
+    ultimoCambioEstado.set(id, a.fecha_creacion);
+  }
+}
+
+const publicaciones = publicacionesRaw.map((p) => ({
+  ...p,
+  estado_desde: ultimoCambioEstado.get(p.id) ?? p.fecha_actualizacion ?? p.fecha_creacion ?? null,
+}));
 ---
 <Layout title="Carga del mes · Studio mb" user={user}>
   <header class="mb-8">
     <h1 class="text-2xl md:text-3xl font-bold text-ink-900 tracking-tight">Carga del mes</h1>
     <p class="mt-1 text-sm text-ink-500">
-      Reparto de publicaciones por persona y cliente. Así se ve de un vistazo quién va cargado.
+      Reparto de publicaciones por persona y cliente. Incluye lo que está esperando al cliente y lo que lleva más tiempo parado.
     </p>
   </header>
 

@@ -15,11 +15,17 @@ if (!esAdmin(user)) {
 }
 
 const res = await fetch(
-  `${env.DIRECTUS_INTERNAL_URL}/items/efemerides?limit=-1&fields=id,dia,mes,nombre,ambito,notas&sort=mes,dia`,
+  `${env.DIRECTUS_INTERNAL_URL}/items/efemerides?limit=-1&fields=id,dia,mes,nombre,ambito,notas,cliente_id&sort=mes,dia`,
+  { headers: token ? { Authorization: `Bearer ${token}` } : {}, cache: 'no-store' },
+);
+
+const resClientes = await fetch(
+  `${env.DIRECTUS_INTERNAL_URL}/items/clientes?limit=-1&fields=id,nombre&sort=nombre`,
   { headers: token ? { Authorization: `Bearer ${token}` } : {}, cache: 'no-store' },
 );
 
 const items = res.ok ? (await res.json()).data ?? [] : [];
+const clientes = resClientes.ok ? (await resClientes.json()).data ?? [] : [];
 ---
 <Layout title="Efemérides · Studio mb" user={user}>
   <header class="mb-8">
@@ -29,5 +35,5 @@ const items = res.ok ? (await res.json()).data ?? [] : [];
     </p>
   </header>
 
-  <EfemeridesView client:load initialItems={items} />
+  <EfemeridesView client:load initialItems={items} clientes={clientes} />
 </Layout>

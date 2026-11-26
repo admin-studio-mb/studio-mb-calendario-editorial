@@ -20,6 +20,18 @@ export function colorDeAmbito(ambito) {
 }
 
 /**
+ * Efemérides visibles para el alcance actual.
+ * Sin cliente activo se ven todas (el equipo). Con un cliente activo se ven
+ * las globales (sin cliente) y las de ese cliente; las de otros clientes no.
+ *
+ * @param {{cliente_id?:string|null}[]} items
+ * @param {string|null} clienteId
+ */
+export function efemeridesVisibles(items, clienteId = null) {
+  return (items ?? []).filter((e) => !clienteId || !e?.cliente_id || e.cliente_id === clienteId);
+}
+
+/**
  * Efemérides de un mes (1-12), ordenadas por día.
  *
  * @param {{dia:number,mes:number,nombre:string,ambito?:string}[]} items

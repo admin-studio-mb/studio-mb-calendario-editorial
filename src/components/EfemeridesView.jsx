@@ -8,14 +8,23 @@
 import { useMemo, useState } from 'react';
 import { AMBITOS, AMBITOS_VALIDOS, nombreMes } from '../lib/efemerides.js';
 
-const VACIO = { id: null, dia: '1', mes: '1', nombre: '', ambito: 'propia', notas: '' };
+const VACIO = { id: null, dia: '1', mes: '1', nombre: '', ambito: 'propia', cliente_id: '', notas: '' };
 
-export default function EfemeridesView({ initialItems = [] }) {
+function idDe(valor) {
+  return typeof valor === 'object' ? (valor?.id ?? '') : (valor ?? '');
+}
+
+export default function EfemeridesView({ initialItems = [], clientes = [] }) {
   const [items, setItems] = useState(initialItems);
   const [form, setForm] = useState(VACIO);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
+
+  const clientesPorId = useMemo(
+    () => new Map(clientes.map((c) => [c.id, c.nombre])),
+    [clientes],
+  );
 
   const porMes = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => i + 1).map((mes) => ({
@@ -33,6 +42,7 @@ export default function EfemeridesView({ initialItems = [] }) {
       mes: String(item.mes),
       nombre: item.nombre,
       ambito: item.ambito ?? 'propia',
+      cliente_id: idDe(item.cliente_id),
       notas: item.notas ?? '',
     });
     setError('');
@@ -49,6 +59,7 @@ export default function EfemeridesView({ initialItems = [] }) {
       mes: Number(form.mes),
       nombre: form.nombre,
       ambito: form.ambito,
+      cliente_id: form.cliente_id || null,
       notas: form.notas || null,
     };
     try {
@@ -153,6 +164,24 @@ export default function EfemeridesView({ initialItems = [] }) {
         </div>
 
         <div>
+          <label className={labelBase} htmlFor="cliente-ef">Visible para</label>
+          <select
+            id="cliente-ef"
+            value={form.cliente_id}
+            onChange={(e) => setForm((f) => ({ ...f, cliente_id: e.target.value }))}
+            className={inputBase}
+          >
+            <option value="">Todos los clientes (global)</option>
+            {clientes.map((c) => (
+              <option key={c.id} value={c.id}>{c.nombre}</option>
+            ))}
+          </select>
+          <p className="text-[11px] text-ink-400 mt-1">
+            Si eliges un cliente, solo ese cliente verá esta fecha. Las globales las ve todo el mundo.
+          </p>
+        </div>
+
+        <div>
           <label className={labelBase} htmlFor="nombre-ef">Nombre</label>
           <input
             id="nombre-ef"
@@ -205,6 +234,11 @@ export default function EfemeridesView({ initialItems = [] }) {
                   <span className="hidden sm:inline text-[10px] uppercase tracking-wider text-ink-400">
                     {(AMBITOS[e.ambito] ?? AMBITOS.propia).label}
                   </span>
+                  {e.cliente_id && (
+                    <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-100">
+                      {clientesPorId.get(idDe(e.cliente_id)) ?? 'Cliente'}
+                    </span>
+                  )}
                   <button type="button" onClick={() => editar(e)} className="text-xs font-medium text-ink-500 hover:text-brand-600">Editar</button>
                   <button type="button" onClick={() => borrar(e)} className="text-xs font-medium text-ink-400 hover:text-red-600">Borrar</button>
                 </li>
