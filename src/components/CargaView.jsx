@@ -135,7 +135,7 @@ export default function CargaView({
             <p className="text-xl font-bold text-ink-900 tabular-nums">{porPersona.total}</p>
           </div>
           <div className="rounded-lg bg-white border border-ink-100 px-3 py-2">
-            <p className="text-[10px] uppercase tracking-wider font-semibold text-ink-400">Esperando cliente</p>
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-ink-400">Esperando cuenta</p>
             <p className={`text-xl font-bold tabular-nums ${porPersona.esperandoCliente > 0 ? 'text-blue-700' : 'text-ink-900'}`}>{porPersona.esperandoCliente}</p>
           </div>
           <div className="rounded-lg bg-white border border-ink-100 px-3 py-2">
@@ -179,7 +179,7 @@ export default function CargaView({
                     <div className="mt-1 flex items-center gap-1.5 text-[11px] text-blue-700">
                       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 border border-blue-100">
                         <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                        {fila.esperandoCliente} esperando cliente
+                        {fila.esperandoCliente} esperando cuenta
                       </span>
                       {fila.diasEsperando !== null && (
                         <span className="text-ink-400">· {textoDias(fila.diasEsperando)} parado</span>
@@ -204,7 +204,7 @@ export default function CargaView({
 
       <section className="card overflow-hidden">
         <header className="px-5 py-4 border-b border-ink-100">
-          <h2 className="text-sm font-semibold text-ink-900">Por cliente</h2>
+          <h2 className="text-sm font-semibold text-ink-900">Por cuenta</h2>
           <p className="text-xs text-ink-500 mt-0.5">Volumen, esperas y publicaciones sin responsable.</p>
         </header>
         {porCliente.length === 0 ? (
@@ -214,10 +214,10 @@ export default function CargaView({
             <table className="w-full min-w-[700px] text-sm">
               <thead className="bg-ink-50 text-[11px] uppercase tracking-wider text-ink-400">
                 <tr>
-                  <th className="text-left font-semibold px-5 py-2">Cliente</th>
+                  <th className="text-left font-semibold px-5 py-2">Cuenta</th>
                   <th className="text-right font-semibold px-3 py-2">Posts</th>
-                  <th className="text-right font-semibold px-3 py-2">En cliente</th>
-                  <th className="text-left font-semibold px-3 py-2">Fase en cliente</th>
+                  <th className="text-right font-semibold px-3 py-2">En cuenta</th>
+                  <th className="text-left font-semibold px-3 py-2">Fase en cuenta</th>
                   <th className="text-right font-semibold px-3 py-2">Más antiguo</th>
                   <th className="text-right font-semibold px-5 py-2">Sin responsable</th>
                 </tr>
@@ -263,9 +263,9 @@ export default function CargaView({
       <section className="card overflow-hidden">
         <header className="flex items-start justify-between gap-3 px-5 py-4 border-b border-ink-100 flex-wrap">
           <div>
-            <h2 className="text-sm font-semibold text-ink-900">Ahora mismo: esperando al cliente</h2>
+            <h2 className="text-sm font-semibold text-ink-900">Ahora mismo: esperando a la cuenta</h2>
             <p className="text-xs text-ink-500 mt-0.5">
-              Lo que está parado porque la pelota está en el tejado del cliente, de más antiguo a más reciente.
+              Lo que está parado porque la pelota está en el tejado de la cuenta, de más antiguo a más reciente.
             </p>
           </div>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-xs font-semibold">
@@ -275,14 +275,14 @@ export default function CargaView({
         </header>
 
         {esperando.length === 0 ? (
-          <p className="px-5 py-8 text-sm text-ink-400 text-center">Nadie está esperando al cliente ahora mismo.</p>
+          <p className="px-5 py-8 text-sm text-ink-400 text-center">Nadie está esperando a la cuenta ahora mismo.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[700px] text-sm">
               <thead className="bg-ink-50 text-[11px] uppercase tracking-wider text-ink-400">
                 <tr>
                   <th className="text-left font-semibold px-5 py-2">Publicación</th>
-                  <th className="text-left font-semibold px-3 py-2">Cliente</th>
+                  <th className="text-left font-semibold px-3 py-2">Cuenta</th>
                   <th className="text-left font-semibold px-3 py-2">Fase</th>
                   <th className="text-left font-semibold px-3 py-2">Responsable</th>
                   <th className="text-right font-semibold px-5 py-2">Parado</th>

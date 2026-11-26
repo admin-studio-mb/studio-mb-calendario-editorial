@@ -171,13 +171,13 @@ export default function EfemeridesView({ initialItems = [], clientes = [] }) {
             onChange={(e) => setForm((f) => ({ ...f, cliente_id: e.target.value }))}
             className={inputBase}
           >
-            <option value="">Todos los clientes (global)</option>
+            <option value="">Todas las cuentas (global)</option>
             {clientes.map((c) => (
               <option key={c.id} value={c.id}>{c.nombre}</option>
             ))}
           </select>
           <p className="text-[11px] text-ink-400 mt-1">
-            Si eliges un cliente, solo ese cliente verá esta fecha. Las globales las ve todo el mundo.
+            Si eliges una cuenta, solo esa cuenta verá esta fecha. Las globales las ve todo el mundo.
           </p>
         </div>
 
@@ -236,7 +236,7 @@ export default function EfemeridesView({ initialItems = [], clientes = [] }) {
                   </span>
                   {e.cliente_id && (
                     <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-100">
-                      {clientesPorId.get(idDe(e.cliente_id)) ?? 'Cliente'}
+                      {clientesPorId.get(idDe(e.cliente_id)) ?? 'Cuenta'}
                     </span>
                   )}
                   <button type="button" onClick={() => editar(e)} className="text-xs font-medium text-ink-500 hover:text-brand-600">Editar</button>

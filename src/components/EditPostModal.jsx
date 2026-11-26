@@ -432,7 +432,7 @@ export default function EditPostModal({ clientes = [], currentUser = null }) {
             ) : (
               <div className="flex items-center gap-3 flex-wrap">
                 <p className="text-xs text-ink-600 flex-1 min-w-[220px]">
-                  Crea un enlace para que el cliente apruebe sin cuenta. Caduca a los 30 días
+                  Crea un enlace para aprobar sin usuario. Caduca a los 30 días
                   y puedes revocarlo cuando quieras.
                 </p>
                 <button

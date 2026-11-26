@@ -520,7 +520,7 @@ export default function PostForm({
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Cliente">
+          <Field label="Cuenta">
             <select id="cliente" value={clienteId} onChange={(e) => setClienteId(e.target.value)} className={inputBase}>
               <option value="" disabled>— Selecciona —</option>
               {clientes.map((c) => (
@@ -782,7 +782,7 @@ export default function PostForm({
             </p>
           </Field>
         ) : (
-          <Field label="Diseño final" hint="Foto definitiva que verá el cliente en el mockup del feed.">
+          <Field label="Diseño final" hint="Foto definitiva que verá la cuenta en el mockup del feed.">
             <input
               id="diseno"
               type="file"

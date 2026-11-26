@@ -133,7 +133,7 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
 
   async function revocarEnlacePost(post) {
     if (enlaceBusy) return;
-    if (!confirm(`¿Revocar el enlace de “${post.tipo_contenido || 'esta publicación'}”? Dejará de funcionar para el cliente.`)) return;
+    if (!confirm(`¿Revocar el enlace de “${post.tipo_contenido || 'esta publicación'}”? Dejará de funcionar para la cuenta.`)) return;
     setEnlaceBusy(post.id);
     setError('');
     try {
@@ -499,7 +499,7 @@ export default function PendientesView({ initialPosts = [], clientes = [], curre
       {esEquipoUsuario && (
         <div className="flex items-center justify-between gap-3 flex-wrap rounded-xl border border-ink-200 bg-white px-4 py-3">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-ink-800">Enlace para el cliente</p>
+            <p className="text-sm font-semibold text-ink-800">Enlace para la cuenta</p>
             <p className="text-xs text-ink-500">
               Incluye los {pendientes.length} {pendientes.length === 1 ? 'pendiente' : 'pendientes'} de esta vista en una sola página.
             </p>

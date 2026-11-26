@@ -119,9 +119,9 @@ export default function UsuariosView({ initialUsuarios = [], clientes = [], curr
     <>
       <div className="card p-4 md:p-5 mb-6 flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <p className="text-[11px] uppercase tracking-wider text-ink-400 font-medium">Equipo y clientes</p>
+          <p className="text-[11px] uppercase tracking-wider text-ink-400 font-medium">Equipo y usuarios</p>
           <p className="mt-1 text-sm text-ink-600">
-            Crea usuarios <strong>Cliente</strong> (ven solo su contenido), <strong>Editor</strong> (trabajan con todos los clientes) o <strong>Administrador</strong>.
+            Crea usuarios <strong>Cliente</strong> (ven solo su contenido), <strong>Editor</strong> (trabajan con todas las cuentas) o <strong>Administrador</strong>.
           </p>
         </div>
         <button
@@ -147,7 +147,7 @@ export default function UsuariosView({ initialUsuarios = [], clientes = [], curr
               <tr>
                 <th className="px-5 py-3 text-left font-semibold">Usuario</th>
                 <th className="px-5 py-3 text-left font-semibold">Rol</th>
-                <th className="px-5 py-3 text-left font-semibold">Cliente</th>
+                <th className="px-5 py-3 text-left font-semibold">Cuenta</th>
                 <th className="px-5 py-3 text-left font-semibold">Estado</th>
                 <th className="px-5 py-3 text-right font-semibold">Acciones</th>
               </tr>
@@ -334,7 +334,7 @@ function UsuarioForm({ initial = {}, clientes = [], isSelf = false, onCancel, on
     e.preventDefault();
     setError('');
     if (!isEdit && password.length < 8) return setError('La contraseña debe tener al menos 8 caracteres.');
-    if (rol === ROL.CLIENTE && !clienteId) return setError('Elige el cliente al que pertenece este usuario.');
+    if (rol === ROL.CLIENTE && !clienteId) return setError('Elige la cuenta a la que pertenece este usuario.');
     if (isEdit && password && password.length < 8) return setError('La contraseña debe tener al menos 8 caracteres.');
 
     const body = {
@@ -400,7 +400,7 @@ function UsuarioForm({ initial = {}, clientes = [], isSelf = false, onCancel, on
           disabled={isEdit}
           required
           className={inputBase}
-          placeholder="cliente@empresa.com"
+          placeholder="usuario@empresa.com"
         />
       </Field>
 
@@ -458,7 +458,7 @@ function UsuarioForm({ initial = {}, clientes = [], isSelf = false, onCancel, on
 
       <Field
         label="Rol"
-        hint={isSelf ? 'No puedes cambiarte el rol a ti mismo.' : 'Cliente: solo su contenido. Editor: todos los clientes. Administrador: todo.'}
+        hint={isSelf ? 'No puedes cambiarte el rol a ti mismo.' : 'Cliente: solo su contenido. Editor: todas las cuentas. Administrador: todo.'}
       >
         <select value={rol} onChange={(e) => setRol(e.target.value)} disabled={isSelf} className={inputBase}>
           <option value={ROL.CLIENTE}>Cliente</option>
@@ -468,7 +468,7 @@ function UsuarioForm({ initial = {}, clientes = [], isSelf = false, onCancel, on
       </Field>
 
       {rol === ROL.CLIENTE && (
-        <Field label="Cliente asignado" hint="El usuario solo verá publicaciones de este cliente.">
+        <Field label="Cuenta asignada" hint="El usuario solo verá publicaciones de esta cuenta.">
           <select value={clienteId} onChange={(e) => setClienteId(e.target.value)} required className={inputBase}>
             <option value="" disabled>— Selecciona —</option>
             {clientes.map((c) => (

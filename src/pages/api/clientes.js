@@ -40,7 +40,7 @@ export async function POST({ request, locals }) {
 
   // Alta de clientes: solo el Administrator.
   if (!esAdmin(locals?.user)) {
-    return json({ error: 'Solo un administrador puede crear clientes.' }, 403);
+    return json({ error: 'Solo un administrador puede crear cuentas.' }, 403);
   }
 
   let body;
@@ -96,7 +96,7 @@ export async function POST({ request, locals }) {
 
   if (!r.ok) {
     console.error('[api/clientes POST]', r.status, r.raw);
-    return json({ error: 'No se pudo crear el cliente.', detail: r.raw }, r.status);
+    return json({ error: 'No se pudo crear la cuenta.', detail: r.raw }, r.status);
   }
 
   // Invalidar cache.

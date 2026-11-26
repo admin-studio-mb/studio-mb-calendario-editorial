@@ -41,11 +41,11 @@ export async function PATCH({ params, request, locals }) {
 
   // Edición de clientes: equipo (Admin y Editor). El nombre es solo del Admin.
   if (!esAdmin(locals?.user) && !esEditor(locals?.user)) {
-    return json({ error: 'Solo el equipo puede editar clientes.' }, 403);
+    return json({ error: 'Solo el equipo puede editar cuentas.' }, 403);
   }
 
   const id = params?.id;
-  if (!id) return json({ error: 'Falta el id del cliente.' }, 400);
+  if (!id) return json({ error: 'Falta el id de la cuenta.' }, 400);
 
   let body;
   try {
@@ -58,7 +58,7 @@ export async function PATCH({ params, request, locals }) {
 
   if (body.nombre !== undefined) {
     if (!esAdmin(locals?.user)) {
-      return json({ error: 'Solo un administrador puede cambiar el nombre del cliente.' }, 403);
+      return json({ error: 'Solo un administrador puede cambiar el nombre de la cuenta.' }, 403);
     }
     if (typeof body.nombre !== 'string' || body.nombre.trim().length === 0) {
       return json({ error: 'El nombre es obligatorio.' }, 400);
@@ -109,7 +109,7 @@ export async function PATCH({ params, request, locals }) {
 
   if (!r.ok) {
     console.error('[api/clientes PATCH]', id, r.status, r.raw);
-    return json({ error: 'No se pudo actualizar el cliente.', detail: r.raw }, r.status);
+    return json({ error: 'No se pudo actualizar la cuenta.', detail: r.raw }, r.status);
   }
 
   await clearDirectusCache(token);
@@ -123,11 +123,11 @@ export async function DELETE({ params, locals }) {
 
   // Borrado de clientes: solo el Administrator.
   if (!esAdmin(locals?.user)) {
-    return json({ error: 'Solo un administrador puede borrar clientes.' }, 403);
+    return json({ error: 'Solo un administrador puede borrar cuentas.' }, 403);
   }
 
   const id = params?.id;
-  if (!id) return json({ error: 'Falta el id del cliente.' }, 400);
+  if (!id) return json({ error: 'Falta el id de la cuenta.' }, 400);
 
   // Comprobamos cuántas publicaciones tiene este cliente antes de borrar.
   // Usamos aggregate para evitar el problema de que la respuesta aggregate
@@ -148,7 +148,7 @@ export async function DELETE({ params, locals }) {
 
   if (count !== null && count > 0) {
     return json({
-      error: 'No se puede eliminar el cliente porque tiene publicaciones asociadas.',
+      error: 'No se puede eliminar la cuenta porque tiene publicaciones asociadas.',
       detail: `Tiene ${count} publicación${count === 1 ? '' : 'es'}. Mueve o elimina primero las publicaciones.`,
     }, 409);
   }
@@ -157,7 +157,7 @@ export async function DELETE({ params, locals }) {
   if (count === null && check.ok && Array.isArray(check.data)) {
     if (check.data.length > 0) {
       return json({
-        error: 'No se puede eliminar el cliente porque tiene publicaciones asociadas.',
+        error: 'No se puede eliminar la cuenta porque tiene publicaciones asociadas.',
         detail: 'Mueve o elimina primero las publicaciones del cliente.',
       }, 409);
     }
@@ -171,7 +171,7 @@ export async function DELETE({ params, locals }) {
 
   if (!r.ok && r.status !== 204) {
     console.error('[api/clientes DELETE]', id, r.status, r.raw);
-    return json({ error: 'No se pudo eliminar el cliente.', detail: r.raw }, r.status);
+    return json({ error: 'No se pudo eliminar la cuenta.', detail: r.raw }, r.status);
   }
 
   await clearDirectusCache(token);

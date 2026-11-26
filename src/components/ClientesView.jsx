@@ -35,7 +35,7 @@ export default function ClientesView({ initialClientes = [], canManage = true, c
   }
 
   async function handleDelete(c) {
-    if (!confirm(`¿Eliminar el cliente "${c.nombre}"? Esta acción no se puede deshacer.`)) return;
+    if (!confirm(`¿Eliminar la cuenta "${c.nombre}"? Esta acción no se puede deshacer.`)) return;
     setDeletingId(c.id);
     setDeleteError('');
     try {
@@ -64,7 +64,7 @@ export default function ClientesView({ initialClientes = [], canManage = true, c
         <div className="card p-4 md:p-5">
           <p className="text-[11px] uppercase tracking-wider text-ink-400 font-medium">Total</p>
           <p className="mt-2 text-2xl md:text-3xl font-bold text-ink-900">{clientes.length}</p>
-          <p className="text-xs text-ink-500 mt-1">clientes</p>
+          <p className="text-xs text-ink-500 mt-1">cuentas</p>
         </div>
         <div className="card p-4 md:p-5">
           <p className="text-[11px] uppercase tracking-wider text-ink-400 font-medium">Tipos únicos</p>
@@ -78,10 +78,10 @@ export default function ClientesView({ initialClientes = [], canManage = true, c
             <p className="text-[11px] uppercase tracking-wider text-ink-400 font-medium">Acción</p>
             <p className="mt-2 text-sm text-ink-600">
               {canManage
-                ? 'Crea un cliente nuevo'
+                ? 'Crea una cuenta nueva'
                 : puedeEditar
-                  ? 'Edita redes y tipos de post de cada cliente'
-                  : 'No tienes permiso para gestionar clientes'}
+                  ? 'Edita redes y tipos de post de cada cuenta'
+                  : 'No tienes permiso para gestionar cuentas'}
             </p>
           </div>
           {canManage && (
@@ -91,7 +91,7 @@ export default function ClientesView({ initialClientes = [], canManage = true, c
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-br from-brand-600 to-brand-700 text-white text-sm font-medium shadow-sm hover:shadow-md transition"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
-              Nuevo cliente
+              Nueva cuenta
             </button>
           )}
         </div>
@@ -108,7 +108,7 @@ export default function ClientesView({ initialClientes = [], canManage = true, c
         {clientes.length === 0 ? (
           <div className="p-12 text-center">
             <svg className="w-12 h-12 mx-auto text-ink-300 mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            <p className="text-sm text-ink-500 mb-4">Aún no hay clientes.</p>
+            <p className="text-sm text-ink-500 mb-4">Aún no hay cuentas.</p>
             {canManage && (
               <button
                 type="button"
@@ -116,7 +116,7 @@ export default function ClientesView({ initialClientes = [], canManage = true, c
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
-                Crear cliente
+                Crear cuenta
               </button>
             )}
           </div>
@@ -125,7 +125,7 @@ export default function ClientesView({ initialClientes = [], canManage = true, c
             <table className="w-full text-sm">
               <thead className="bg-ink-50/50 text-ink-500 text-xs uppercase tracking-wider">
                 <tr>
-                  <th className="px-5 py-3 text-left font-semibold">Cliente</th>
+                  <th className="px-5 py-3 text-left font-semibold">Cuenta</th>
                   <th className="px-5 py-3 text-left font-semibold">Tipos</th>
                   <th className="px-5 py-3 text-right font-semibold">Publicaciones</th>
                   <th className="px-5 py-3 text-right font-semibold">Acciones</th>
@@ -214,10 +214,10 @@ export default function ClientesView({ initialClientes = [], canManage = true, c
             <header className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-ink-100 bg-white">
               <div>
                 <h3 className="text-base font-semibold text-ink-900">
-                  {editTarget === 'new' ? 'Nuevo cliente' : 'Editar cliente'}
+                  {editTarget === 'new' ? 'Nueva cuenta' : 'Editar cuenta'}
                 </h3>
                 <p className="text-xs text-ink-500 mt-0.5">
-                  {editTarget === 'new' ? 'Crea un cliente nuevo y define sus tipos de contenido.' : `Modifica los datos de "${editTarget.nombre}".`}
+                  {editTarget === 'new' ? 'Crea una cuenta nueva y define sus tipos de contenido.' : `Modifica los datos de "${editTarget.nombre}".`}
                 </p>
               </div>
               <button

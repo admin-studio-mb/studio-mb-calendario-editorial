@@ -242,7 +242,7 @@ export default function ClienteForm({
           </button>
         </div>
         <p className="mt-1.5 text-[11px] text-ink-400">
-          Se usa en la cabecera, los botones y el PDF de este cliente.
+          Se usa en la cabecera, los botones y el PDF de esta cuenta.
         </p>
       </div>
 
@@ -254,7 +254,7 @@ export default function ClienteForm({
           type="text"
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
-          placeholder="Nombre del cliente"
+          placeholder="Nombre de la cuenta"
           className={`${inputBase} ${puedeRenombrar ? '' : 'bg-ink-50 text-ink-500 cursor-not-allowed'}`}
           disabled={!puedeRenombrar}
           required
@@ -270,7 +270,7 @@ export default function ClienteForm({
       <div>
         <span className="block text-xs font-semibold uppercase tracking-wider text-ink-500 mb-1.5">Redes sociales</span>
         <p className="text-[11px] text-ink-400 mb-2">
-          Activa las redes con las que trabajáis con este cliente y define los tipos de post de cada una.
+          Activa las redes con las que trabajáis con esta cuenta y define los tipos de post de cada una.
         </p>
         <div className="space-y-3">
           {REDES.map((meta) => {
@@ -360,7 +360,7 @@ export default function ClienteForm({
           disabled={submitting}
           className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-gradient-to-br from-brand-600 to-brand-700 text-white text-sm font-medium shadow-sm hover:shadow-md hover:from-brand-700 hover:to-brand-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
         >
-          {submitting ? 'Guardando…' : (isEdit ? 'Guardar cambios' : 'Crear cliente')}
+          {submitting ? 'Guardando…' : (isEdit ? 'Guardar cambios' : 'Crear cuenta')}
         </button>
       </div>
     </form>

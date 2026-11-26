@@ -59,7 +59,7 @@ export default function ClienteSwitcher({ clientes = [], activo = null }) {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        title={actual ? `Viendo: ${actual.nombre}` : 'Viendo todos los clientes'}
+        title={actual ? `Viendo: ${actual.nombre}` : 'Viendo todas las cuentas'}
         className="w-full flex items-center gap-2 px-2 py-2 rounded-lg border border-ink-100 bg-ink-50/70 hover:bg-ink-100 transition text-left"
       >
         {actual ? <Logo cliente={actual} /> : (
@@ -68,9 +68,9 @@ export default function ClienteSwitcher({ clientes = [], activo = null }) {
           </span>
         )}
         <span className="sidebar-text flex-1 min-w-0">
-          <span className="block text-[10px] uppercase tracking-wider text-ink-400 leading-tight">Cliente activo</span>
+          <span className="block text-[10px] uppercase tracking-wider text-ink-400 leading-tight">Cuenta activa</span>
           <span className="block text-sm font-medium text-ink-900 truncate leading-tight">
-            {actual ? actual.nombre : 'Todos los clientes'}
+            {actual ? actual.nombre : 'Todas las cuentas'}
           </span>
         </span>
         <svg className="sidebar-text w-3.5 h-3.5 shrink-0 text-ink-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -81,7 +81,7 @@ export default function ClienteSwitcher({ clientes = [], activo = null }) {
       {open && (
         <div
           role="listbox"
-          aria-label="Cliente activo"
+          aria-label="Cuenta activa"
           className="absolute left-0 right-0 top-full mt-1 z-50 rounded-xl bg-white border border-ink-100 shadow-pop p-1 max-h-80 overflow-auto"
         >
           <button
@@ -94,7 +94,7 @@ export default function ClienteSwitcher({ clientes = [], activo = null }) {
             }`}
           >
             <span className="w-6 h-6 shrink-0 rounded bg-ink-200 text-ink-600 text-[10px] font-bold flex items-center justify-center" aria-hidden="true">*</span>
-            <span className="flex-1 truncate">Todos los clientes</span>
+            <span className="flex-1 truncate">Todas las cuentas</span>
           </button>
 
           {clientes.map((c) => {
